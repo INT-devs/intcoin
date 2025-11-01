@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- INTcoin Logo - Quantum Shield Design -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <!-- Gradient for quantum energy effect -->
+    <linearGradient id="quantumGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#0084ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6b4ce6;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Gradient for shield -->
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4c1d95;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Glow effect -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer quantum ring -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="url(#quantumGradient)" stroke-width="2" opacity="0.3">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      from="0 100 100"
+      to="360 100 100"
+      dur="20s"
+      repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Quantum particles orbiting -->
+  <circle cx="190" cy="100" r="3" fill="#00d4ff" opacity="0.8">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      from="0 100 100"
+      to="360 100 100"
+      dur="4s"
+      repeatCount="indefinite"/>
+  </circle>
+  <circle cx="10" cy="100" r="3" fill="#6b4ce6" opacity="0.8">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      from="0 100 100"
+      to="360 100 100"
+      dur="4s"
+      repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Central shield (quantum protection) -->
+  <path d="M 100 25 L 145 45 L 145 100 Q 145 145 100 165 Q 55 145 55 100 L 55 45 Z"
+        fill="url(#shieldGradient)"
+        stroke="#00d4ff"
+        stroke-width="2"
+        filter="url(#glow)"/>
+
+  <!-- INT monogram in center -->
+  <g transform="translate(100, 100)">
+    <!-- I -->
+    <rect x="-30" y="-25" width="6" height="50" fill="#00d4ff" rx="2"/>
+
+    <!-- N -->
+    <path d="M -15 -25 L -15 25 M -15 -25 L 0 25 M 0 -25 L 0 25"
+          stroke="#00d4ff"
+          stroke-width="6"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+
+    <!-- T -->
+    <path d="M 10 -25 L 30 -25 M 20 -25 L 20 25"
+          stroke="#00d4ff"
+          stroke-width="6"
+          fill="none"
+          stroke-linecap="round"/>
+  </g>
+
+  <!-- Lattice structure (representing quantum lattice cryptography) -->
+  <g opacity="0.2" stroke="#00d4ff" stroke-width="1" fill="none">
+    <line x1="60" y1="50" x2="80" y2="60"/>
+    <line x1="80" y1="60" x2="100" y2="50"/>
+    <line x1="100" y1="50" x2="120" y2="60"/>
+    <line x1="120" y1="60" x2="140" y2="50"/>
+
+    <line x1="60" y1="140" x2="80" y2="130"/>
+    <line x1="80" y1="130" x2="100" y2="140"/>
+    <line x1="100" y1="140" x2="120" y2="130"/>
+    <line x1="120" y1="130" x2="140" y2="140"/>
+  </g>
+
+  <!-- Binary code pattern (subtle background) -->
+  <g opacity="0.1" fill="#00d4ff" font-family="monospace" font-size="8">
+    <text x="40" y="180">01001001</text>
+    <text x="110" y="180">01001110</text>
+    <text x="40" y="190">01010100</text>
+  </g>
+</svg>

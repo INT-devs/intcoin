@@ -1,0 +1,182 @@
+/**
+ * INTcoin Color Palette
+ * Copyright (c) 2025 INTcoin Core (Maddison Lane)
+ *
+ * Official brand colors for INTcoin project
+ */
+
+:root {
+  /* Primary Colors */
+  --intcoin-quantum-blue: #00d4ff;
+  --intcoin-deep-purple: #7c3aed;
+  --intcoin-dark-purple: #4c1d95;
+
+  /* Secondary Colors */
+  --intcoin-electric-cyan: #0084ff;
+  --intcoin-violet: #6b4ce6;
+
+  /* Success/Active */
+  --intcoin-success: #00ff88;
+  --intcoin-success-dark: #00cc6a;
+
+  /* Warning/Caution */
+  --intcoin-warning: #fbbf24;
+  --intcoin-warning-dark: #f59e0b;
+
+  /* Error/Danger */
+  --intcoin-error: #ef4444;
+  --intcoin-error-dark: #dc2626;
+
+  /* Neutral Colors - Light Theme */
+  --intcoin-slate-gray: #64748b;
+  --intcoin-dark-slate: #1e293b;
+  --intcoin-light-gray: #f8fafc;
+  --intcoin-white: #ffffff;
+
+  /* Neutral Colors - Dark Theme */
+  --intcoin-dark-bg: #0f172a;
+  --intcoin-dark-card: #1e293b;
+  --intcoin-dark-border: #334155;
+
+  /* Gradients */
+  --intcoin-gradient-quantum: linear-gradient(135deg, #00d4ff 0%, #0084ff 50%, #6b4ce6 100%);
+  --intcoin-gradient-shield: linear-gradient(180deg, #7c3aed 0%, #4c1d95 100%);
+  --intcoin-gradient-success: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+
+  /* Shadows */
+  --intcoin-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --intcoin-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --intcoin-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --intcoin-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+  /* Quantum Glow */
+  --intcoin-glow-blue: 0 0 20px rgba(0, 212, 255, 0.3);
+  --intcoin-glow-purple: 0 0 20px rgba(107, 76, 230, 0.3);
+  --intcoin-glow-success: 0 0 20px rgba(0, 255, 136, 0.3);
+
+  /* Spacing (8px base unit) */
+  --intcoin-space-1: 0.5rem;   /* 8px */
+  --intcoin-space-2: 1rem;     /* 16px */
+  --intcoin-space-3: 1.5rem;   /* 24px */
+  --intcoin-space-4: 2rem;     /* 32px */
+  --intcoin-space-6: 3rem;     /* 48px */
+  --intcoin-space-8: 4rem;     /* 64px */
+
+  /* Border Radius */
+  --intcoin-radius-sm: 0.5rem;   /* 8px */
+  --intcoin-radius-md: 0.75rem;  /* 12px */
+  --intcoin-radius-lg: 1rem;     /* 16px */
+  --intcoin-radius-full: 9999px;
+
+  /* Typography */
+  --intcoin-font-sans: 'Inter', 'Arial', 'Helvetica', sans-serif;
+  --intcoin-font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+
+  /* Font Sizes */
+  --intcoin-text-xs: 0.75rem;    /* 12px */
+  --intcoin-text-sm: 0.875rem;   /* 14px */
+  --intcoin-text-base: 1rem;     /* 16px */
+  --intcoin-text-lg: 1.125rem;   /* 18px */
+  --intcoin-text-xl: 1.25rem;    /* 20px */
+  --intcoin-text-2xl: 1.5rem;    /* 24px */
+  --intcoin-text-3xl: 1.875rem;  /* 30px */
+  --intcoin-text-4xl: 2.25rem;   /* 36px */
+  --intcoin-text-5xl: 3rem;      /* 48px */
+  --intcoin-text-6xl: 3.75rem;   /* 60px */
+
+  /* Font Weights */
+  --intcoin-font-normal: 400;
+  --intcoin-font-medium: 500;
+  --intcoin-font-semibold: 600;
+  --intcoin-font-bold: 700;
+  --intcoin-font-black: 900;
+
+  /* Z-index layers */
+  --intcoin-z-base: 0;
+  --intcoin-z-dropdown: 1000;
+  --intcoin-z-sticky: 1020;
+  --intcoin-z-fixed: 1030;
+  --intcoin-z-modal-backdrop: 1040;
+  --intcoin-z-modal: 1050;
+  --intcoin-z-popover: 1060;
+  --intcoin-z-tooltip: 1070;
+
+  /* Transitions */
+  --intcoin-transition-fast: 0.1s ease;
+  --intcoin-transition-base: 0.2s ease;
+  --intcoin-transition-slow: 0.3s ease-in-out;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --intcoin-bg: var(--intcoin-dark-bg);
+  --intcoin-card-bg: var(--intcoin-dark-card);
+  --intcoin-text: var(--intcoin-white);
+  --intcoin-text-secondary: var(--intcoin-slate-gray);
+  --intcoin-border: var(--intcoin-dark-border);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --intcoin-bg: var(--intcoin-white);
+  --intcoin-card-bg: var(--intcoin-light-gray);
+  --intcoin-text: var(--intcoin-dark-slate);
+  --intcoin-text-secondary: var(--intcoin-slate-gray);
+  --intcoin-border: #e2e8f0;
+}
+
+/* Utility classes */
+.intcoin-gradient-text {
+  background: var(--intcoin-gradient-quantum);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.intcoin-glow {
+  box-shadow: var(--intcoin-glow-blue);
+}
+
+.intcoin-glow-purple {
+  box-shadow: var(--intcoin-glow-purple);
+}
+
+.intcoin-card {
+  background: var(--intcoin-card-bg);
+  border: 1px solid var(--intcoin-border);
+  border-radius: var(--intcoin-radius-md);
+  padding: var(--intcoin-space-3);
+  box-shadow: var(--intcoin-shadow-md);
+}
+
+.intcoin-btn-primary {
+  background: var(--intcoin-gradient-quantum);
+  color: var(--intcoin-white);
+  padding: var(--intcoin-space-2) var(--intcoin-space-3);
+  border-radius: var(--intcoin-radius-sm);
+  font-weight: var(--intcoin-font-semibold);
+  border: none;
+  cursor: pointer;
+  transition: var(--intcoin-transition-base);
+}
+
+.intcoin-btn-primary:hover {
+  box-shadow: var(--intcoin-glow-blue);
+  transform: translateY(-2px);
+}
+
+.intcoin-btn-secondary {
+  background: transparent;
+  border: 2px solid var(--intcoin-quantum-blue);
+  color: var(--intcoin-quantum-blue);
+  padding: var(--intcoin-space-2) var(--intcoin-space-3);
+  border-radius: var(--intcoin-radius-sm);
+  font-weight: var(--intcoin-font-semibold);
+  cursor: pointer;
+  transition: var(--intcoin-transition-base);
+}
+
+.intcoin-btn-secondary:hover {
+  background: var(--intcoin-quantum-blue);
+  color: var(--intcoin-white);
+}

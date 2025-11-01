@@ -1,0 +1,88 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+out/
+bin/
+lib/
+*.app/
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
+# Dependencies
+external/randomx/build/
+external/dilithium/build/
+external/kyber/build/
+contrib/depends/built/
+contrib/depends/work/
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.pytest_cache/
+*.egg-info/
+dist/
+
+# Blockchain data
+datadir/
+testnet*/
+mainnet*/
+regtest*/
+blocks/
+chainstate/
+wallets/
+*.dat
+*.log
+debug.log
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Test artifacts
+tests/cache/
+tests/tmp/
+
+# Package managers
+.npm/
+.yarn/
+package-lock.json
+yarn.lock
+
+# OS specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Secrets and keys
+*.key
+*.pem
+wallet.dat
+privkey.pem
