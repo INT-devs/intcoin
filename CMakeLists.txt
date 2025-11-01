@@ -165,6 +165,8 @@ add_library(intcoin_core STATIC
     $<TARGET_OBJECTS:network>
     $<TARGET_OBJECTS:consensus>
     $<TARGET_OBJECTS:utils>
+    $<$<BOOL:${ENABLE_WALLET}>:$<TARGET_OBJECTS:wallet>>
+    $<$<BOOL:${BUILD_MINER}>:$<TARGET_OBJECTS:miner_lib>>
 )
 
 target_link_libraries(intcoin_core
@@ -176,7 +178,6 @@ target_link_libraries(intcoin_core
         randomx
         dilithium
         kyber
-        /opt/homebrew/Cellar/liboqs/0.14.0/lib/liboqs.a  # liboqs for quantum-safe crypto
 )
 
 # Daemon
