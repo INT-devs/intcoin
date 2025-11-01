@@ -1,13 +1,539 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure
-# Dependency Scanning customization: https://docs.gitlab.com/ee/user/application_security/dependency_scanning/#customizing-the-dependency-scanning-settings
-# Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
+# Copyright (c) 2025 INTcoin Core (Maddison Lane)
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#
+# INTcoin GitLab CI/CD Configuration
+
+# Variables
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  CMAKE_BUILD_TYPE: Release
+  CCACHE_DIR: ${CI_PROJECT_DIR}/.ccache
+  CCACHE_MAXSIZE: 2G
+  # Disable interactive apt prompts
+  DEBIAN_FRONTEND: noninteractive
+
+# Define pipeline stages
 stages:
-- test
-sast:
+  - prepare
+  - build
+  - test
+  - package
+  - security
+
+# Cache template for C++ builds
+.cache_template: &cache_definition
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-${CI_JOB_NAME}
+    paths:
+      - .ccache/
+      - build/
+      - .vcpkg/
+    policy: pull-push
+
+# Only cache reading for test jobs
+.cache_template_pull: &cache_pull
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-${CI_JOB_NAME_SLUG}
+    paths:
+      - build/
+    policy: pull
+
+# ============================================================================
+# LINUX BUILDS
+# ============================================================================
+
+# Ubuntu 22.04 LTS
+build:ubuntu-22.04:
+  stage: build
+  image: ubuntu:22.04
+  <<: *cache_definition
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends
+        build-essential
+        cmake
+        git
+        ccache
+        libboost-all-dev
+        libssl-dev
+        qtbase5-dev
+        qttools5-dev
+        libqt5svg5-dev
+        python3
+        python3-pip
+        ca-certificates
+    - export PATH="/usr/lib/ccache:$PATH"
+    - ccache --zero-stats
+  script:
+    - mkdir -p build && cd build
+    - cmake ..
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache
+        -DBUILD_QT_WALLET=ON
+        -DBUILD_DAEMON=ON
+        -DBUILD_CLI=ON
+        -DBUILD_MINER=ON
+        -DBUILD_TESTS=ON
+    - make -j$(nproc)
+    - ccache --show-stats
+  artifacts:
+    name: "intcoin-ubuntu-22.04-${CI_COMMIT_SHORT_SHA}"
+    expire_in: 1 week
+    paths:
+      - build/intcoind
+      - build/intcoin-cli
+      - build/intcoin-qt
+      - build/intcoin-miner
+    reports:
+      dotenv: build.env
+  tags:
+    - docker
+
+# Ubuntu 24.04 LTS
+build:ubuntu-24.04:
+  stage: build
+  image: ubuntu:24.04
+  <<: *cache_definition
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends
+        build-essential
+        cmake
+        git
+        ccache
+        libboost-all-dev
+        libssl-dev
+        qtbase5-dev
+        qttools5-dev
+        libqt5svg5-dev
+        python3
+        python3-pip
+        ca-certificates
+    - export PATH="/usr/lib/ccache:$PATH"
+    - ccache --zero-stats
+  script:
+    - mkdir -p build && cd build
+    - cmake ..
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        -DCMAKE_C_COMPILER_LAUNCHER=ccache
+        -DBUILD_QT_WALLET=ON
+        -DBUILD_TESTS=ON
+    - make -j$(nproc)
+    - ccache --show-stats
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - build/intcoind
+      - build/intcoin-cli
+      - build/intcoin-qt
+      - build/intcoin-miner
+  tags:
+    - docker
+
+# Debian 12 (Bookworm)
+build:debian-12:
+  stage: build
+  image: debian:12
+  <<: *cache_definition
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends
+        build-essential
+        cmake
+        git
+        ccache
+        libboost-all-dev
+        libssl-dev
+        qtbase5-dev
+        qttools5-dev
+        libqt5svg5-dev
+        python3
+        python3-pip
+    - export PATH="/usr/lib/ccache:$PATH"
+  script:
+    - mkdir -p build && cd build
+    - cmake ..
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        -DBUILD_QT_WALLET=ON
+    - make -j$(nproc)
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - build/intcoind
+      - build/intcoin-cli
+      - build/intcoin-qt
+  tags:
+    - docker
+
+# Fedora Latest
+build:fedora:
+  stage: build
+  image: fedora:latest
+  <<: *cache_definition
+  before_script:
+    - dnf install -y --quiet
+        gcc-c++
+        cmake
+        git
+        ccache
+        boost-devel
+        openssl-devel
+        qt5-qtbase-devel
+        qt5-qttools-devel
+        qt5-qtsvg-devel
+        python3
+        python3-pip
+    - export PATH="/usr/lib64/ccache:$PATH"
+  script:
+    - mkdir -p build && cd build
+    - cmake ..
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        -DBUILD_QT_WALLET=ON
+    - make -j$(nproc)
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - build/intcoind
+      - build/intcoin-cli
+      - build/intcoin-qt
+  tags:
+    - docker
+
+# Arch Linux
+build:arch:
+  stage: build
+  image: archlinux:latest
+  <<: *cache_definition
+  before_script:
+    - pacman -Syu --noconfirm --quiet
+    - pacman -S --noconfirm --quiet
+        base-devel
+        cmake
+        git
+        ccache
+        boost
+        openssl
+        qt5-base
+        qt5-tools
+        qt5-svg
+        python
+        python-pip
+    - export PATH="/usr/lib/ccache/bin:$PATH"
+  script:
+    - mkdir -p build && cd build
+    - cmake ..
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        -DBUILD_QT_WALLET=ON
+    - make -j$(nproc)
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - build/intcoind
+      - build/intcoin-cli
+      - build/intcoin-qt
+  tags:
+    - docker
+
+# ============================================================================
+# TESTS
+# ============================================================================
+
+test:unit:
   stage: test
+  image: ubuntu:22.04
+  <<: *cache_pull
+  dependencies:
+    - build:ubuntu-22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends
+        libboost-system1.74.0
+        libboost-filesystem1.74.0
+        libboost-thread1.74.0
+        libssl3
+        libqt5core5a
+        libqt5gui5
+        libqt5widgets5
+        python3
+        python3-pip
+  script:
+    - cd build
+    - ctest --output-on-failure --verbose
+  artifacts:
+    when: always
+    reports:
+      junit: build/test-results/*.xml
+  tags:
+    - docker
+
+test:integration:
+  stage: test
+  image: ubuntu:22.04
+  <<: *cache_pull
+  dependencies:
+    - build:ubuntu-22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends
+        python3
+        python3-pip
+    - pip3 install pytest pytest-asyncio
+  script:
+    - cd tests
+    - python3 -m pytest -v
+  allow_failure: true
+  tags:
+    - docker
+
+# ============================================================================
+# PACKAGES
+# ============================================================================
+
+package:deb:
+  stage: package
+  image: ubuntu:22.04
+  <<: *cache_pull
+  dependencies:
+    - build:ubuntu-22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends
+        cmake
+        file
+  script:
+    - cd build
+    - cpack -G DEB
+    - mv INTcoin-*.deb ../intcoin-${CI_COMMIT_SHORT_SHA}-amd64.deb
+  artifacts:
+    name: "intcoin-deb-${CI_COMMIT_SHORT_SHA}"
+    expire_in: 1 month
+    paths:
+      - intcoin-*.deb
+  only:
+    - main
+    - tags
+  tags:
+    - docker
+
+package:rpm:
+  stage: package
+  image: fedora:latest
+  <<: *cache_pull
+  dependencies:
+    - build:fedora
+  before_script:
+    - dnf install -y --quiet cmake rpm-build
+  script:
+    - cd build
+    - cpack -G RPM
+    - mv INTcoin-*.rpm ../intcoin-${CI_COMMIT_SHORT_SHA}.x86_64.rpm
+  artifacts:
+    name: "intcoin-rpm-${CI_COMMIT_SHORT_SHA}"
+    expire_in: 1 month
+    paths:
+      - intcoin-*.rpm
+  only:
+    - main
+    - tags
+  tags:
+    - docker
+
+package:tarball:
+  stage: package
+  image: ubuntu:22.04
+  <<: *cache_pull
+  dependencies:
+    - build:ubuntu-22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends cmake
+  script:
+    - cd build
+    - cpack -G TGZ
+    - mv INTcoin-*.tar.gz ../intcoin-${CI_COMMIT_SHORT_SHA}-linux-x64.tar.gz
+  artifacts:
+    name: "intcoin-tarball-${CI_COMMIT_SHORT_SHA}"
+    expire_in: 1 month
+    paths:
+      - intcoin-*.tar.gz
+  only:
+    - main
+    - tags
+  tags:
+    - docker
+
+# ============================================================================
+# SECURITY SCANNING
+# ============================================================================
+
+# SAST (Static Application Security Testing)
+sast:
+  stage: security
+  allow_failure: true
+  tags:
+    - docker
+
+# Secret Detection
+secret_detection:
+  stage: security
+  allow_failure: true
+  tags:
+    - docker
+
+# Dependency Scanning
+dependency_scanning:
+  stage: security
+  allow_failure: true
+  tags:
+    - docker
+
+# Include GitLab security templates
 include:
-- template: Security/SAST.gitlab-ci.yml
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+
+# ============================================================================
+# CODE QUALITY
+# ============================================================================
+
+code_quality:
+  stage: security
+  image: docker:latest
+  services:
+    - docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    CODE_QUALITY_IMAGE: "registry.gitlab.com/gitlab-org/ci-cd/codequality:latest"
+  script:
+    - |
+      docker run \
+        --env SOURCE_CODE="$PWD" \
+        --volume "$PWD":/code \
+        --volume /var/run/docker.sock:/var/run/docker.sock \
+        "$CODE_QUALITY_IMAGE" /code
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+    expire_in: 1 week
+  allow_failure: true
+  only:
+    - main
+    - merge_requests
+  tags:
+    - docker
+
+# ============================================================================
+# PERFORMANCE BENCHMARKS
+# ============================================================================
+
+benchmark:mining:
+  stage: test
+  image: ubuntu:22.04
+  <<: *cache_pull
+  dependencies:
+    - build:ubuntu-22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends
+        libboost-system1.74.0
+        libssl3
+        time
+  script:
+    - cd build
+    - echo "Running mining benchmark (10 seconds)..."
+    - timeout 10s ./intcoin-miner -t 4 || true
+  allow_failure: true
+  only:
+    - main
+    - tags
+  tags:
+    - docker
+
+# ============================================================================
+# RELEASE BUILDS (tags only)
+# ============================================================================
+
+release:ubuntu:
+  stage: package
+  image: ubuntu:22.04
+  <<: *cache_definition
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq --no-install-recommends
+        build-essential
+        cmake
+        git
+        libboost-all-dev
+        libssl-dev
+        qtbase5-dev
+        qttools5-dev
+        libqt5svg5-dev
+  script:
+    - mkdir -p build && cd build
+    - cmake ..
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+        -DBUILD_QT_WALLET=ON
+        -DBUILD_DAEMON=ON
+        -DBUILD_CLI=ON
+        -DBUILD_MINER=ON
+    - make -j$(nproc)
+    - cpack -G "DEB;TGZ"
+  artifacts:
+    name: "intcoin-${CI_COMMIT_TAG}-release"
+    expire_in: never
+    paths:
+      - build/INTcoin-*.deb
+      - build/INTcoin-*.tar.gz
+  only:
+    - tags
+  tags:
+    - docker
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+
+pages:
+  stage: package
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache
+        doxygen
+        graphviz
+  script:
+    - doxygen Doxyfile || echo "No Doxyfile found, skipping docs"
+    - mkdir -p public
+    - cp -r docs/* public/ || mkdir -p public/docs
+    - cp README.md public/index.md || true
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
+  allow_failure: true
+  tags:
+    - docker
+
+# ============================================================================
+# WORKFLOW RULES
+# ============================================================================
+
+workflow:
+  rules:
+    # Run pipeline for merge requests
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Run pipeline for tags
+    - if: $CI_COMMIT_TAG
+    # Run pipeline for main branch
+    - if: $CI_COMMIT_BRANCH == "main"
+    # Run pipeline for branches (but skip drafts)
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "false"
+      when: manual
