@@ -82,7 +82,7 @@ public:
     Response execute(const Request& request);
 
 private:
-    uint16_t port_;
+    [[maybe_unused]] uint16_t port_;
     bool running_;
 
     // Core components
@@ -154,7 +154,7 @@ public:
 
 private:
     std::string host_;
-    uint16_t port_;
+    [[maybe_unused]] uint16_t port_;
     bool connected_;
 
     // HTTP client functionality

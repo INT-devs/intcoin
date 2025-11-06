@@ -10,6 +10,7 @@
 #include "primitives.h"
 #include "transaction.h"
 #include "blockchain.h"
+#include "crypto.h"
 #include <string>
 #include <vector>
 #include <map>
@@ -115,7 +116,7 @@ private:
 
     // Key derivation
     WalletKey derive_key(uint32_t index);
-    DilithiumKeyPair derive_keypair_from_seed(const std::vector<uint8_t>& seed, uint32_t index);
+    crypto::DilithiumKeyPair derive_keypair_from_seed(const std::vector<uint8_t>& seed, uint32_t index);
 
     // Storage
     bool save_to_disk() const;

@@ -218,6 +218,19 @@ if(BUILD_CLI)
     install(TARGETS intcoin-cli DESTINATION bin)
 endif()
 
+# Wallet tool
+if(ENABLE_WALLET)
+    add_executable(intcoin-wallet
+        src/wallet/main.cpp
+    )
+    target_link_libraries(intcoin-wallet
+        PRIVATE
+            intcoin_core
+            wallet
+    )
+    install(TARGETS intcoin-wallet DESTINATION bin)
+endif()
+
 # Qt Wallet
 if(BUILD_QT_WALLET)
     add_subdirectory(src/qt)

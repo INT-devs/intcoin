@@ -27,12 +27,10 @@ HDWallet HDWallet::create_new(const std::string& password) {
     HDWallet wallet;
 
     // Generate random seed
-    wallet.master_seed_ = crypto::Random::generate_bytes(64);
+    wallet.master_seed_ = crypto::SecureRandom::generate(64);
 
     // Generate mnemonic from seed
-    wallet.mnemonic_ = crypto::Mnemonic::from_entropy(
-        std::vector<uint8_t>(wallet.master_seed_.begin(), wallet.master_seed_.begin() + 32)
-    );
+    wallet.mnemonic_ = crypto::Mnemonic::generate(24);
 
     // Encrypt if password provided
     if (!password.empty()) {
@@ -70,8 +68,8 @@ bool HDWallet::encrypt(const std::string& password) {
     }
 
     // Derive encryption key from password
-    std::vector<uint8_t> salt = crypto::Random::generate_bytes(32);
-    encryption_key_ = crypto::HKDF::derive_key(
+    std::vector<uint8_t> salt = crypto::SecureRandom::generate(32);
+    encryption_key_ = crypto::HKDF::derive(
         std::vector<uint8_t>(password.begin(), password.end()),
         salt,
         std::vector<uint8_t>(),
@@ -278,18 +276,18 @@ std::string HDWallet::get_address_label(const std::string& address) const {
 
 WalletKey HDWallet::derive_key(uint32_t index) {
     // Derive keypair from master seed
-    DilithiumKeyPair keypair = derive_keypair_from_seed(master_seed_, index);
+    crypto::DilithiumKeyPair keypair = derive_keypair_from_seed(master_seed_, index);
 
     WalletKey key;
     key.public_key = keypair.public_key;
     key.private_key.assign(keypair.private_key.begin(), keypair.private_key.end());
-    key.address = crypto::Address::from_public_key(keypair.public_key, false);
+    key.address = crypto::Address::from_public_key(keypair.public_key);
     key.index = index;
 
     return key;
 }
 
-DilithiumKeyPair HDWallet::derive_keypair_from_seed(const std::vector<uint8_t>& seed, uint32_t index) {
+crypto::DilithiumKeyPair HDWallet::derive_keypair_from_seed(const std::vector<uint8_t>& seed, uint32_t index) {
     // Derive child key using HKDF
     std::vector<uint8_t> index_bytes = {
         static_cast<uint8_t>(index & 0xFF),
@@ -298,10 +296,11 @@ DilithiumKeyPair HDWallet::derive_keypair_from_seed(const std::vector<uint8_t>& 
         static_cast<uint8_t>((index >> 24) & 0xFF)
     };
 
-    std::vector<uint8_t> child_seed = crypto::HKDF::derive_key(seed, {}, index_bytes, 64);
+    std::vector<uint8_t> child_seed = crypto::HKDF::derive(seed, {}, index_bytes, 64);
 
-    // TODO: Actually derive Dilithium keypair from child seed
+    // TODO: Actually derive Dilithium keypair from child seed deterministically
     // For now, generate a new random keypair
+    // Note: Dilithium doesn't support deriving from seed directly in liboqs
     return crypto::Dilithium::generate_keypair();
 }
 
@@ -345,7 +344,7 @@ SimpleWallet SimpleWallet::create_new() {
     auto keypair = crypto::Dilithium::generate_keypair();
     wallet.public_key_ = keypair.public_key;
     wallet.private_key_.assign(keypair.private_key.begin(), keypair.private_key.end());
-    wallet.address_ = crypto::Address::from_public_key(keypair.public_key, false);
+    wallet.address_ = crypto::Address::from_public_key(keypair.public_key);
 
     return wallet;
 }
