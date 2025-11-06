@@ -168,8 +168,8 @@ public:
     bool is_running() const { return running_; }
 
 private:
-    uint16_t port_;
-    bool is_testnet_;
+    [[maybe_unused]] uint16_t port_;
+    [[maybe_unused]] bool is_testnet_;
     bool running_;
 
     std::vector<Peer> peers_;

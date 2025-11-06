@@ -12,3 +12,8 @@ target_include_directories(rpc
     PUBLIC
         ${CMAKE_SOURCE_DIR}/include
 )
+
+target_link_libraries(rpc
+    PUBLIC
+        network
+)

@@ -169,6 +169,7 @@ add_library(intcoin_core STATIC
     $<TARGET_OBJECTS:network>
     $<TARGET_OBJECTS:consensus>
     $<TARGET_OBJECTS:utils>
+    $<TARGET_OBJECTS:rpc>
     $<$<BOOL:${ENABLE_WALLET}>:$<TARGET_OBJECTS:wallet>>
     $<$<BOOL:${BUILD_MINER}>:$<TARGET_OBJECTS:miner_lib>>
 )
@@ -214,6 +215,8 @@ if(BUILD_CLI)
     target_link_libraries(intcoin-cli
         PRIVATE
             intcoin_core
+            rpc
+            network
     )
     install(TARGETS intcoin-cli DESTINATION bin)
 endif()
