@@ -92,85 +92,80 @@ INTcoin is a quantum-resistant cryptocurrency built with C++23, Python 3, and CM
   - qt@5 5.15.17
   - python@3.12
 
+### ✅ Cryptography Implementation
+
+**Status**: ✅ **COMPLETE** (Phase 1)
+
+**Completed**:
+- [x] ML-DSA-87 (Dilithium5) via liboqs - NIST FIPS 204
+- [x] ML-KEM-1024 (Kyber1024) via liboqs - NIST FIPS 203
+- [x] SHA3-256 hashing (NIST FIPS 202)
+- [x] SHA-256 PoW mining (NIST FIPS 180-4)
+- [x] Address generation (Base58Check)
+- [x] Secure random number generation
+- [x] HKDF key derivation (RFC 5869)
+- [x] BIP39-style mnemonic phrases
+
+**Documentation**: [docs/PHASE1-COMPLETE.md](docs/PHASE1-COMPLETE.md)
+
+### ✅ Core Blockchain
+
+**Status**: ✅ **COMPLETE** (Phase 2)
+
+**Completed**:
+- [x] Block structure and serialization
+- [x] Block validation logic
+- [x] Genesis block creation
+- [x] Block reward calculation (50 INT, halving every 210k blocks)
+- [x] Blockchain state management
+- [x] UTXO set management
+- [x] Transaction structure and validation
+- [x] Merkle tree implementation
+- [x] Proof of Work validation
+
+**Documentation**: [docs/PHASE2-COMPLETE.md](docs/PHASE2-COMPLETE.md)
+
+### ✅ P2P Networking
+
+**Status**: ✅ **COMPLETE** (Phase 3)
+
+**Completed**:
+- [x] Network message protocol
+- [x] Peer connection management
+- [x] Peer discovery infrastructure
+- [x] Block propagation
+- [x] Transaction relay
+- [x] Inventory system (INV/GETDATA)
+- [x] Message serialization/deserialization
+- [x] Network callbacks
+
+**Documentation**: [docs/PHASE3-COMPLETE.md](docs/PHASE3-COMPLETE.md)
+
 ---
 
 ## In Progress Components
 
-### 🔄 Cryptography Implementation
+### 🔄 Transaction Pool (Mempool)
 
-**Status**: Header files complete, implementations needed
+**Priority**: HIGH
+**Status**: Not started
 
-**Next Steps**:
-1. Integrate actual CRYSTALS-Dilithium library
-   - Option A: Use liboqs (https://github.com/open-quantum-safe/liboqs)
-   - Option B: Use NIST reference implementation
-2. Integrate actual CRYSTALS-Kyber library
-3. Implement SHA3-256 using OpenSSL or Keccak reference
-4. Implement address generation (Base58Check encoding)
-5. Implement secure random number generation
-6. Implement HKDF key derivation
-7. Implement BIP39-style mnemonic generation
+**Components**:
+- [ ] Transaction validation and verification
+- [ ] Mempool storage and indexing
+- [ ] Fee calculation and prioritization
+- [ ] Replace-by-fee (RBF) logic
+- [ ] Child-pays-for-parent (CPFP)
+- [ ] Mempool eviction policies
+- [ ] Block template building
 
-**Files to Create**:
-- src/crypto/sha3.cpp
-- src/crypto/dilithium.cpp
-- src/crypto/kyber.cpp
-- src/crypto/address.cpp
-- src/crypto/random.cpp
-- src/crypto/hkdf.cpp
-- src/crypto/mnemonic.cpp
+**Files Needed**:
+- src/core/mempool.cpp
+- include/intcoin/mempool.h
 
 ---
 
 ## Not Yet Started
-
-### 🔲 Core Blockchain
-
-**Priority**: HIGH
-
-**Components**:
-- [ ] Block serialization/deserialization
-- [ ] Block validation logic
-- [ ] Genesis block creation
-- [ ] Block reward calculation
-- [ ] Blockchain state management
-- [ ] Chain reorganization handling
-- [ ] Block storage (RocksDB)
-
-**Files to Create**:
-- src/core/block.cpp
-- src/core/blockchain.cpp
-- src/core/blockindex.cpp
-- src/core/validation.cpp
-- src/core/genesis.cpp
-- include/intcoin/blockchain.h
-
-### 🔲 Transaction Pool (Mempool)
-
-**Priority**: HIGH
-
-**Components**:
-- [ ] Transaction validation
-- [ ] UTXO set management
-- [ ] Transaction serialization
-- [ ] Fee calculation
-- [ ] Replace-by-fee logic
-- [ ] Transaction prioritization
-
-**Files to Create**:
-- src/core/transaction.cpp
-- src/core/mempool.cpp
-- src/core/utxo.cpp
-- include/intcoin/mempool.h
-
-### 🔲 Merkle Tree Implementation
-
-**Priority**: MEDIUM
-
-**Components**:
-- [ ] Merkle tree building
-- [ ] Merkle proof generation
-- [ ] Merkle proof verification
 - [ ] SPV client support
 
 **Files to Create**:
