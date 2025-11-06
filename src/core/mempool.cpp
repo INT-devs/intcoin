@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "intcoin/mempool.h"
+#include "intcoin/block.h"
 #include <algorithm>
 #include <chrono>
 

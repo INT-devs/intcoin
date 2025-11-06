@@ -10,6 +10,7 @@ add_library(core OBJECT
     blockchain.cpp
     transaction.cpp
     merkle.cpp
+    mempool.cpp
 )
 
 target_include_directories(core

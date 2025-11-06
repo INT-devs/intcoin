@@ -18,6 +18,9 @@
 
 namespace intcoin {
 
+// Forward declaration
+class Block;
+
 /**
  * Transaction entry in mempool
  */

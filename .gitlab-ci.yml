@@ -18,8 +18,9 @@ stages:
   - prepare
   - build
   - test
+  - sca
   - package
-  - security
+  - deploy
 
 # Cache template for C++ builds
 .cache_template: &cache_definition
@@ -369,59 +370,20 @@ package:tarball:
     - docker
 
 # ============================================================================
-# SECURITY SCANNING
+# SECURITY SCANNING (SOOS)
 # ============================================================================
 
-# SAST (Static Application Security Testing)
-sast:
-  stage: security
-  allow_failure: true
-  tags:
-    - docker
-
-# Secret Detection
-secret_detection:
-  stage: security
-  allow_failure: true
-  tags:
-    - docker
-
-# Dependency Scanning
-dependency_scanning:
-  stage: security
-  allow_failure: true
-  tags:
-    - docker
-
-# Include GitLab security templates
-include:
-  - template: Security/SAST.gitlab-ci.yml
-  - template: Security/Secret-Detection.gitlab-ci.yml
-  - template: Security/Dependency-Scanning.gitlab-ci.yml
-
-# ============================================================================
-# CODE QUALITY
-# ============================================================================
-
-code_quality:
-  stage: security
-  image: docker:latest
-  services:
-    - docker:dind
-  variables:
-    DOCKER_DRIVER: overlay2
-    CODE_QUALITY_IMAGE: "registry.gitlab.com/gitlab-org/ci-cd/codequality:latest"
+soos-sca-analysis:
+  stage: sca
+  image: node:20-slim
+  before_script:
+    - npm install --prefix ./soos @soos-io/soos-sca
   script:
-    - |
-      docker run \
-        --env SOURCE_CODE="$PWD" \
-        --volume "$PWD":/code \
-        --volume /var/run/docker.sock:/var/run/docker.sock \
-        "$CODE_QUALITY_IMAGE" /code
-  artifacts:
-    reports:
-      codequality: gl-code-quality-report.json
-    expire_in: 1 week
+    - node ./soos/node_modules/@soos-io/soos-sca/bin/index.js
+      --clientId=9p51pnjar
+      --apiKey=NTYxZjUwODMtOGQ4MS00YTg4LTlmMDgtZjhjZDJmYmRjZGY3
+      --projectName="INTcoin"
+      --integrationName="GitLab"
   allow_failure: true
   only:
     - main
@@ -519,6 +481,30 @@ pages:
   only:
     - main
   allow_failure: true
+  tags:
+    - docker
+
+# ============================================================================
+# SOOS DAST ANALYSIS
+# ============================================================================
+
+soos-dast-analysis:
+  stage: deploy
+  image:
+    name: "soosio/dast"
+    entrypoint: [""]
+  script:
+    - cd /zap/
+    - node dist/index.js
+      --clientId=9p51pnjar
+      --apiKey=NTYxZjUwODMtOGQ4MS00YTg4LTlmMDgtZjhjZDJmYmRjZGY3
+      --integrationName="GitLab"
+      --projectName="${CI_PROJECT_TITLE}"
+      --targetURL="http://localhost:8332"
+  allow_failure: true
+  only:
+    - main
+    - tags
   tags:
     - docker
 
