@@ -516,10 +516,10 @@ workflow:
   rules:
     # Run pipeline for merge requests
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: always
     # Run pipeline for tags
     - if: $CI_COMMIT_TAG
+      when: always
     # Run pipeline for main branch
     - if: $CI_COMMIT_BRANCH == "main"
-    # Run pipeline for branches (but skip drafts)
-    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_REF_PROTECTED == "false"
-      when: manual
+      when: always
