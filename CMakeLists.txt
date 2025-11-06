@@ -114,7 +114,6 @@ set(Boost_USE_MULTITHREADED ON)
 find_package(Boost 1.70.0 REQUIRED)
 
 # External dependencies
-add_subdirectory(external/randomx EXCLUDE_FROM_ALL)
 add_subdirectory(external/dilithium EXCLUDE_FROM_ALL)
 add_subdirectory(external/kyber EXCLUDE_FROM_ALL)
 
@@ -175,7 +174,6 @@ target_link_libraries(intcoin_core
         OpenSSL::SSL
         OpenSSL::Crypto
         Boost::boost
-        randomx
         dilithium
         kyber
 )
