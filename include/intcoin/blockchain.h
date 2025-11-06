@@ -48,6 +48,15 @@ public:
     // Get UTXO for a specific output
     std::optional<UTXO> get_utxo(const Hash256& tx_hash, uint32_t index) const;
 
+    // Get all UTXOs for an address
+    std::vector<UTXO> get_utxos_for_address(const std::string& address) const;
+
+    // Get transaction by hash
+    std::optional<Transaction> get_transaction(const Hash256& tx_hash) const;
+
+    // Scan blockchain for transactions involving addresses
+    std::vector<Transaction> scan_for_addresses(const std::vector<std::string>& addresses) const;
+
     // Verify all transactions in a block
     bool verify_transactions(const Block& block) const;
 
@@ -67,10 +76,20 @@ private:
     // Update UTXO set when connecting/disconnecting a block
     void update_utxo_set(const Block& block, bool connect);
 
+    // Update address index when connecting/disconnecting a block
+    void update_address_index(const Block& block, bool connect);
+
+    // Extract address from transaction output
+    std::optional<std::string> extract_address(const TxOutput& output) const;
+
     // Storage
     std::unordered_map<Hash256, Block> blocks_;  // All blocks indexed by hash
     std::map<uint32_t, Hash256> block_index_;    // Height to hash mapping
     std::unordered_map<OutPoint, UTXO> utxo_set_;  // All unspent outputs
+
+    // Address indexing
+    std::unordered_map<std::string, std::vector<OutPoint>> address_index_;  // Address to UTXOs
+    std::unordered_map<Hash256, Transaction> transactions_;  // All transactions by hash
 
     // Chain state
     Hash256 best_block_;

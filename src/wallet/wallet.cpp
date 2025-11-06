@@ -162,10 +162,15 @@ uint64_t HDWallet::get_unconfirmed_balance() const {
 }
 
 uint64_t HDWallet::get_address_balance(const std::string& address, const Blockchain& blockchain) const {
-    // TODO: Look up UTXOs for this address in blockchain
-    (void)address;
-    (void)blockchain;
-    return 0;
+    // Get all UTXOs for this address from blockchain
+    std::vector<UTXO> utxos = blockchain.get_utxos_for_address(address);
+
+    uint64_t balance = 0;
+    for (const auto& utxo : utxos) {
+        balance += utxo.output.value;
+    }
+
+    return balance;
 }
 
 std::optional<Transaction> HDWallet::create_transaction(
@@ -226,18 +231,90 @@ bool HDWallet::sign_transaction(Transaction& tx, const Blockchain& blockchain) {
 std::vector<HDWallet::TxHistoryEntry> HDWallet::get_transaction_history(const Blockchain& blockchain) const {
     std::vector<TxHistoryEntry> history;
 
-    // TODO: Scan blockchain for transactions involving our addresses
+    // Collect all wallet addresses
+    std::vector<std::string> addresses;
+    for (const auto& [index, key] : keys_) {
+        addresses.push_back(key.address);
+    }
 
-    (void)blockchain;
+    // Scan blockchain for transactions involving our addresses
+    std::vector<Transaction> txs = blockchain.scan_for_addresses(addresses);
+
+    for (const auto& tx : txs) {
+        Hash256 tx_hash = tx.get_hash();
+
+        // Check if this is a send or receive
+        bool is_send = false;
+        bool is_receive = false;
+        uint64_t amount = 0;
+
+        // Check outputs to see if we're receiving
+        for (const auto& output : tx.outputs) {
+            // Extract address from output
+            if (output.script_pubkey.size() == DILITHIUM_PUBKEY_SIZE) {
+                DilithiumPubKey pubkey;
+                std::copy(output.script_pubkey.begin(), output.script_pubkey.end(), pubkey.begin());
+                std::string addr = crypto::Address::from_public_key(pubkey);
+
+                // Check if this is one of our addresses
+                for (const auto& [idx, key] : keys_) {
+                    if (key.address == addr) {
+                        is_receive = true;
+                        amount += output.value;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Check inputs to see if we're sending
+        if (!tx.is_coinbase()) {
+            for (const auto& input : tx.inputs) {
+                auto utxo = blockchain.get_utxo(input.previous_output.tx_hash, input.previous_output.index);
+                if (utxo) {
+                    // Check if UTXO belongs to us
+                    if (utxo->output.script_pubkey.size() == DILITHIUM_PUBKEY_SIZE) {
+                        DilithiumPubKey pubkey;
+                        std::copy(utxo->output.script_pubkey.begin(), utxo->output.script_pubkey.end(), pubkey.begin());
+                        std::string addr = crypto::Address::from_public_key(pubkey);
+
+                        for (const auto& [idx, key] : keys_) {
+                            if (key.address == addr) {
+                                is_send = true;
+                                amount = utxo->output.value;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Create history entry
+        TxHistoryEntry entry;
+        entry.tx_hash = tx_hash;
+        entry.amount = amount;
+        entry.fee = 0; // TODO: Calculate fee
+        entry.timestamp = 0; // TODO: Get timestamp from block
+        entry.confirmations = 0; // TODO: Calculate confirmations
+        entry.is_send = is_send && !is_receive;
+        entry.address = ""; // TODO: Extract counterparty address
+
+        history.push_back(entry);
+    }
+
     return history;
 }
 
 std::vector<UTXO> HDWallet::get_utxos(const Blockchain& blockchain) const {
     std::vector<UTXO> utxos;
 
-    // TODO: Query blockchain for UTXOs belonging to our addresses
+    // Query blockchain for UTXOs belonging to all our addresses
+    for (const auto& [index, key] : keys_) {
+        std::vector<UTXO> addr_utxos = blockchain.get_utxos_for_address(key.address);
+        utxos.insert(utxos.end(), addr_utxos.begin(), addr_utxos.end());
+    }
 
-    (void)blockchain;
     return utxos;
 }
 

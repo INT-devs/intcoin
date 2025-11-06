@@ -64,6 +64,7 @@ bool Blockchain::add_block(const Block& block) {
         best_block_ = block_hash;
         chain_height_ = new_height;
         update_utxo_set(block, true);
+        update_address_index(block, true);
     }
 
     return true;
@@ -221,6 +222,112 @@ uint32_t Blockchain::calculate_next_difficulty(const Hash256& prev_block_hash) c
 
     // TODO: Implement full difficulty adjustment calculation
     return get_block(prev_block_hash).header.bits;
+}
+
+std::vector<UTXO> Blockchain::get_utxos_for_address(const std::string& address) const {
+    std::vector<UTXO> result;
+
+    // Search through all UTXOs
+    for (const auto& [outpoint, utxo] : utxo_set_) {
+        // Extract address from output
+        auto addr = extract_address(utxo.output);
+        if (addr && *addr == address) {
+            result.push_back(utxo);
+        }
+    }
+
+    return result;
+}
+
+std::optional<Transaction> Blockchain::get_transaction(const Hash256& tx_hash) const {
+    // Search through all blocks for the transaction
+    for (const auto& [block_hash, block] : blocks_) {
+        for (const auto& tx : block.transactions) {
+            if (tx.get_hash() == tx_hash) {
+                return tx;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<Transaction> Blockchain::scan_for_addresses(const std::vector<std::string>& addresses) const {
+    std::vector<Transaction> result;
+    std::set<std::string> addr_set(addresses.begin(), addresses.end());
+
+    // Scan all blocks
+    for (const auto& [block_hash, block] : blocks_) {
+        for (const auto& tx : block.transactions) {
+            bool involves_address = false;
+
+            // Check outputs
+            for (const auto& output : tx.outputs) {
+                auto addr = extract_address(output);
+                if (addr && addr_set.count(*addr)) {
+                    involves_address = true;
+                    break;
+                }
+            }
+
+            if (involves_address) {
+                result.push_back(tx);
+            }
+        }
+    }
+
+    return result;
+}
+
+void Blockchain::update_address_index(const Block& block, bool connect) {
+    if (connect) {
+        // Index new transactions
+        for (const auto& tx : block.transactions) {
+            Hash256 tx_hash = tx.get_hash();
+            transactions_[tx_hash] = tx;
+
+            // Index outputs by address
+            for (uint32_t i = 0; i < tx.outputs.size(); ++i) {
+                auto addr = extract_address(tx.outputs[i]);
+                if (addr) {
+                    OutPoint outpoint(tx_hash, i);
+                    address_index_[*addr].push_back(outpoint);
+                }
+            }
+        }
+    } else {
+        // Remove transactions from index
+        for (const auto& tx : block.transactions) {
+            Hash256 tx_hash = tx.get_hash();
+            transactions_.erase(tx_hash);
+
+            // Remove from address index
+            for (uint32_t i = 0; i < tx.outputs.size(); ++i) {
+                auto addr = extract_address(tx.outputs[i]);
+                if (addr) {
+                    OutPoint outpoint(tx_hash, i);
+                    auto& outpoints = address_index_[*addr];
+                    outpoints.erase(
+                        std::remove(outpoints.begin(), outpoints.end(), outpoint),
+                        outpoints.end()
+                    );
+                }
+            }
+        }
+    }
+}
+
+std::optional<std::string> Blockchain::extract_address(const TxOutput& output) const {
+    // In INTcoin, the script_pubkey contains the Dilithium public key
+    // We need to convert it to an address
+    // For now, this is a placeholder that would need crypto::Address integration
+
+    if (output.script_pubkey.size() == DILITHIUM_PUBKEY_SIZE) {
+        DilithiumPubKey pubkey;
+        std::copy(output.script_pubkey.begin(), output.script_pubkey.end(), pubkey.begin());
+        return crypto::Address::from_public_key(pubkey);
+    }
+
+    return std::nullopt;
 }
 
 } // namespace intcoin
