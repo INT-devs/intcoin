@@ -76,7 +76,7 @@ public:
  */
 struct DilithiumKeyPair {
     DilithiumPubKey public_key;
-    std::array<uint8_t, 4864> private_key;  // Dilithium5 private key
+    std::array<uint8_t, 4896> private_key;  // ML-DSA-87 private key (NIST FIPS 204)
 
     DilithiumKeyPair() : public_key{}, private_key{} {}
 

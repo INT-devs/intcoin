@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 //
-// CRYSTALS-Kyber quantum-resistant key encapsulation using liboqs.
+// CRYSTALS-Kyber (ML-KEM-1024) quantum-resistant key encapsulation using liboqs.
 
 #include "intcoin/crypto.h"
 #include <oqs/oqs.h>
@@ -13,13 +13,14 @@ namespace intcoin {
 namespace crypto {
 
 namespace {
-    // Kyber1024 is NIST Level 5 (highest security)
-    constexpr const char* KYBER_ALGORITHM = "Kyber1024";
+    // ML-KEM-1024 is the NIST-standardized version of Kyber1024 (FIPS 203)
+    // Provides NIST Security Level 5 (highest)
+    constexpr const char* KYBER_ALGORITHM = "ML-KEM-1024";
 
-    // Verify sizes match
-    static_assert(KYBER_PUBKEY_SIZE == 1568, "Kyber1024 public key size mismatch");
-    static_assert(KYBER_CIPHERTEXT_SIZE == 1568, "Kyber1024 ciphertext size mismatch");
-    static_assert(KYBER_SHARED_SECRET_SIZE == 32, "Kyber1024 shared secret size mismatch");
+    // Verify sizes match ML-KEM-1024 specifications
+    static_assert(KYBER_PUBKEY_SIZE == 1568, "ML-KEM-1024 public key size");
+    static_assert(KYBER_CIPHERTEXT_SIZE == 1568, "ML-KEM-1024 ciphertext size");
+    static_assert(KYBER_SHARED_SECRET_SIZE == 32, "ML-KEM-1024 shared secret size");
 }
 
 KyberKeyPair Kyber::generate_keypair() {
@@ -27,7 +28,7 @@ KyberKeyPair Kyber::generate_keypair() {
 
     OQS_KEM* kem = OQS_KEM_new(KYBER_ALGORITHM);
     if (!kem) {
-        throw std::runtime_error("Failed to initialize Kyber1024");
+        throw std::runtime_error("Failed to initialize ML-KEM-1024");
     }
 
     // Ensure sizes match
@@ -36,13 +37,13 @@ KyberKeyPair Kyber::generate_keypair() {
         kem->length_ciphertext != KYBER_CIPHERTEXT_SIZE ||
         kem->length_shared_secret != KYBER_SHARED_SECRET_SIZE) {
         OQS_KEM_free(kem);
-        throw std::runtime_error("Kyber1024 size mismatch");
+        throw std::runtime_error("ML-KEM-1024 size mismatch");
     }
 
     // Generate keypair
     if (OQS_KEM_keypair(kem, keypair.public_key.data(), keypair.private_key.data()) != OQS_SUCCESS) {
         OQS_KEM_free(kem);
-        throw std::runtime_error("Failed to generate Kyber1024 keypair");
+        throw std::runtime_error("Failed to generate ML-KEM-1024 keypair");
     }
 
     OQS_KEM_free(kem);
@@ -57,7 +58,7 @@ std::pair<SharedSecret, KyberCiphertext> Kyber::encapsulate(
 
     OQS_KEM* kem = OQS_KEM_new(KYBER_ALGORITHM);
     if (!kem) {
-        throw std::runtime_error("Failed to initialize Kyber1024");
+        throw std::runtime_error("Failed to initialize ML-KEM-1024");
     }
 
     // Encapsulate
@@ -68,7 +69,7 @@ std::pair<SharedSecret, KyberCiphertext> Kyber::encapsulate(
             public_key.data()
         ) != OQS_SUCCESS) {
         OQS_KEM_free(kem);
-        throw std::runtime_error("Failed to encapsulate with Kyber1024");
+        throw std::runtime_error("Failed to encapsulate with ML-KEM-1024");
     }
 
     OQS_KEM_free(kem);

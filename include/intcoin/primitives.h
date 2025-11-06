@@ -21,11 +21,11 @@ static constexpr uint32_t BLOCKS_PER_YEAR = 262800;  // (365 * 24 * 60) / 2
 
 // Cryptographic sizes (quantum-resistant) - from liboqs
 static constexpr size_t HASH_SIZE = 32;  // SHA3-256
-static constexpr size_t DILITHIUM_PUBKEY_SIZE = 2592;  // Dilithium5 public key
-static constexpr size_t DILITHIUM_SIGNATURE_SIZE = 4595;  // Dilithium5 signature
-static constexpr size_t KYBER_PUBKEY_SIZE = 1568;  // Kyber1024 public key
-static constexpr size_t KYBER_CIPHERTEXT_SIZE = 1568;  // Kyber1024 ciphertext
-static constexpr size_t KYBER_SHARED_SECRET_SIZE = 32;  // Kyber1024 shared secret
+static constexpr size_t DILITHIUM_PUBKEY_SIZE = 2592;  // ML-DSA-87 public key (NIST FIPS 204)
+static constexpr size_t DILITHIUM_SIGNATURE_SIZE = 4627;  // ML-DSA-87 signature (NIST FIPS 204)
+static constexpr size_t KYBER_PUBKEY_SIZE = 1568;  // ML-KEM-1024 public key (NIST FIPS 203)
+static constexpr size_t KYBER_CIPHERTEXT_SIZE = 1568;  // ML-KEM-1024 ciphertext (NIST FIPS 203)
+static constexpr size_t KYBER_SHARED_SECRET_SIZE = 32;  // ML-KEM-1024 shared secret (NIST FIPS 203)
 
 // Type aliases for clarity
 using Hash256 = std::array<uint8_t, HASH_SIZE>;

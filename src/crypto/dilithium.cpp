@@ -14,12 +14,13 @@ namespace intcoin {
 namespace crypto {
 
 namespace {
-    // Dilithium5 is NIST Level 5 (highest security)
-    constexpr const char* DILITHIUM_ALGORITHM = "Dilithium5";
+    // ML-DSA-87 is the NIST-standardized version of Dilithium5 (FIPS 204)
+    // Provides NIST Security Level 5 (highest)
+    constexpr const char* DILITHIUM_ALGORITHM = "ML-DSA-87";
 
-    // Verify sizes match
-    static_assert(DILITHIUM_PUBKEY_SIZE == 2592, "Dilithium5 public key size mismatch");
-    static_assert(DILITHIUM_SIGNATURE_SIZE == 4595, "Dilithium5 signature size mismatch");
+    // Verify sizes match ML-DSA-87 specifications
+    static_assert(DILITHIUM_PUBKEY_SIZE == 2592, "ML-DSA-87 public key size");
+    static_assert(DILITHIUM_SIGNATURE_SIZE == 4627, "ML-DSA-87 signature size");
 }
 
 DilithiumKeyPair Dilithium::generate_keypair() {
@@ -27,7 +28,7 @@ DilithiumKeyPair Dilithium::generate_keypair() {
 
     OQS_SIG* sig = OQS_SIG_new(DILITHIUM_ALGORITHM);
     if (!sig) {
-        throw std::runtime_error("Failed to initialize Dilithium5");
+        throw std::runtime_error("Failed to initialize ML-DSA-87");
     }
 
     // Ensure sizes match
@@ -35,13 +36,13 @@ DilithiumKeyPair Dilithium::generate_keypair() {
         sig->length_secret_key != keypair.private_key.size() ||
         sig->length_signature != DILITHIUM_SIGNATURE_SIZE) {
         OQS_SIG_free(sig);
-        throw std::runtime_error("Dilithium5 size mismatch");
+        throw std::runtime_error("ML-DSA-87 size mismatch");
     }
 
     // Generate keypair
     if (OQS_SIG_keypair(sig, keypair.public_key.data(), keypair.private_key.data()) != OQS_SUCCESS) {
         OQS_SIG_free(sig);
-        throw std::runtime_error("Failed to generate Dilithium5 keypair");
+        throw std::runtime_error("Failed to generate ML-DSA-87 keypair");
     }
 
     OQS_SIG_free(sig);
@@ -56,7 +57,7 @@ DilithiumSignature Dilithium::sign(
 
     OQS_SIG* sig = OQS_SIG_new(DILITHIUM_ALGORITHM);
     if (!sig) {
-        throw std::runtime_error("Failed to initialize Dilithium5");
+        throw std::runtime_error("Failed to initialize ML-DSA-87");
     }
 
     size_t signature_len = DILITHIUM_SIGNATURE_SIZE;
@@ -70,12 +71,12 @@ DilithiumSignature Dilithium::sign(
             keypair.private_key.data()
         ) != OQS_SUCCESS) {
         OQS_SIG_free(sig);
-        throw std::runtime_error("Failed to sign with Dilithium5");
+        throw std::runtime_error("Failed to sign with ML-DSA-87");
     }
 
     if (signature_len != DILITHIUM_SIGNATURE_SIZE) {
         OQS_SIG_free(sig);
-        throw std::runtime_error("Dilithium5 produced incorrect signature size");
+        throw std::runtime_error("ML-DSA-87 produced incorrect signature size");
     }
 
     OQS_SIG_free(sig);
@@ -121,7 +122,7 @@ std::vector<uint8_t> DilithiumKeyPair::serialize_private() const {
 std::optional<DilithiumKeyPair> DilithiumKeyPair::deserialize_private(
     const std::vector<uint8_t>& data
 ) {
-    const size_t expected_size = DILITHIUM_PUBKEY_SIZE + 4864;  // pubkey + privkey
+    const size_t expected_size = DILITHIUM_PUBKEY_SIZE + 4896;  // pubkey + privkey
 
     if (data.size() != expected_size) {
         return std::nullopt;
@@ -133,7 +134,7 @@ std::optional<DilithiumKeyPair> DilithiumKeyPair::deserialize_private(
     std::copy_n(data.begin(), DILITHIUM_PUBKEY_SIZE, keypair.public_key.begin());
 
     // Extract private key
-    std::copy_n(data.begin() + DILITHIUM_PUBKEY_SIZE, 4864, keypair.private_key.begin());
+    std::copy_n(data.begin() + DILITHIUM_PUBKEY_SIZE, 4896, keypair.private_key.begin());
 
     return keypair;
 }

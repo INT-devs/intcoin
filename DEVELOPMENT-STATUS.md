@@ -122,7 +122,7 @@ INTcoin is a quantum-resistant, ASIC-resistant cryptocurrency built with C++23, 
 - [ ] Block reward calculation
 - [ ] Blockchain state management
 - [ ] Chain reorganization handling
-- [ ] Block storage (LevelDB/RocksDB)
+- [ ] Block storage (RocksDB)
 
 **Files to Create**:
 - src/core/block.cpp

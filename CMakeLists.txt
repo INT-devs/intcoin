@@ -180,6 +180,17 @@ target_link_libraries(intcoin_core
         kyber
 )
 
+# Link liboqs if found (for post-quantum crypto)
+find_library(LIBOQS_LIBRARY NAMES oqs liboqs
+    HINTS
+        /usr/local/lib
+        /opt/homebrew/lib
+        /usr/lib
+)
+if(LIBOQS_LIBRARY)
+    target_link_libraries(intcoin_core PUBLIC ${LIBOQS_LIBRARY})
+endif()
+
 # Daemon
 if(BUILD_DAEMON)
     add_executable(intcoind
