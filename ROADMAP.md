@@ -162,16 +162,10 @@ INTcoin aims to become the world's leading quantum-resistant cryptocurrency, pro
 - Lightning testnet
 - Lightning documentation
 
-### Q4 2025: Security Audit & Mainnet Preparation
+### Q4 2025: Mainnet Preparation
 
 **Goals**: Ensure production readiness
 
-- [ ] External security audits
-  - Cryptography review
-  - Consensus mechanism audit
-  - Network security assessment
-- [ ] Penetration testing
-- [ ] Bug bounty program launch
 - [ ] Performance optimization
 - [ ] Stress testing (high transaction load)
 - [ ] Genesis block preparation
@@ -180,8 +174,9 @@ INTcoin aims to become the world's leading quantum-resistant cryptocurrency, pro
 
 **Deliverables**:
 - Mainnet candidate (v0.9.0)
-- Security audit reports
 - Final documentation
+
+**Community Security**: All code is open source and available for independent security audits and testing. We welcome all security researchers, auditors, and penetration testers to contribute their findings via GitLab issues.
 
 **Milestone**: 🚀 **Mainnet Launch (v1.0.0)** - December 2025
 
@@ -549,8 +544,6 @@ INTcoin aims to become the world's leading quantum-resistant cryptocurrency, pro
 ### Development Metrics
 - GitHub contributors: >100 by year 3
 - dApps deployed: >500 by year 4
-- Security audits: 2 per year minimum
-- Bug bounty payouts: Continuous program
 
 ### Community Metrics
 - Reddit/Discord members: >50K by year 2
@@ -567,16 +560,16 @@ INTcoin aims to become the world's leading quantum-resistant cryptocurrency, pro
 1. **Quantum Computing Advances**: Stay current with NIST standards
 2. **Regulatory Changes**: Build compliance tools proactively
 3. **Competition**: Continuous innovation and community focus
-4. **Security Vulnerabilities**: Regular audits and bug bounties
+4. **Security Vulnerabilities**: Open source transparency and community auditing
 5. **Adoption Challenges**: User-friendly tools and education
 
 ### Mitigation Strategies
 
-- Quarterly security reviews
+- Open source development for community review
 - Active research partnerships
 - Responsive development team
 - Transparent communication
-- Community engagement
+- Community engagement and contributions via GitLab
 
 ---
 
@@ -584,12 +577,13 @@ INTcoin aims to become the world's leading quantum-resistant cryptocurrency, pro
 
 ### How to Contribute
 
-- **Development**: Submit PRs to GitLab
-- **Testing**: Run testnet nodes
+- **Development**: Submit merge requests to GitLab
+- **Security**: Run independent audits and report issues via GitLab
+- **Testing**: Run testnet nodes and report findings
 - **Documentation**: Improve wiki and guides
 - **Translation**: Localize for global audience
 - **Support**: Help users in forums
-- **Research**: Publish findings
+- **Research**: Publish findings and improvements
 
 ### Communication Channels
 
@@ -611,9 +605,8 @@ INTcoin aims to become the world's leading quantum-resistant cryptocurrency, pro
 
 ### Resources Allocation
 
-- 60% Development
-- 20% Security/Audits
-- 10% Marketing/Education
+- 70% Development
+- 20% Marketing/Education
 - 10% Infrastructure
 
 ---

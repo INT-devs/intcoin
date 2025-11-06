@@ -19,6 +19,11 @@ set(INTCOIN_VERSION_MINOR 1)
 set(INTCOIN_VERSION_PATCH 0)
 set(INTCOIN_VERSION "${INTCOIN_VERSION_MAJOR}.${INTCOIN_VERSION_MINOR}.${INTCOIN_VERSION_PATCH}")
 
+# Require 64-bit architecture
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    message(FATAL_ERROR "INTcoin requires 64-bit architecture. 32-bit builds are not supported.")
+endif()
+
 # C++23 requirement
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

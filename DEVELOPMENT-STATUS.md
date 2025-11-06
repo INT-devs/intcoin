@@ -9,7 +9,19 @@
 
 ## Project Overview
 
-INTcoin is a quantum-resistant, ASIC-resistant cryptocurrency built with C++23, Python 3, and CMake. This document tracks the current development status and outlines next steps.
+INTcoin is a quantum-resistant cryptocurrency built with C++23, Python 3, and CMake. This document tracks the current development status and outlines next steps.
+
+**Architecture Requirements**:
+- 64-bit architecture required (32-bit not supported)
+- C++23 compiler support
+- OpenSSL 3.x
+- liboqs for post-quantum cryptography
+
+**Security Policy**:
+- All code is open source and available for independent security audits
+- Community members are encouraged to run their own security testing
+- Security issues should be reported via GitLab issues
+- All commits to GitLab are signed with the Admin PGP key
 
 ---
 
@@ -65,10 +77,11 @@ INTcoin is a quantum-resistant, ASIC-resistant cryptocurrency built with C++23, 
 
 ### ✅ External Dependencies Setup
 
-- [x] RandomX integration stub (ASIC-resistant PoW)
-- [x] CRYSTALS-Dilithium stub (quantum-resistant signatures)
-- [x] CRYSTALS-Kyber stub (quantum-resistant key exchange)
+- [x] liboqs integration (ML-DSA-87, ML-KEM-1024)
+- [x] CRYSTALS-Dilithium implementation via liboqs (quantum-resistant signatures)
+- [x] CRYSTALS-Kyber implementation via liboqs (quantum-resistant key exchange)
 - [x] CMake integration for all external libraries
+- [x] SHA-256 for Proof of Work mining (Bitcoin-style)
 
 ### ✅ macOS Dependencies
 
@@ -168,7 +181,7 @@ INTcoin is a quantum-resistant, ASIC-resistant cryptocurrency built with C++23, 
 **Priority**: HIGH
 
 **Components**:
-- [ ] RandomX PoW integration
+- [x] SHA-256 PoW implementation (Bitcoin-style double-hash)
 - [ ] Difficulty adjustment algorithm
 - [ ] Block time targeting
 - [ ] Chain work calculation
@@ -265,7 +278,7 @@ INTcoin is a quantum-resistant, ASIC-resistant cryptocurrency built with C++23, 
 **Priority**: MEDIUM
 
 **Components**:
-- [ ] RandomX integration
+- [x] SHA-256 mining implementation
 - [ ] Thread management
 - [ ] Hash rate calculation
 - [ ] Pool protocol (Stratum)
@@ -379,12 +392,12 @@ INTcoin is a quantum-resistant, ASIC-resistant cryptocurrency built with C++23, 
 4. Coin selection
 5. Write transaction tests
 
-### Week 4: RandomX Integration
-1. Integrate RandomX library
-2. Implement PoW validation
-3. Implement difficulty adjustment
-4. Mining algorithm tests
-5. Benchmark performance
+### Week 4: Mining & Consensus
+1. Implement SHA-256 PoW validation
+2. Implement difficulty adjustment
+3. Mining algorithm tests
+4. Benchmark performance
+5. Optimize mining implementation
 
 ### Week 5-6: P2P Networking
 1. Message protocol
@@ -417,16 +430,6 @@ INTcoin is a quantum-resistant, ASIC-resistant cryptocurrency built with C++23, 
 ---
 
 ## External Library Integration Guide
-
-### RandomX (ASIC-Resistant PoW)
-
-```bash
-cd external/randomx
-git clone https://github.com/tevador/RandomX.git .
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j$(nproc)
-```
 
 ### liboqs (Quantum-Safe Cryptography)
 
@@ -474,10 +477,10 @@ The CMake build system is configured with:
 
 ### Known Issues
 
-1. External libraries (RandomX, Dilithium, Kyber) are stubs
-2. Source files (.cpp) need to be created
-3. CMakeLists.txt in subdirectories need completion
-4. Platform-specific flags may need tuning
+1. Source files (.cpp) for some modules need to be created
+2. CMakeLists.txt in subdirectories need completion
+3. Platform-specific flags may need tuning
+4. Wallet implementation needs completion
 
 ---
 
@@ -525,20 +528,23 @@ class BlockchainTest(IntcoinTestFramework):
 - **Block Propagation**: <5 seconds (95th percentile)
 - **Memory Usage**: <2GB for full node
 - **Sync Speed**: 1000+ blocks/second
-- **Mining Hash Rate**: Optimized for CPU (RandomX)
+- **Mining Hash Rate**: SHA-256 double-hash (CPU-friendly in quantum era)
 
 ---
 
 ## Security Checklist
 
-- [ ] All cryptographic operations use constant-time algorithms
-- [ ] Private keys are zeroed after use
+- [x] All cryptographic operations use constant-time algorithms (via liboqs)
+- [x] Private keys are zeroed after use (OQS_MEM_cleanse)
 - [ ] Input validation on all external data
 - [ ] Integer overflow protection
 - [ ] Memory safety (no buffer overflows)
-- [ ] Secure random number generation
-- [ ] Protection against timing attacks
-- [ ] Regular security audits scheduled
+- [x] Secure random number generation (OpenSSL RAND_bytes)
+- [x] Protection against timing attacks (constant-time crypto)
+- [x] Open source for community security review
+
+**Security Reporting**:
+All security issues should be reported via GitLab issues at https://gitlab.com/intcoin/crypto/-/issues
 
 ---
 
