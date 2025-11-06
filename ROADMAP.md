@@ -79,67 +79,80 @@ INTcoin aims to become the world's leading quantum-resistant cryptocurrency, pro
 - ✅ Foundation release (v0.1.0-alpha) - **ACHIEVED**
 - ✅ Blockchain core (v0.1.0-alpha) - **ACHIEVED**
 
-### Q2 2025: Wallet & Mining ✅ COMPLETED EARLY
+### Q2 2025: Wallet & Mining 🔄 IN PROGRESS
 
 **Goals**: Enable users to interact with the network
 
 **✅ COMPLETED**:
 - [x] HD Wallet backend - COMPLETE ✓
   - [x] Hierarchical deterministic key generation
-  - [x] BIP39 mnemonic support
-  - [x] Address creation and management
-  - [x] Transaction signing framework
-  - [x] Balance tracking
-  - [x] Encryption support
-- [x] Qt GUI wallet framework - COMPLETE ✓
-  - [x] Main window with tabs
-  - [x] Wallet interface
-  - [x] Transaction history view
-  - [x] Mining control panel
-  - [x] Network monitoring
-  - [x] Console/debug interface
+  - [x] BIP39 mnemonic support (24-word phrases)
+  - [x] HKDF key derivation
+  - [x] Address creation and management (Base58Check)
+  - [x] Transaction creation framework
+  - [x] Transaction signing (Dilithium)
+  - [x] Balance tracking (UTXO-based)
+  - [x] Password-based encryption
+  - [x] Wallet backup/restore
+  - [x] Multiple addresses with labels
 - [x] CPU miner implementation - COMPLETE ✓
   - [x] Multi-threaded SHA-256 mining
   - [x] Automatic thread detection
-  - [x] Hashrate monitoring
+  - [x] Real-time hashrate monitoring
   - [x] Block template creation
-  - [x] Fee collection
+  - [x] Coinbase transaction with fees
+  - [x] Mempool integration
+  - [x] Graceful shutdown
+  - [x] CLI tool (intcoin-miner)
+- [x] Wallet CLI tool - COMPLETE ✓
+  - [x] Create/restore wallet
+  - [x] Generate addresses
+  - [x] Check balance
+  - [x] Send transactions
+  - [x] Transaction history
+  - [x] Backup functionality
+  - [x] Mnemonic display
 - [x] Core infrastructure
   - [x] Transaction builder
-  - [x] Coin selection
+  - [x] Coin selection (greedy algorithm)
   - [x] UTXO management
 
-**✅ ALL Q2 2025 OBJECTIVES COMPLETE**:
-- [x] RPC server/client - COMPLETE ✓
-  - [x] JSON-RPC 2.0 protocol
-  - [x] 25+ RPC methods
-  - [x] Client library
-  - [x] Complete API documentation
-- [x] Full Qt GUI implementation - COMPLETE ✓
-  - [x] All tab interfaces with widgets
-  - [x] Wallet send/receive
-  - [x] Mining controls
-  - [x] Network monitoring
-  - [x] RPC console
-- [x] Documentation updates - COMPLETE ✓
-  - [x] README updated with Quick Start
-  - [x] RPC API documentation
-  - [x] Implementation summary
-  - [x] ROADMAP updated
+**🔄 IN PROGRESS**:
+- [ ] Blockchain-wallet integration
+  - [ ] UTXO queries by address
+  - [ ] Transaction lookup by hash
+  - [ ] Address indexing
+  - [ ] Balance calculation from blockchain
+- [ ] RPC server/client
+  - [ ] JSON-RPC 2.0 protocol
+  - [ ] Blockchain RPC methods
+  - [ ] Wallet RPC methods
+  - [ ] Mining RPC methods
+  - [ ] Network RPC methods
+- [ ] Qt GUI implementation
+  - [ ] Main window framework
+  - [ ] Wallet interface
+  - [ ] Transaction history view
+  - [ ] Mining control panel
+  - [ ] Network monitoring
+  - [ ] RPC console
 
-**Status**: **Q2 2025 FULLY COMPLETE** ✅
-- All core features implemented
-- Complete API documentation
-- Professional GUI with all widgets
-- Ready for integration testing
+**Status**: **Q2 2025 PARTIALLY COMPLETE** 🔄
+- Core wallet and mining: Fully implemented
+- CLI tools: Complete and functional
+- Integration: Needs blockchain database work
+- RPC: Not yet started
+- GUI: Not yet started
 
 **Deliverables**:
 - ✅ Wallet backend (v0.2.0-alpha) - **ACHIEVED**
 - ✅ CPU miner (v0.2.0-alpha) - **ACHIEVED**
-- ✅ Qt GUI (v0.2.0-alpha) - **COMPLETE WITH ALL WIDGETS**
-- ✅ RPC API (v0.2.0-alpha) - **COMPLETE WITH DOCS**
-- 🔄 Public testnet launch - Ready for final integration testing
-- 🔄 Mining guide - Documentation ready, awaiting testnet
+- ✅ Wallet CLI tool - **ACHIEVED**
+- ✅ Mining CLI tool - **ACHIEVED**
+- 🔄 Qt GUI (v0.2.0-alpha) - Not started
+- 🔄 RPC API (v0.2.0-alpha) - Not started
+- 🔄 Public testnet launch - Awaiting integration
+- 🔄 Mining guide - Awaiting testnet
 
 ### Q3 2025: Lightning Network
 

@@ -141,91 +141,106 @@ INTcoin is a quantum-resistant cryptocurrency built with C++23, Python 3, and CM
 
 **Documentation**: [docs/PHASE3-COMPLETE.md](docs/PHASE3-COMPLETE.md)
 
+### ✅ Transaction Pool (Mempool)
+
+**Status**: ✅ **COMPLETE** (Phase 4)
+
+**Completed**:
+- [x] Transaction storage and indexing
+- [x] Fee-based prioritization (sorted by fee rate)
+- [x] Conflict detection via spent outputs tracking
+- [x] Mempool size limits (300 MB, 60k transactions)
+- [x] Transaction validation
+- [x] Block template building for mining
+- [x] Get transactions for mining (sorted by fee)
+- [x] Remove block transactions after confirmation
+- [x] O(1) transaction lookup, O(log n) priority queue
+
+**Documentation**: [docs/PHASE4-COMPLETE.md](docs/PHASE4-COMPLETE.md)
+
+### ✅ CPU Mining
+
+**Status**: ✅ **COMPLETE** (Phase 5)
+
+**Completed**:
+- [x] Multi-threaded SHA-256 PoW mining
+- [x] Block template building with mempool integration
+- [x] Coinbase transaction creation (rewards + fees)
+- [x] Nonce space partitioning across threads
+- [x] Real-time hashrate statistics
+- [x] Graceful shutdown with signal handling
+- [x] Block found callbacks
+- [x] Difficulty validation and target checking
+- [x] Mining CLI tool (intcoin-miner)
+- [x] Command-line argument parsing
+- [x] Thread count configuration
+- [x] Verbose mode with statistics
+
+**Documentation**: [docs/PHASE5-COMPLETE.md](docs/PHASE5-COMPLETE.md)
+
+### ✅ Wallet Functionality
+
+**Status**: ✅ **COMPLETE** (Phase 6)
+
+**Completed**:
+- [x] HD (Hierarchical Deterministic) wallet
+- [x] BIP39 24-word mnemonic phrases
+- [x] HKDF-based key derivation
+- [x] Password-based wallet encryption
+- [x] Multiple address generation with labels
+- [x] Address generation (Base58Check)
+- [x] Balance tracking (UTXO-based)
+- [x] Transaction creation with coin selection
+- [x] Transaction signing (Dilithium signatures)
+- [x] Transaction history tracking
+- [x] Wallet backup and restore
+- [x] Simple wallet (non-HD, single-key)
+- [x] Wallet CLI tool (intcoin-wallet)
+- [x] Create/restore wallet commands
+- [x] Send/receive functionality
+- [x] Address management
+
+**Documentation**: [docs/PHASE6-COMPLETE.md](docs/PHASE6-COMPLETE.md)
+
 ---
 
 ## In Progress Components
 
-### 🔄 Transaction Pool (Mempool)
+### 🔄 Blockchain Integration
 
 **Priority**: HIGH
-**Status**: Not started
+**Status**: In progress
 
 **Components**:
-- [ ] Transaction validation and verification
-- [ ] Mempool storage and indexing
-- [ ] Fee calculation and prioritization
-- [ ] Replace-by-fee (RBF) logic
-- [ ] Child-pays-for-parent (CPFP)
-- [ ] Mempool eviction policies
-- [ ] Block template building
+- [ ] UTXO queries by address (for wallet balance)
+- [ ] Transaction lookup by hash
+- [ ] Address indexing in blockchain database
+- [ ] Block scanning for wallet addresses
+- [ ] Wallet-blockchain synchronization
 
-**Files Needed**:
-- src/core/mempool.cpp
-- include/intcoin/mempool.h
+**Files to Enhance**:
+- src/core/blockchain.cpp (add address indexing)
+- src/wallet/wallet.cpp (implement UTXO queries)
 
 ---
 
 ## Not Yet Started
-- [ ] SPV client support
 
-**Files to Create**:
-- src/core/merkle.cpp
+### 🔲 Consensus Engine (Advanced Features)
 
-### 🔲 Consensus Engine
-
-**Priority**: HIGH
+**Priority**: MEDIUM
 
 **Components**:
 - [x] SHA-256 PoW implementation (Bitcoin-style double-hash)
-- [ ] Difficulty adjustment algorithm
-- [ ] Block time targeting
-- [ ] Chain work calculation
+- [ ] Advanced difficulty adjustment algorithm
 - [ ] Fork detection and resolution
+- [ ] Chain reorganization handling
+- [ ] Checkpoint system
 
-**Files to Create**:
-- src/consensus/pow.cpp
-- src/consensus/difficulty.cpp
-- src/consensus/validation.cpp
-- include/intcoin/consensus.h
-
-### 🔲 P2P Network Layer
-
-**Priority**: HIGH
-
-**Components**:
-- [ ] Peer discovery
-- [ ] Connection management
-- [ ] Message protocol
-- [ ] Block propagation
-- [ ] Transaction relay
-- [ ] Inventory system
-- [ ] Bloom filters (SPV)
-
-**Files to Create**:
-- src/network/net.cpp
-- src/network/peer.cpp
-- src/network/protocol.cpp
-- src/network/messages.cpp
-- include/intcoin/network.h
-
-### 🔲 Wallet Backend
-
-**Priority**: HIGH
-
-**Components**:
-- [ ] Key management
-- [ ] Address generation
-- [ ] Transaction creation
-- [ ] Transaction signing
-- [ ] Balance calculation
-- [ ] Coin selection
-- [ ] HD wallet (BIP32-style)
-
-**Files to Create**:
-- src/wallet/wallet.cpp
-- src/wallet/keystore.cpp
-- src/wallet/coinselection.cpp
-- include/intcoin/wallet.h
+**Files to Enhance**:
+- src/consensus/pow.cpp (add checkpointing)
+- src/consensus/difficulty.cpp (optimize adjustment)
+- src/consensus/validation.cpp (add fork handling)
 
 ### 🔲 RPC Server
 
@@ -268,21 +283,23 @@ INTcoin is a quantum-resistant cryptocurrency built with C++23, Python 3, and CM
 - src/qt/addressbook.cpp
 - src/qt/settings.cpp
 
-### 🔲 CPU Miner
+### 🔲 Mining Pool Support
 
-**Priority**: MEDIUM
+**Priority**: LOW
 
 **Components**:
-- [x] SHA-256 mining implementation
-- [ ] Thread management
-- [ ] Hash rate calculation
-- [ ] Pool protocol (Stratum)
-- [ ] Solo mining support
+- [x] SHA-256 mining implementation (COMPLETE)
+- [x] Thread management (COMPLETE)
+- [x] Hash rate calculation (COMPLETE)
+- [x] Solo mining support (COMPLETE)
+- [ ] Pool protocol (Stratum v1/v2)
+- [ ] Share submission
+- [ ] Pool difficulty handling
+- [ ] Mining pool client
 
 **Files to Create**:
-- src/miner/miner.cpp
-- src/miner/main.cpp
-- include/intcoin/miner.h
+- src/miner/pool.cpp
+- src/miner/stratum.cpp
 
 ### 🔲 Lightning Network
 
@@ -366,61 +383,53 @@ INTcoin is a quantum-resistant cryptocurrency built with C++23, Python 3, and CM
 
 ## Immediate Next Steps (Priority Order)
 
-### Week 1: Core Cryptography
-1. ✅ ~~Install dependencies~~ (COMPLETED)
-2. Integrate liboqs for Dilithium and Kyber
-3. Implement SHA3-256 wrapper
-4. Implement address generation
-5. Write crypto unit tests
+### ✅ Phase 1-6: COMPLETED
+- ✅ Core Cryptography (Dilithium, Kyber, SHA3, addresses, HKDF, BIP39)
+- ✅ Basic Blockchain (blocks, transactions, UTXO, merkle trees, validation)
+- ✅ P2P Networking (message protocol, peer management, block/tx propagation)
+- ✅ Mempool (transaction pool, fee prioritization, block template building)
+- ✅ CPU Mining (multi-threaded SHA-256 PoW, CLI tool)
+- ✅ Wallet Functionality (HD wallet, BIP39 mnemonic, CLI tool)
 
-### Week 2: Basic Blockchain
-1. Implement block serialization
-2. Implement transaction serialization
-3. Create genesis block
-4. Implement basic validation
-5. Write blockchain unit tests
+### Phase 7: Blockchain-Wallet Integration (Current Priority)
+1. Implement UTXO queries by address
+2. Implement transaction lookup by hash
+3. Add address indexing to blockchain database
+4. Connect wallet balance queries to blockchain
+5. Test wallet-blockchain synchronization
+6. Implement transaction broadcasting to P2P network
 
-### Week 3: UTXO & Mempool
-1. Implement UTXO set
-2. Implement mempool
-3. Transaction validation
-4. Coin selection
-5. Write transaction tests
+### Phase 8: RPC Server & API
+1. JSON-RPC server implementation
+2. Blockchain RPC methods (getblockchaininfo, getblock, etc.)
+3. Wallet RPC methods (getbalance, sendtoaddress, etc.)
+4. Mining RPC methods (getmininginfo, setgenerate, etc.)
+5. Network RPC methods (getpeerinfo, addnode, etc.)
 
-### Week 4: Mining & Consensus
-1. Implement SHA-256 PoW validation
-2. Implement difficulty adjustment
-3. Mining algorithm tests
-4. Benchmark performance
-5. Optimize mining implementation
+### Phase 9: Daemon & CLI Integration
+1. Complete intcoind daemon with RPC server
+2. Complete intcoin-cli RPC client
+3. Configuration file parsing
+4. Logging system
+5. Signal handling for graceful shutdown
 
-### Week 5-6: P2P Networking
-1. Message protocol
-2. Peer discovery
-3. Block propagation
-4. Transaction relay
-5. Network tests
+### Phase 10: Qt GUI Wallet
+1. Main window UI framework
+2. Send/receive forms with address book
+3. Transaction history view
+4. Wallet management (backup/restore)
+5. Settings and preferences
+6. Mining interface integration
 
-### Week 7-8: Wallet & RPC
-1. Wallet backend
-2. RPC server
-3. Key management
-4. Transaction creation
-5. Integration tests
-
-### Week 9-10: Qt GUI
-1. Main window UI
-2. Send/receive forms
-3. Transaction history
-4. Settings/preferences
-5. Mining interface
-
-### Week 11-12: Testing & Polish
-1. Comprehensive test suite
-2. Bug fixes
-3. Documentation updates
+### Phase 11-12: Testing & Production Readiness
+1. Comprehensive unit test suite
+2. Integration tests
+3. Functional tests (Python framework)
 4. Performance optimization
-5. Security audit preparation
+5. Security audit
+6. Documentation completion
+7. Testnet deployment
+8. Mainnet preparation
 
 ---
 
