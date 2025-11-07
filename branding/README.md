@@ -10,6 +10,7 @@ This directory contains all official INTcoin brand assets, logos, colors, and de
 
 ### Logos
 
+**Primary Logos**
 - **[logo.svg](logo.svg)** - Primary square logo with quantum shield
   - Use: App icons, social media, primary branding
   - Format: SVG (scalable vector graphics)
@@ -20,12 +21,58 @@ This directory contains all official INTcoin brand assets, logos, colors, and de
   - Format: SVG
   - Size: 400x120px
 
+**Monochrome Variations** ✨ NEW
+- **[logo-white.svg](logo-white.svg)** - White version for dark backgrounds
+  - Use: Dark mode, prints, videos
+  - Format: SVG
+  - Size: 200x200px
+
+- **[logo-black.svg](logo-black.svg)** - Black version for light backgrounds
+  - Use: Print materials, light backgrounds
+  - Format: SVG
+  - Size: 200x200px
+
+### Favicons ✨ NEW
+
+- **[favicon-16x16.svg](favicon-16x16.svg)** - Smallest size (browser tabs)
+- **[favicon-32x32.svg](favicon-32x32.svg)** - Small icons
+- **[favicon-64x64.svg](favicon-64x64.svg)** - Standard favicon size
+
+### Social Media Assets ✨ NEW
+
+- **[social-twitter-card.svg](social-twitter-card.svg)** - Twitter/X card (1200x628px)
+  - Use: Twitter posts, X platform
+  - Optimized dimensions for social sharing
+
+- **[social-linkedin-banner.svg](social-linkedin-banner.svg)** - LinkedIn banner (1584x396px)
+  - Use: LinkedIn company page header
+  - Professional presentation
+
+- **[social-og-image.svg](social-og-image.svg)** - Open Graph image (1200x630px)
+  - Use: Facebook, Discord, Slack previews
+  - Universal social media card
+
 ### Hero Graphics
 
 - **[website-hero.svg](website-hero.svg)** - Hero image for website
   - Use: Website landing page, marketing materials
   - Format: SVG with animations
   - Size: 1200x600px
+
+### Marketing Materials ✨ NEW
+
+- **[ONE-PAGER.md](ONE-PAGER.md)** - Marketing one-pager
+  - Complete product overview
+  - Technical specifications
+  - Use cases and comparisons
+  - FAQ and getting started guide
+
+- **[PRESS-KIT.md](PRESS-KIT.md)** - Press kit and media resources
+  - Quick facts and elevator pitches
+  - Competitive analysis
+  - Media assets catalog
+  - Boilerplate text for press
+  - Contact information
 
 ### Design System
 
@@ -84,12 +131,12 @@ This directory contains all official INTcoin brand assets, logos, colors, and de
 
 ## 📐 Logo Sizes
 
-### Square Logo (logo.svg)
+### Square Logo (logo.svg, logo-white.svg, logo-black.svg)
 
 Export sizes for different uses:
-- 16x16 - Favicon
-- 32x32 - Small icon
-- 64x64 - Standard icon
+- 16x16 - Favicon (use favicon-16x16.svg)
+- 32x32 - Small icon (use favicon-32x32.svg)
+- 64x64 - Standard icon (use favicon-64x64.svg)
 - 128x128 - App icon
 - 256x256 - High-res icon
 - 512x512 - Retina icon
@@ -101,6 +148,13 @@ Standard sizes:
 - 400x120 - Web standard
 - 800x240 - Retina/2x
 - 1200x360 - High-res/3x
+
+### Social Media Assets
+
+Pre-optimized sizes:
+- **Twitter/X**: 1200x628px (aspect ratio 1.91:1)
+- **LinkedIn Banner**: 1584x396px (aspect ratio 4:1)
+- **Open Graph**: 1200x630px (universal social media)
 
 ---
 
@@ -252,5 +306,37 @@ INTcoin brand assets © 2025 INTcoin Core (Maddison Lane)
 
 ---
 
+## 📊 Asset Summary
+
+**Total Brand Assets**: 14 files
+
+**Logos**: 4 (primary, horizontal, white, black)
+**Favicons**: 3 (16px, 32px, 64px)
+**Social Media**: 3 (Twitter, LinkedIn, Open Graph)
+**Marketing**: 2 (One-pager, Press Kit)
+**Guidelines**: 2 (Brand Guidelines, Color Palette)
+
+**All assets are SVG format** for perfect scalability and small file sizes.
+
+---
+
+## 🎉 Recent Updates
+
+**January 2025 - v1.1**:
+- ✨ Added monochrome logo variations (white and black)
+- ✨ Created favicon set (16x16, 32x32, 64x64)
+- ✨ Designed social media assets (Twitter, LinkedIn, OG)
+- ✨ Developed marketing one-pager
+- ✨ Published comprehensive press kit
+- ✨ Enhanced README with badges and visual improvements
+
+**January 2025 - v1.0**:
+- Initial brand guidelines
+- Primary and horizontal logos
+- Color palette and design system
+- Website hero graphics
+
+---
+
 **Last Updated**: January 2025
-**Version**: 1.0
+**Version**: 1.1

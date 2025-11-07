@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- INTcoin Logo - White Monochrome Version -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Outer ring -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
+
+  <!-- Quantum particles -->
+  <circle cx="190" cy="100" r="3" fill="white" opacity="0.8"/>
+  <circle cx="10" cy="100" r="3" fill="white" opacity="0.8"/>
+
+  <!-- Shield -->
+  <path d="M 100 25 L 145 45 L 145 100 Q 145 145 100 165 Q 55 145 55 100 L 55 45 Z"
+        fill="white"
+        stroke="white"
+        stroke-width="2"/>
+
+  <!-- INT monogram -->
+  <g transform="translate(100, 100)">
+    <!-- I -->
+    <rect x="-30" y="-25" width="6" height="50" fill="#000000" rx="2"/>
+
+    <!-- N -->
+    <path d="M -15 -25 L -15 25 M -15 -25 L 0 25 M 0 -25 L 0 25"
+          stroke="#000000"
+          stroke-width="6"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+
+    <!-- T -->
+    <path d="M 10 -25 L 30 -25 M 20 -25 L 20 25"
+          stroke="#000000"
+          stroke-width="6"
+          fill="none"
+          stroke-linecap="round"/>
+  </g>
+
+  <!-- Lattice pattern -->
+  <g opacity="0.2" stroke="white" stroke-width="1" fill="none">
+    <line x1="60" y1="50" x2="80" y2="60"/>
+    <line x1="80" y1="60" x2="100" y2="50"/>
+    <line x1="100" y1="50" x2="120" y2="60"/>
+    <line x1="120" y1="60" x2="140" y2="50"/>
+
+    <line x1="60" y1="140" x2="80" y2="130"/>
+    <line x1="80" y1="130" x2="100" y2="140"/>
+    <line x1="100" y1="140" x2="120" y2="130"/>
+    <line x1="120" y1="130" x2="140" y2="140"/>
+  </g>
+</svg>

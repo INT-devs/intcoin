@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <defs>
+    <linearGradient id="shieldGrad16" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#4c1d95"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Simplified shield for small size -->
+  <path d="M 8 2 L 13 4 L 13 9 Q 13 12 8 14 Q 3 12 3 9 L 3 4 Z"
+        fill="url(#shieldGrad16)"
+        stroke="#00d4ff"
+        stroke-width="0.5"/>
+
+  <!-- Simplified INT monogram -->
+  <g transform="translate(8, 8.5)" stroke="#00d4ff" stroke-width="1.5" fill="none" stroke-linecap="round">
+    <line x1="-3" y1="-3" x2="-3" y2="3"/>
+    <path d="M -1 -3 L -1 3 L 1 -3 L 1 3"/>
+    <path d="M 3 -3 L 3 3 M 2 -3 L 4 -3"/>
+  </g>
+</svg>

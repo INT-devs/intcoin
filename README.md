@@ -1,14 +1,31 @@
+<div align="center">
+
+![INTcoin Logo](branding/logo.svg)
+
 # INTcoin (INT)
 
-**Quantum-Resistant, ASIC-Resistant Cryptocurrency**
+**Quantum-Resistant • ASIC-Resistant • Decentralized**
+
+*The Future of Secure Currency*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
 [![Python 3](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://gitlab.com/intcoin/crypto)
+[![NIST Level 5](https://img.shields.io/badge/NIST-Level%205-purple.svg)](https://csrc.nist.gov/projects/post-quantum-cryptography)
+[![Dilithium5](https://img.shields.io/badge/crypto-Dilithium5-00d4ff.svg)](https://pq-crystals.org/dilithium/)
+[![Kyber1024](https://img.shields.io/badge/crypto-Kyber1024-6b4ce6.svg)](https://pq-crystals.org/kyber/)
+[![Lightning Network](https://img.shields.io/badge/Layer%202-Lightning-orange.svg)](docs/LIGHTNING.md)
 
-## Overview
+---
+
+</div>
+
+## 🌟 Overview
 
 INTcoin is a next-generation cryptocurrency designed from the ground up to be resistant to both quantum computing attacks and ASIC mining centralization. Built with privacy, decentralization, and long-term security as core principles.
+
+> **🔮 The Quantum Threat is Real**: Quantum computers will break Bitcoin's ECDSA signatures within the next decade. INTcoin uses NIST-standardized post-quantum cryptography to protect your funds today and tomorrow.
 
 ### Key Features
 
@@ -30,8 +47,13 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 - ✅ **Mining Pool Support**: Stratum protocol V1 for pooled mining
 - ✅ **Full P2P Network**: IBD, peer discovery, scoring, and SPV support
 
-### Specifications
+### 📊 Specifications
 
+<table>
+<tr>
+<td>
+
+**Network**
 | Parameter | Value |
 |-----------|-------|
 | Ticker | INT |
@@ -40,33 +62,55 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 | Block Time | 2 minutes (120 seconds) |
 | Consensus | Proof of Work (PoW) |
 | Mining Algorithm | SHA-256 (quantum-era ASIC-resistant) |
-| Hash Function | SHA3-256 (transactions, merkle trees) |
-| Signature Scheme | CRYSTALS-Dilithium5 (NIST Level 5) |
-| Key Exchange | CRYSTALS-Kyber1024 (NIST Level 5) |
-| Initial Reward | 105,113,636 INT |
-| Halving Method | 50% every 4 years (traditional) |
-| Halving Interval | 1,051,200 blocks (~4 years) |
-| Total Emission Period | ~256 years (64 halvings) |
+
+</td>
+<td>
+
+**Cryptography**
+| Parameter | Value |
+|-----------|-------|
+| Hash Function | SHA3-256 (Keccak) |
+| Signature Scheme | CRYSTALS-Dilithium5 |
+| Key Exchange | CRYSTALS-Kyber1024 |
+| Security Level | NIST Level 5 |
 | Address Format | Base58Check |
 
-## Project Information
+</td>
+</tr>
+<tr>
+<td colspan="2">
 
-- **Website**: https://international-coin.org
-- **Repository**: https://gitlab.com/intcoin/crypto
-- **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/home
-- **Lead Developer**: Maddison Lane
-- **License**: MIT
+**Emission Schedule**
+| Parameter | Value |
+|-----------|-------|
+| Initial Reward | 105,113,636 INT |
+| Halving Method | 50% every 4 years |
+| Halving Interval | 1,051,200 blocks (~4 years) |
+| Total Emission Period | ~256 years (64 halvings) |
 
-### Contact
+</td>
+</tr>
+</table>
 
-- **General**: team@international-coin.org
-- **Security**: security@international-coin.org
+## 🌐 Project Information
 
-### GPG Keys
+<div align="center">
 
-- **Admin**: `6E68 20D6 0277 879B 3EFA 62D1 EB1A 8F24 AB19 0CBC`
-- **Team**: `85A2 19E7 98EE E017 2669 450B E7FC C378 2A41 8E33`
-- **Security**: `50FA 6D8F 2359 DBD9 3BA7 6263 1916 8ED3 FF91 FF72`
+**Website**: [international-coin.org](https://international-coin.org) |
+**Repository**: [gitlab.com/intcoin/crypto](https://gitlab.com/intcoin/crypto) |
+**Wiki**: [Documentation](https://gitlab.com/intcoin/crypto/-/wikis/home)
+
+**Lead Developer**: Maddison Lane | **License**: MIT
+
+### 📧 Contact
+
+| Purpose | Email | GPG Key |
+|---------|-------|---------|
+| General | team@international-coin.org | `85A2 19E7 98EE E017 2669 450B E7FC C378 2A41 8E33` |
+| Security | security@international-coin.org | `50FA 6D8F 2359 DBD9 3BA7 6263 1916 8ED3 FF91 FF72` |
+| Admin | admin@international-coin.org | `6E68 20D6 0277 879B 3EFA 62D1 EB1A 8F24 AB19 0CBC` |
+
+</div>
 
 ## Building from Source
 

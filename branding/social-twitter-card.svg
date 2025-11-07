@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Twitter/X Card (1200x628px) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 628" width="1200" height="628">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+
+    <linearGradient id="quantumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff"/>
+      <stop offset="50%" style="stop-color:#0084ff"/>
+      <stop offset="100%" style="stop-color:#6b4ce6"/>
+    </linearGradient>
+
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#4c1d95"/>
+    </linearGradient>
+
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <radialGradient id="spotLight" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:0.2"/>
+      <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="628" fill="url(#bgGradient)"/>
+
+  <!-- Spotlight effect -->
+  <circle cx="600" cy="314" r="400" fill="url(#spotLight)"/>
+
+  <!-- Grid pattern -->
+  <g opacity="0.05" stroke="#00d4ff" stroke-width="1" fill="none">
+    <line x1="0" y1="157" x2="1200" y2="157"/>
+    <line x1="0" y1="314" x2="1200" y2="314"/>
+    <line x1="0" y1="471" x2="1200" y2="471"/>
+    <line x1="300" y1="0" x2="300" y2="628"/>
+    <line x1="600" y1="0" x2="600" y2="628"/>
+    <line x1="900" y1="0" x2="900" y2="628"/>
+  </g>
+
+  <!-- Quantum particles background -->
+  <g opacity="0.3">
+    <circle cx="150" cy="100" r="3" fill="#00d4ff"/>
+    <circle cx="1050" cy="500" r="3" fill="#6b4ce6"/>
+    <circle cx="200" cy="400" r="2" fill="#0084ff"/>
+    <circle cx="1000" cy="150" r="2" fill="#00d4ff"/>
+  </g>
+
+  <!-- Large shield logo (left side) -->
+  <g transform="translate(250, 314)">
+    <!-- Outer ring -->
+    <circle cx="0" cy="0" r="150" fill="none" stroke="url(#quantumGrad)" stroke-width="3" opacity="0.3"/>
+
+    <!-- Shield -->
+    <path d="M 0 -100 L 60 -65 L 60 20 Q 60 85 0 120 Q -60 85 -60 20 L -60 -65 Z"
+          fill="url(#shieldGrad)"
+          stroke="#00d4ff"
+          stroke-width="3"
+          filter="url(#glow)"/>
+
+    <!-- INT monogram -->
+    <g>
+      <rect x="-45" y="-35" width="9" height="70" fill="#00d4ff" rx="3"/>
+      <path d="M -20 -35 L -20 35 M -20 -35 L 5 35 M 5 -35 L 5 35"
+            stroke="#00d4ff" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 20 -35 L 50 -35 M 35 -35 L 35 35"
+            stroke="#00d4ff" stroke-width="9" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- Text content (right side) -->
+  <g>
+    <!-- INTcoin title -->
+    <text x="550" y="280" font-family="'Arial Black', sans-serif" font-size="96" font-weight="900" fill="url(#quantumGrad)">
+      INTcoin
+    </text>
+
+    <!-- Tagline -->
+    <text x="550" y="330" font-family="Arial, sans-serif" font-size="28" fill="#64748b" letter-spacing="2">
+      QUANTUM-RESISTANT
+    </text>
+
+    <!-- Description -->
+    <text x="550" y="380" font-family="Arial, sans-serif" font-size="24" fill="#94a3b8">
+      The Future of Secure Currency
+    </text>
+
+    <!-- Features -->
+    <g font-family="Arial, sans-serif" font-size="20" fill="#cbd5e1">
+      <text x="550" y="440">
+        <tspan fill="#00d4ff">✓</tspan> CRYSTALS-Dilithium5 Signatures
+      </text>
+      <text x="550" y="475">
+        <tspan fill="#00d4ff">✓</tspan> Kyber1024 Encryption
+      </text>
+      <text x="550" y="510">
+        <tspan fill="#00d4ff">✓</tspan> Lightning Network Support
+      </text>
+      <text x="550" y="545">
+        <tspan fill="#00d4ff">✓</tspan> ASIC-Resistant Mining
+      </text>
+    </g>
+  </g>
+
+  <!-- URL at bottom -->
+  <text x="600" y="600" font-family="Arial, sans-serif" font-size="18" fill="#64748b" text-anchor="middle">
+    international-coin.org
+  </text>
+</svg>

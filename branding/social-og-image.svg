@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Open Graph Image (1200x630px) - Generic social media card -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bgGradOG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4c1d95"/>
+      <stop offset="50%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+
+    <linearGradient id="quantumGradOG" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00d4ff"/>
+      <stop offset="50%" style="stop-color:#0084ff"/>
+      <stop offset="100%" style="stop-color:#6b4ce6"/>
+    </linearGradient>
+
+    <linearGradient id="shieldGradOG" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#4c1d95"/>
+    </linearGradient>
+
+    <filter id="glowOG">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGradOG)"/>
+
+  <!-- Hexagon pattern background -->
+  <g opacity="0.05" stroke="#00d4ff" stroke-width="1" fill="none">
+    <polygon points="600,100 650,125 650,175 600,200 550,175 550,125"/>
+    <polygon points="500,175 550,200 550,250 500,275 450,250 450,200"/>
+    <polygon points="700,175 750,200 750,250 700,275 650,250 650,200"/>
+    <polygon points="400,250 450,275 450,325 400,350 350,325 350,275"/>
+    <polygon points="600,250 650,275 650,325 600,350 550,325 550,275"/>
+    <polygon points="800,250 850,275 850,325 800,350 750,325 750,275"/>
+  </g>
+
+  <!-- Centered composition -->
+  <g transform="translate(600, 315)">
+    <!-- Large shield with quantum effects -->
+    <circle cx="0" cy="0" r="200" fill="none" stroke="url(#quantumGradOG)" stroke-width="4" opacity="0.2"/>
+    <circle cx="0" cy="0" r="180" fill="none" stroke="url(#quantumGradOG)" stroke-width="2" opacity="0.3"/>
+
+    <!-- Main shield -->
+    <path d="M 0 -130 L 75 -85 L 75 25 Q 75 110 0 150 Q -75 110 -75 25 L -75 -85 Z"
+          fill="url(#shieldGradOG)"
+          stroke="#00d4ff"
+          stroke-width="4"
+          filter="url(#glowOG)"/>
+
+    <!-- INT monogram (large) -->
+    <g>
+      <rect x="-55" y="-45" width="12" height="90" fill="#00d4ff" rx="4"/>
+      <path d="M -28 -45 L -28 45 M -28 -45 L 2 45 M 2 -45 L 2 45"
+            stroke="#00d4ff" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 18 -45 L 58 -45 M 38 -45 L 38 45"
+            stroke="#00d4ff" stroke-width="12" fill="none" stroke-linecap="round"/>
+    </g>
+
+    <!-- Quantum particles orbiting -->
+    <circle cx="200" cy="0" r="5" fill="#00d4ff" opacity="0.8"/>
+    <circle cx="-200" cy="0" r="5" fill="#6b4ce6" opacity="0.8"/>
+    <circle cx="0" cy="200" r="4" fill="#0084ff" opacity="0.6"/>
+    <circle cx="0" cy="-200" r="4" fill="#00d4ff" opacity="0.6"/>
+  </g>
+
+  <!-- Text below shield -->
+  <g>
+    <text x="600" y="510" font-family="'Arial Black', sans-serif" font-size="72" font-weight="900"
+          fill="url(#quantumGradOG)" text-anchor="middle">
+      INTcoin
+    </text>
+
+    <text x="600" y="555" font-family="Arial, sans-serif" font-size="26" fill="#94a3b8"
+          text-anchor="middle" letter-spacing="2">
+      QUANTUM-RESISTANT • DECENTRALIZED
+    </text>
+
+    <text x="600" y="595" font-family="Arial, sans-serif" font-size="20" fill="#64748b" text-anchor="middle">
+      Built for the Quantum Era
+    </text>
+  </g>
+</svg>
