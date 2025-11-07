@@ -12,6 +12,7 @@
 #include "primitives.h"
 #include "merkle.h"
 #include "db.h"
+#include "consensus.h"
 #include <map>
 #include <unordered_map>
 #include <optional>
@@ -101,6 +102,11 @@ private:
     UTXODatabase utxo_db_;
     TransactionIndexDB tx_db_;
     bool use_database_;  // Whether to use persistent storage
+
+    // Consensus
+    consensus::ConsensusParams consensus_params_;
+    consensus::DifficultyCalculator difficulty_calc_;
+    consensus::CheckpointSystem checkpoint_system_;
 
     // Chain state
     Hash256 best_block_;

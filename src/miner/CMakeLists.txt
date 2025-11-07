@@ -12,3 +12,10 @@ target_include_directories(miner_lib
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_BINARY_DIR}/include
 )
+
+find_package(RocksDB REQUIRED)
+
+target_link_libraries(miner_lib
+    PUBLIC
+        RocksDB::rocksdb
+)

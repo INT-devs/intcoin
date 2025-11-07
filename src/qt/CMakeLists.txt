@@ -29,9 +29,12 @@ target_include_directories(intcoin-qt
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+find_package(RocksDB REQUIRED)
+
 target_link_libraries(intcoin-qt
     PRIVATE
         intcoin_core
+        RocksDB::rocksdb
         Qt5::Core
         Qt5::Widgets
         Qt5::Gui

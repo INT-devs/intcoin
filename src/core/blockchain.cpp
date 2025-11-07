@@ -9,10 +9,18 @@
 
 namespace intcoin {
 
-Blockchain::Blockchain() : use_database_(false), chain_height_(0), total_work_(0) {
-    // Create and add genesis block
+Blockchain::Blockchain()
+    : use_database_(false),
+      consensus_params_(),  // Default mainnet parameters
+      difficulty_calc_(consensus_params_),
+      checkpoint_system_(consensus_params_),
+      chain_height_(0),
+      total_work_(0) {
+
+    // Add genesis checkpoint
     Block genesis = create_genesis_block();
     Hash256 genesis_hash = genesis.get_hash();
+    checkpoint_system_.add_checkpoint(0, genesis_hash);
 
     blocks_[genesis_hash] = genesis;
     block_index_[0] = genesis_hash;
@@ -21,7 +29,12 @@ Blockchain::Blockchain() : use_database_(false), chain_height_(0), total_work_(0
 }
 
 Blockchain::Blockchain(const std::string& datadir)
-    : use_database_(false), chain_height_(0), total_work_(0) {
+    : use_database_(false),
+      consensus_params_(),  // Default mainnet parameters
+      difficulty_calc_(consensus_params_),
+      checkpoint_system_(consensus_params_),
+      chain_height_(0),
+      total_work_(0) {
 
     // Initialize databases
     if (init_databases(datadir)) {
@@ -39,12 +52,15 @@ Blockchain::Blockchain(const std::string& datadir)
         } else {
             // New database, create genesis block
             Block genesis = create_genesis_block();
+            Hash256 genesis_hash = genesis.get_hash();
+            checkpoint_system_.add_checkpoint(0, genesis_hash);
             add_block(genesis);
         }
     } else {
         // Fall back to in-memory mode
         Block genesis = create_genesis_block();
         Hash256 genesis_hash = genesis.get_hash();
+        checkpoint_system_.add_checkpoint(0, genesis_hash);
 
         blocks_[genesis_hash] = genesis;
         block_index_[0] = genesis_hash;
@@ -98,10 +114,7 @@ bool Blockchain::add_block(const Block& block) {
         return false;
     }
 
-    // Add block to chain
-    blocks_[block_hash] = block;
-
-    // Find height of previous block
+    // Find height of this block first (before adding)
     uint32_t prev_height = 0;
     for (const auto& [height, hash] : block_index_) {
         if (hash == block.header.previous_block_hash) {
@@ -109,8 +122,15 @@ bool Blockchain::add_block(const Block& block) {
             break;
         }
     }
-
     uint32_t new_height = prev_height + 1;
+
+    // Verify checkpoint (if this height has a checkpoint)
+    if (!checkpoint_system_.verify_checkpoint(new_height, block_hash)) {
+        return false;  // Block doesn't match checkpoint
+    }
+
+    // Add block to chain
+    blocks_[block_hash] = block;
     block_index_[new_height] = block_hash;
 
     // Update chain if this is the best block
@@ -289,27 +309,9 @@ uint64_t Blockchain::calculate_block_reward(uint32_t height) {
 }
 
 uint32_t Blockchain::calculate_next_difficulty(const Hash256& prev_block_hash) const {
-    // Difficulty adjustment every 2016 blocks
-    const uint32_t difficulty_adjustment_interval = 2016;
-
-    // Find height of previous block
-    uint32_t prev_height = 0;
-    for (const auto& [height, hash] : block_index_) {
-        if (hash == prev_block_hash) {
-            prev_height = height;
-            break;
-        }
-    }
-
-    uint32_t current_height = prev_height + 1;
-
-    // Don't adjust on first block or before interval
-    if (current_height % difficulty_adjustment_interval != 0) {
-        return get_block(prev_block_hash).header.bits;
-    }
-
-    // TODO: Implement full difficulty adjustment calculation
-    return get_block(prev_block_hash).header.bits;
+    // Use the consensus DifficultyCalculator
+    Block prev_block = get_block(prev_block_hash);
+    return difficulty_calc_.calculate_next_difficulty(prev_block, block_index_, blocks_);
 }
 
 std::vector<UTXO> Blockchain::get_utxos_for_address(const std::string& address) const {

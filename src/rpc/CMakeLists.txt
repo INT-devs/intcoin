@@ -13,7 +13,10 @@ target_include_directories(rpc
         ${CMAKE_SOURCE_DIR}/include
 )
 
+find_package(RocksDB REQUIRED)
+
 target_link_libraries(rpc
     PUBLIC
         network
+        RocksDB::rocksdb
 )

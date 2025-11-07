@@ -12,3 +12,10 @@ target_include_directories(wallet
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_BINARY_DIR}/include
 )
+
+find_package(RocksDB REQUIRED)
+
+target_link_libraries(wallet
+    PUBLIC
+        RocksDB::rocksdb
+)

@@ -18,3 +18,10 @@ target_include_directories(network
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_BINARY_DIR}/include
 )
+
+find_package(RocksDB REQUIRED)
+
+target_link_libraries(network
+    PUBLIC
+        RocksDB::rocksdb
+)
