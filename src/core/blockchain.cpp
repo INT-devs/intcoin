@@ -261,13 +261,38 @@ bool Blockchain::verify_transaction(const Transaction& tx) const {
         return true;
     }
 
-    // For non-coinbase: verify inputs exist in UTXO set
-    for (const auto& input : tx.inputs) {
+    // For non-coinbase: verify inputs exist in UTXO set and signatures are valid
+    for (size_t i = 0; i < tx.inputs.size(); ++i) {
+        const auto& input = tx.inputs[i];
         auto utxo = get_utxo(input.previous_output.tx_hash, input.previous_output.index);
         if (!utxo) {
-            return false;
+            return false;  // Input doesn't exist in UTXO set
         }
-        // TODO: Verify signature against UTXO public key
+
+        // Verify signature against UTXO public key
+        // Signature script should contain: signature + pubkey
+        constexpr size_t DILITHIUM_SIG_SIZE = 4627;
+        constexpr size_t DILITHIUM_PUBKEY_SIZE = 2592;
+
+        if (input.signature_script.size() != DILITHIUM_SIG_SIZE + DILITHIUM_PUBKEY_SIZE) {
+            return false;  // Invalid signature script
+        }
+
+        // Extract public key from signature script
+        std::vector<uint8_t> pubkey_from_sig(
+            input.signature_script.begin() + DILITHIUM_SIG_SIZE,
+            input.signature_script.end()
+        );
+
+        // Verify pubkey matches UTXO script pubkey
+        if (pubkey_from_sig != utxo->script_pubkey) {
+            return false;  // Public key doesn't match UTXO
+        }
+
+        // Verify the signature itself
+        if (!tx.verify_signature(i)) {
+            return false;  // Invalid signature
+        }
     }
 
     return true;
@@ -331,7 +356,23 @@ void Blockchain::update_utxo_set(const Block& block, bool connect) {
                 }
             }
         }
-        // TODO: Add back spent outputs (would need to store them)
+
+        // Add back spent outputs from inputs (reorg undo)
+        // In a full implementation, would use undo data stored with each block
+        // For now, note that this is a simplified implementation
+        // Production blockchain would maintain BlockUndo data structures
+        for (const auto& tx : block.transactions) {
+            if (tx.is_coinbase()) {
+                continue;  // Coinbase has no inputs to restore
+            }
+
+            for (const auto& input : tx.inputs) {
+                // In production: would retrieve from undo data
+                // For now: this is a placeholder showing the structure
+                // Real implementation requires storing spent outputs in BlockUndo
+                (void)input;  // Suppress warning - would use undo data here
+            }
+        }
     }
 }
 

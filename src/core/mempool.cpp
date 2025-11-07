@@ -45,9 +45,39 @@ bool Mempool::add_transaction(const Transaction& tx, uint32_t current_height) {
     }
 
     // Check mempool size limit
-    if (total_size_bytes() + tx.get_size() > MAX_MEMPOOL_SIZE) {
-        // TODO: Evict lower fee transactions
-        return false;
+    size_t tx_size = tx.get_size();
+    if (total_size_bytes() + tx_size > MAX_MEMPOOL_SIZE) {
+        // Evict lower fee transactions to make room
+        uint64_t fee_rate = fee * 1000 / tx_size;  // satoshis per kilobyte
+
+        // Find transactions with lower fee rate
+        std::vector<Hash256> to_evict;
+        size_t bytes_to_free = (total_size_bytes() + tx_size) - MAX_MEMPOOL_SIZE;
+        size_t bytes_freed = 0;
+
+        for (const auto& [existing_hash, existing_entry] : transactions_) {
+            uint64_t existing_fee_rate = existing_entry.fee * 1000 / existing_entry.tx.get_size();
+
+            // Only evict if existing transaction has lower fee rate
+            if (existing_fee_rate < fee_rate) {
+                to_evict.push_back(existing_hash);
+                bytes_freed += existing_entry.tx.get_size();
+
+                if (bytes_freed >= bytes_to_free) {
+                    break;
+                }
+            }
+        }
+
+        // If we can't free enough space, reject the new transaction
+        if (bytes_freed < bytes_to_free) {
+            return false;
+        }
+
+        // Evict the lower-fee transactions
+        for (const auto& hash : to_evict) {
+            remove(hash);
+        }
     }
 
     // Create entry

@@ -146,8 +146,15 @@ DaemonConfig parse_arguments(int argc, char* argv[]) {
 void log_message(const DaemonConfig& config, const std::string& msg) {
     if (config.printtoconsole) {
         std::cout << "[" << std::time(nullptr) << "] " << msg << std::endl;
+
+        // Also write to log file in datadir
+        std::string log_file = config.data_dir + "/debug.log";
+        std::ofstream log(log_file, std::ios::app);  // Append mode
+        if (log.is_open()) {
+            log << "[" << std::time(nullptr) << "] " << msg << std::endl;
+            log.close();
+        }
     }
-    // TODO: Also write to log file in datadir
 }
 
 void log_debug(const DaemonConfig& config, const std::string& msg) {

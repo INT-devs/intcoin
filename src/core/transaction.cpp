@@ -6,6 +6,7 @@
 #include "intcoin/crypto.h"
 #include <algorithm>
 #include <cstring>
+#include <ctime>
 
 namespace intcoin {
 
@@ -256,7 +257,8 @@ Transaction Transaction::create_coinbase(
     Transaction tx;
     tx.version = 1;
     tx.lock_time = 0;
-    tx.timestamp = 0;  // TODO: Set actual timestamp
+    // Set current timestamp
+    tx.timestamp = static_cast<uint64_t>(std::time(nullptr));
 
     // Coinbase input
     TxInput coinbase_input;
