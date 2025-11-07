@@ -419,10 +419,10 @@ bool CheckpointSystem::reorg_violates_checkpoint(
 ConsensusParams get_mainnet_params() {
     ConsensusParams params;
 
-    // Standard Bitcoin-style parameters
+    // INTcoin mainnet parameters
     params.difficulty_adjustment_interval = 2016;
-    params.target_timespan = 14 * 24 * 60 * 60;  // 2 weeks
-    params.target_spacing = 10 * 60;              // 10 minutes
+    params.target_timespan = 2016 * 120;     // ~4.67 days (2016 blocks * 2 minutes)
+    params.target_spacing = 120;              // 2 minutes
     params.pow_limit = 0x1d00ffff;
     params.pow_no_retargeting = false;
     params.max_reorg_depth = 100;
@@ -440,8 +440,8 @@ ConsensusParams get_testnet_params() {
 
     // Faster difficulty adjustment for testing
     params.difficulty_adjustment_interval = 100;
-    params.target_timespan = 100 * 10 * 60;  // ~16.7 hours
-    params.target_spacing = 10 * 60;          // 10 minutes
+    params.target_timespan = 100 * 120;      // ~3.33 hours (100 blocks * 2 minutes)
+    params.target_spacing = 120;              // 2 minutes
     params.pow_limit = 0x1d00ffff;
     params.pow_no_retargeting = false;
     params.max_reorg_depth = 50;

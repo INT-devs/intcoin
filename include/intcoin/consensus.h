@@ -20,9 +20,9 @@ namespace consensus {
  */
 struct ConsensusParams {
     // Difficulty adjustment
-    uint32_t difficulty_adjustment_interval = 2016;  // ~2 weeks at 10 min/block
-    uint32_t target_timespan = 14 * 24 * 60 * 60;   // 2 weeks in seconds
-    uint32_t target_spacing = 10 * 60;               // 10 minutes in seconds
+    uint32_t difficulty_adjustment_interval = 2016;  // ~4.67 days at 2 min/block
+    uint32_t target_timespan = 2016 * 120;           // ~4.67 days in seconds
+    uint32_t target_spacing = 120;                   // 2 minutes in seconds
 
     // Difficulty limits
     uint32_t pow_limit = 0x1d00ffff;  // Initial difficulty (Bitcoin-compatible)
