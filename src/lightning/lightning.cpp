@@ -628,6 +628,286 @@ Hash256 LightningNode::generate_channel_id(const Hash256& funding_txid, uint32_t
     return crypto::SHA3_256::hash(data.data(), data.size());
 }
 
+// Network graph and routing implementation
+
+void LightningNode::add_channel_to_graph(const ChannelInfo& info) {
+    network_graph_[info.channel_id] = info;
+}
+
+void LightningNode::remove_channel_from_graph(const Hash256& channel_id) {
+    network_graph_.erase(channel_id);
+}
+
+std::vector<crypto::DilithiumPubKey> LightningNode::find_route(
+    const crypto::DilithiumPubKey& destination,
+    uint64_t amount_sat)
+{
+    // Dijkstra's shortest path algorithm for Lightning routing
+
+    // Distance map: node -> (distance, previous_node)
+    std::map<crypto::DilithiumPubKey, std::pair<uint64_t, crypto::DilithiumPubKey>> distances;
+    std::set<crypto::DilithiumPubKey> visited;
+
+    // Priority queue: (distance, node)
+    std::vector<std::pair<uint64_t, crypto::DilithiumPubKey>> queue;
+
+    // Initialize: start from our node
+    distances[keypair_.public_key] = {0, keypair_.public_key};
+    queue.push_back({0, keypair_.public_key});
+
+    while (!queue.empty()) {
+        // Find node with minimum distance
+        auto min_it = std::min_element(queue.begin(), queue.end(),
+            [](const auto& a, const auto& b) { return a.first < b.first; });
+
+        auto [current_distance, current_node] = *min_it;
+        queue.erase(min_it);
+
+        // Skip if already visited
+        if (visited.count(current_node)) {
+            continue;
+        }
+        visited.insert(current_node);
+
+        // Found destination
+        if (current_node == destination) {
+            break;
+        }
+
+        // Explore neighbors
+        for (const auto& [channel_id, channel_info] : network_graph_) {
+            if (!channel_info.enabled) {
+                continue;
+            }
+
+            // Check if this channel connects to current node
+            crypto::DilithiumPubKey neighbor;
+            bool is_neighbor = false;
+
+            if (channel_info.node1 == current_node) {
+                neighbor = channel_info.node2;
+                is_neighbor = true;
+            } else if (channel_info.node2 == current_node) {
+                neighbor = channel_info.node1;
+                is_neighbor = true;
+            }
+
+            if (!is_neighbor || visited.count(neighbor)) {
+                continue;
+            }
+
+            // Check if channel has enough capacity
+            if (channel_info.capacity_sat < amount_sat) {
+                continue;
+            }
+
+            // Calculate cost (distance): base_fee + (amount * fee_rate)
+            uint64_t fee_msat = channel_info.fee_base_msat +
+                               (amount_sat * 1000 * channel_info.fee_rate_ppm) / 1000000;
+            uint64_t edge_cost = current_distance + fee_msat / 1000;  // Convert to sat
+
+            // Update distance if better path found
+            if (!distances.count(neighbor) || edge_cost < distances[neighbor].first) {
+                distances[neighbor] = {edge_cost, current_node};
+                queue.push_back({edge_cost, neighbor});
+            }
+        }
+    }
+
+    // Reconstruct path
+    std::vector<crypto::DilithiumPubKey> route;
+
+    if (!distances.count(destination)) {
+        // No route found
+        return route;
+    }
+
+    crypto::DilithiumPubKey current = destination;
+    while (current != keypair_.public_key) {
+        route.push_back(current);
+        current = distances[current].second;
+    }
+    route.push_back(keypair_.public_key);
+
+    // Reverse to get path from source to destination
+    std::reverse(route.begin(), route.end());
+
+    return route;
+}
+
+bool LightningNode::send_payment(uint64_t amount_sat, const Hash256& payment_hash,
+                                const std::vector<crypto::DilithiumPubKey>& route)
+{
+    if (route.empty() || route[0] != keypair_.public_key) {
+        failed_payments_++;
+        return false;
+    }
+
+    // Validate route
+    if (!validate_route(route, amount_sat)) {
+        failed_payments_++;
+        return false;
+    }
+
+    // Find channel to first hop
+    std::shared_ptr<Channel> first_channel;
+    for (const auto& [id, channel] : channels_) {
+        if (channel->remote_pubkey == route[1] && channel->is_open()) {
+            first_channel = channel;
+            break;
+        }
+    }
+
+    if (!first_channel) {
+        failed_payments_++;
+        return false;
+    }
+
+    // Add HTLC to first channel
+    uint32_t cltv_expiry = 500000;  // Block height + safety margin
+    std::vector<uint8_t> onion_packet;  // Would contain encrypted routing info
+
+    if (!first_channel->add_htlc(amount_sat, payment_hash, cltv_expiry, onion_packet)) {
+        failed_payments_++;
+        return false;
+    }
+
+    // In a full implementation, would:
+    // 1. Create onion-encrypted routing packet
+    // 2. Send UPDATE_ADD_HTLC message to next hop
+    // 3. Wait for preimage or failure
+    // 4. Settle or fail HTLC accordingly
+
+    successful_payments_++;
+    return true;
+}
+
+bool LightningNode::receive_payment(uint64_t amount_sat, std::string& invoice_out) {
+    Invoice invoice = create_invoice(amount_sat, "Payment request");
+    invoice_out = invoice.encoded_invoice;
+    return true;
+}
+
+bool LightningNode::pay_invoice(const std::string& encoded_invoice) {
+    // Parse invoice (simplified)
+    // Format: lnint1<amount>
+
+    if (encoded_invoice.substr(0, 6) != "lnint1") {
+        return false;
+    }
+
+    uint64_t amount_sat = std::stoull(encoded_invoice.substr(6));
+
+    // In full implementation, would:
+    // 1. Extract payment hash from invoice
+    // 2. Find route to destination
+    // 3. Send payment via HTLCs
+    // 4. Wait for settlement
+
+    // For now, just mark as attempted
+    failed_payments_++;
+    return false;
+}
+
+bool LightningNode::forward_htlc(const Hash256& incoming_channel,
+                                const Hash256& outgoing_channel,
+                                uint64_t htlc_id)
+{
+    auto in_chan = get_channel(incoming_channel);
+    auto out_chan = get_channel(outgoing_channel);
+
+    if (!in_chan || !out_chan) {
+        return false;
+    }
+
+    // Find HTLC in incoming channel
+    auto htlc_it = in_chan->pending_htlcs.find(htlc_id);
+    if (htlc_it == in_chan->pending_htlcs.end()) {
+        return false;
+    }
+
+    const HTLC& incoming_htlc = htlc_it->second;
+
+    // Calculate fee
+    uint64_t fee_sat = 1;  // Minimal fee for now
+    uint64_t forward_amount = incoming_htlc.amount_sat - fee_sat;
+
+    // Add HTLC to outgoing channel
+    if (!out_chan->add_htlc(forward_amount, incoming_htlc.payment_hash,
+                           incoming_htlc.cltv_expiry - 40,  // Reduce CLTV
+                           incoming_htlc.onion_routing)) {
+        return false;
+    }
+
+    total_fees_earned_sat_ += fee_sat;
+    return true;
+}
+
+bool LightningNode::validate_route(const std::vector<crypto::DilithiumPubKey>& route,
+                                   uint64_t amount_sat)
+{
+    if (route.size() < 2) {
+        return false;  // Must have at least source and destination
+    }
+
+    // Verify we have channels to adjacent nodes
+    for (size_t i = 0; i < route.size() - 1; ++i) {
+        bool found_channel = false;
+
+        // Check if we have a channel to the next hop
+        for (const auto& [id, channel] : channels_) {
+            if (channel->remote_pubkey == route[i + 1] && channel->is_open()) {
+                // Verify channel has sufficient balance
+                if (channel->can_send(amount_sat)) {
+                    found_channel = true;
+                    break;
+                }
+            }
+        }
+
+        // Check network graph for intermediate hops
+        if (!found_channel && i > 0) {
+            for (const auto& [id, info] : network_graph_) {
+                if ((info.node1 == route[i] && info.node2 == route[i + 1]) ||
+                    (info.node2 == route[i] && info.node1 == route[i + 1])) {
+                    if (info.enabled && info.capacity_sat >= amount_sat) {
+                        found_channel = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!found_channel) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+uint64_t LightningNode::calculate_route_fees(const std::vector<crypto::DilithiumPubKey>& route,
+                                             uint64_t amount_sat)
+{
+    uint64_t total_fees = 0;
+
+    for (size_t i = 0; i < route.size() - 1; ++i) {
+        // Find channel info for this hop
+        for (const auto& [id, info] : network_graph_) {
+            if ((info.node1 == route[i] && info.node2 == route[i + 1]) ||
+                (info.node2 == route[i] && info.node1 == route[i + 1])) {
+
+                uint64_t fee_msat = info.fee_base_msat +
+                                   (amount_sat * 1000 * info.fee_rate_ppm) / 1000000;
+                total_fees += fee_msat / 1000;
+                break;
+            }
+        }
+    }
+
+    return total_fees;
+}
+
 // Protocol messages implementation
 
 namespace messages {
