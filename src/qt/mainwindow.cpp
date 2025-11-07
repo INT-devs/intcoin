@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "mainwindow.h"
+#include "intcoin/wallet_db.h"
 #include <QMenuBar>
 #include <QStatusBar>
 #include <QTabWidget>
@@ -14,6 +15,9 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSettings>
+#include <QInputDialog>
+#include <QClipboard>
+#include <QApplication>
 
 namespace intcoin {
 namespace qt {
@@ -21,8 +25,11 @@ namespace qt {
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    // Initialize core components
-    blockchain_ = std::make_unique<Blockchain>();
+    // Get default data directory
+    std::string datadir = ConfigManager::get_default_datadir();
+
+    // Initialize core components with database
+    blockchain_ = std::make_unique<Blockchain>(datadir + "/blocks");
     mempool_ = std::make_unique<Mempool>();
     miner_ = std::make_unique<Miner>(*blockchain_, *mempool_);
     network_ = std::make_unique<p2p::Network>(8333, false);
@@ -219,10 +226,12 @@ QWidget* MainWindow::create_mining_tab() {
     miningStatusLabel_ = new QLabel("Not mining", statsGroup);
     hashRateValueLabel_ = new QLabel("0 H/s", statsGroup);
     blocksFoundLabel_ = new QLabel("0", statsGroup);
+    difficultyLabel_ = new QLabel("N/A", statsGroup);
 
     statsLayout->addRow("Status:", miningStatusLabel_);
     statsLayout->addRow("Hash Rate:", hashRateValueLabel_);
     statsLayout->addRow("Blocks Found:", blocksFoundLabel_);
+    statsLayout->addRow("Network Difficulty:", difficultyLabel_);
 
     mainLayout->addWidget(statsGroup);
     mainLayout->addStretch();
@@ -314,10 +323,18 @@ void MainWindow::on_actionOpen_Wallet_triggered() {
 }
 
 void MainWindow::on_actionBackup_Wallet_triggered() {
+    if (!wallet_) {
+        show_error("No Wallet", "Please create or open a wallet first");
+        return;
+    }
+
     QString filepath = QFileDialog::getSaveFileName(this, "Backup Wallet", "", "Wallet Files (*.wallet)");
     if (!filepath.isEmpty()) {
-        // TODO: Backup wallet
-        show_success("Backup Complete", "Wallet backed up successfully");
+        if (wallet_->backup_to_file(filepath.toStdString())) {
+            show_success("Backup Complete", "Wallet backed up successfully to:\n" + filepath);
+        } else {
+            show_error("Backup Failed", "Failed to backup wallet");
+        }
     }
 }
 
@@ -346,11 +363,114 @@ void MainWindow::on_actionSettings_triggered() {
 // Button handlers
 
 void MainWindow::on_sendButton_clicked() {
-    // TODO: Send transaction
+    if (!wallet_ || !blockchain_) {
+        show_error("Error", "Wallet or blockchain not initialized");
+        return;
+    }
+
+    QString address = sendAddressEdit_->text().trimmed();
+    QString amountStr = sendAmountEdit_->text().trimmed();
+
+    if (address.isEmpty() || amountStr.isEmpty()) {
+        show_error("Invalid Input", "Please enter both address and amount");
+        return;
+    }
+
+    // Parse amount (convert from INT to satoshis)
+    bool ok;
+    double amountINT = amountStr.toDouble(&ok);
+    if (!ok || amountINT <= 0) {
+        show_error("Invalid Amount", "Please enter a valid positive amount");
+        return;
+    }
+
+    uint64_t amount = static_cast<uint64_t>(amountINT * COIN);
+
+    // Check balance
+    uint64_t balance = wallet_->get_balance(*blockchain_);
+    if (amount > balance) {
+        show_error("Insufficient Balance",
+            QString("Amount %1 INT exceeds available balance %2 INT")
+                .arg(amountINT, 0, 'f', 8)
+                .arg(static_cast<double>(balance) / COIN, 0, 'f', 8));
+        return;
+    }
+
+    try {
+        // Calculate fee (simplified - 0.001 INT per transaction)
+        uint64_t fee = static_cast<uint64_t>(0.001 * COIN);
+
+        // Create and send transaction
+        auto tx_opt = wallet_->create_transaction(address.toStdString(), amount, fee, *blockchain_);
+
+        if (!tx_opt) {
+            show_error("Transaction Failed", "Failed to create transaction");
+            return;
+        }
+
+        Transaction tx = *tx_opt;
+
+        if (mempool_->add_transaction(tx, blockchain_->get_height())) {
+            // Convert hash to hex string manually
+            Hash256 txhash = tx.get_hash();
+            std::string txhash_str;
+            for (uint8_t byte : txhash) {
+                char buf[3];
+                snprintf(buf, sizeof(buf), "%02x", byte);
+                txhash_str += buf;
+            }
+
+            show_success("Transaction Sent",
+                QString("Sent %1 INT to\n%2\n\nTransaction ID: %3")
+                    .arg(amountINT, 0, 'f', 8)
+                    .arg(address)
+                    .arg(QString::fromStdString(txhash_str)));
+
+            // Clear input fields
+            sendAddressEdit_->clear();
+            sendAmountEdit_->clear();
+
+            // Update balance immediately
+            update_balance();
+        } else {
+            show_error("Transaction Failed", "Failed to add transaction to mempool");
+        }
+    } catch (const std::exception& e) {
+        show_error("Transaction Error", QString("Error creating transaction: %1").arg(e.what()));
+    }
 }
 
 void MainWindow::on_receiveButton_clicked() {
-    // TODO: Show receive dialog
+    if (!wallet_) {
+        show_error("No Wallet", "Please create or open a wallet first");
+        return;
+    }
+
+    // Get the current receive address
+    auto keys = wallet_->get_all_keys();
+    if (keys.empty()) {
+        show_error("No Addresses", "No addresses available in wallet");
+        return;
+    }
+
+    QString address = QString::fromStdString(keys[0].address);
+
+    // Create dialog to show address with copy button
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Receive INT");
+    msgBox.setText("Your receive address:");
+    msgBox.setInformativeText(address);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+
+    // Add a Copy button
+    QPushButton *copyButton = msgBox.addButton("Copy Address", QMessageBox::ActionRole);
+
+    msgBox.exec();
+
+    if (msgBox.clickedButton() == copyButton) {
+        QApplication::clipboard()->setText(address);
+        show_success("Copied", "Address copied to clipboard");
+    }
 }
 
 void MainWindow::on_newAddressButton_clicked() {
@@ -394,7 +514,86 @@ void MainWindow::update_balance() {
 }
 
 void MainWindow::update_transaction_history() {
-    // TODO: Update transaction table
+    if (!wallet_ || !blockchain_) {
+        return;
+    }
+
+    // Get all transactions from wallet
+    auto keys = wallet_->get_all_keys();
+    if (keys.empty()) {
+        return;
+    }
+
+    // Clear existing rows
+    transactionTable_->setRowCount(0);
+
+    // Get wallet addresses for filtering
+    std::set<std::string> wallet_addresses;
+    for (const auto& key : keys) {
+        wallet_addresses.insert(key.address);
+    }
+
+    // Scan blockchain for transactions involving wallet addresses
+    uint32_t height = blockchain_->get_height();
+    int row = 0;
+
+    // Only scan recent blocks to avoid performance issues
+    uint32_t start_height = (height > 100) ? (height - 100) : 0;
+
+    for (uint32_t h = height; h > start_height && h > 0; --h) {
+        try {
+            Block block = blockchain_->get_block_by_height(h);
+
+            for (const auto& tx : block.transactions) {
+                // Skip coinbase transactions for now
+                if (tx.is_coinbase()) {
+                    continue;
+                }
+
+                // For now, just show all transactions in recent blocks
+                // TODO: Properly filter for wallet transactions by matching pubkeys
+                transactionTable_->insertRow(row);
+
+                // Type (simplified - just show as "Seen")
+                transactionTable_->setItem(row, 0, new QTableWidgetItem("Seen"));
+
+                // Amount (sum of outputs)
+                uint64_t total_output = 0;
+                for (const auto& output : tx.outputs) {
+                    total_output += output.value;
+                }
+                double amount_int = static_cast<double>(total_output) / COIN;
+                transactionTable_->setItem(row, 1, new QTableWidgetItem(
+                    QString::number(amount_int, 'f', 8)));
+
+                // Confirmations
+                uint32_t confirmations = height - h + 1;
+                transactionTable_->setItem(row, 2, new QTableWidgetItem(
+                    QString::number(confirmations)));
+
+                // TX ID (truncated) - convert hash to hex string
+                Hash256 txhash = tx.get_hash();
+                std::string txhash_str;
+                for (size_t i = 0; i < 8 && i < txhash.size(); ++i) {
+                    char buf[3];
+                    snprintf(buf, sizeof(buf), "%02x", txhash[i]);
+                    txhash_str += buf;
+                }
+                QString short_txid = QString::fromStdString(txhash_str) + "...";
+                transactionTable_->setItem(row, 3, new QTableWidgetItem(short_txid));
+
+                row++;
+
+                // Limit to 50 transactions
+                if (row >= 50) {
+                    return;
+                }
+            }
+        } catch (...) {
+            // Skip blocks that can't be read
+            continue;
+        }
+    }
 }
 
 void MainWindow::update_peer_list() {
@@ -407,6 +606,21 @@ void MainWindow::update_mining_stats() {
     if (miner_) {
         auto stats = miner_->get_stats();
         hashRateLabel_->setText(QString("Hash Rate: %1 H/s").arg(stats.hashes_per_second));
+        hashRateValueLabel_->setText(QString("%1 H/s").arg(stats.hashes_per_second));
+        blocksFoundLabel_->setText(QString::number(stats.blocks_found));
+        miningStatusLabel_->setText(miner_->is_mining() ? "Mining" : "Not mining");
+    }
+
+    // Update difficulty from blockchain
+    if (blockchain_) {
+        Hash256 best_hash = blockchain_->get_best_block_hash();
+        uint32_t difficulty_bits = blockchain_->calculate_next_difficulty(best_hash);
+
+        // Convert compact bits to human-readable difficulty
+        // Difficulty = max_target / current_target
+        double difficulty = consensus::DifficultyCalculator::get_difficulty(difficulty_bits);
+
+        difficultyLabel_->setText(QString::number(difficulty, 'f', 2));
     }
 }
 
@@ -414,6 +628,9 @@ void MainWindow::update_blockchain_info() {
     if (blockchain_) {
         uint32_t height = blockchain_->get_height();
         blockHeightLabel_->setText(QString("Height: %1").arg(height));
+
+        // Update sync progress (simplified - would need actual sync state)
+        syncProgressBar_->setValue(100);  // Assume synced for now
     }
 }
 

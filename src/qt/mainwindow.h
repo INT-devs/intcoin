@@ -110,6 +110,7 @@ private:
     QLabel* miningStatusLabel_;
     QLabel* hashRateValueLabel_;
     QLabel* blocksFoundLabel_;
+    QLabel* difficultyLabel_;
     QLineEdit* threadsEdit_;
 
     // UI components - Network tab
