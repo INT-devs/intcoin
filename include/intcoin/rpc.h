@@ -154,8 +154,9 @@ public:
 
 private:
     std::string host_;
-    [[maybe_unused]] uint16_t port_;
+    uint16_t port_;
     bool connected_;
+    int socket_fd_;
 
     // HTTP client functionality
     std::string send_request(const std::string& json_request);

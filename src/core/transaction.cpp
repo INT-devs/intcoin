@@ -128,7 +128,115 @@ std::vector<uint8_t> Transaction::serialize() const {
 
 Transaction Transaction::deserialize(const std::vector<uint8_t>& data) {
     Transaction tx;
-    // TODO: Implement deserialization
+
+    if (data.size() < 8) return tx;  // Minimum size check
+
+    size_t offset = 0;
+
+    // Version (4 bytes)
+    tx.version = data[offset] |
+                 (data[offset + 1] << 8) |
+                 (data[offset + 2] << 16) |
+                 (data[offset + 3] << 24);
+    offset += 4;
+
+    // Timestamp (8 bytes)
+    tx.timestamp = 0;
+    for (int i = 0; i < 8 && offset + i < data.size(); i++) {
+        tx.timestamp |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    if (offset >= data.size()) return tx;
+
+    // Input count (1 byte varint - simplified)
+    uint8_t input_count = data[offset++];
+
+    // Inputs
+    for (uint8_t i = 0; i < input_count && offset < data.size(); i++) {
+        Transaction::Input input;
+
+        // Previous output hash (32 bytes)
+        if (offset + 32 > data.size()) break;
+        std::copy(data.begin() + offset, data.begin() + offset + 32,
+                 input.previous_output.hash.begin());
+        offset += 32;
+
+        // Previous output index (4 bytes)
+        if (offset + 4 > data.size()) break;
+        input.previous_output.index = data[offset] |
+                                     (data[offset + 1] << 8) |
+                                     (data[offset + 2] << 16) |
+                                     (data[offset + 3] << 24);
+        offset += 4;
+
+        // Signature script length (4 bytes)
+        if (offset + 4 > data.size()) break;
+        uint32_t script_len = data[offset] |
+                             (data[offset + 1] << 8) |
+                             (data[offset + 2] << 16) |
+                             (data[offset + 3] << 24);
+        offset += 4;
+
+        // Signature script data
+        if (offset + script_len > data.size()) break;
+        input.signature_script.assign(data.begin() + offset,
+                                     data.begin() + offset + script_len);
+        offset += script_len;
+
+        // Sequence (4 bytes)
+        if (offset + 4 > data.size()) break;
+        input.sequence = data[offset] |
+                        (data[offset + 1] << 8) |
+                        (data[offset + 2] << 16) |
+                        (data[offset + 3] << 24);
+        offset += 4;
+
+        tx.inputs.push_back(input);
+    }
+
+    if (offset >= data.size()) return tx;
+
+    // Output count (1 byte varint - simplified)
+    uint8_t output_count = data[offset++];
+
+    // Outputs
+    for (uint8_t i = 0; i < output_count && offset < data.size(); i++) {
+        Transaction::Output output;
+
+        // Value (8 bytes)
+        if (offset + 8 > data.size()) break;
+        output.value = 0;
+        for (int j = 0; j < 8; j++) {
+            output.value |= (static_cast<int64_t>(data[offset + j]) << (j * 8));
+        }
+        offset += 8;
+
+        // Pubkey script length (4 bytes)
+        if (offset + 4 > data.size()) break;
+        uint32_t script_len = data[offset] |
+                             (data[offset + 1] << 8) |
+                             (data[offset + 2] << 16) |
+                             (data[offset + 3] << 24);
+        offset += 4;
+
+        // Pubkey script data
+        if (offset + script_len > data.size()) break;
+        output.pubkey_script.assign(data.begin() + offset,
+                                   data.begin() + offset + script_len);
+        offset += script_len;
+
+        tx.outputs.push_back(output);
+    }
+
+    // Locktime (4 bytes)
+    if (offset + 4 <= data.size()) {
+        tx.lock_time = data[offset] |
+                      (data[offset + 1] << 8) |
+                      (data[offset + 2] << 16) |
+                      (data[offset + 3] << 24);
+    }
+
     return tx;
 }
 
@@ -138,8 +246,19 @@ Hash256 Transaction::get_hash() const {
 }
 
 std::string Transaction::get_txid() const {
-    // TODO: Implement hex conversion
-    return "";
+    // Implement hex conversion
+    Hash256 hash = get_hash();
+
+    const char* hex_chars = "0123456789abcdef";
+    std::string result;
+    result.reserve(64);  // 32 bytes = 64 hex characters
+
+    for (uint8_t byte : hash) {
+        result += hex_chars[(byte >> 4) & 0x0F];
+        result += hex_chars[byte & 0x0F];
+    }
+
+    return result;
 }
 
 size_t Transaction::get_size() const {

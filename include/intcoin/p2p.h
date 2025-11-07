@@ -15,6 +15,7 @@
 #include <memory>
 #include <functional>
 #include <chrono>
+#include <thread>
 
 namespace intcoin {
 namespace p2p {
@@ -124,10 +125,15 @@ public:
     uint32_t version;
     std::string user_agent;
     uint32_t start_height;
+    int socket_fd;          // Socket file descriptor
+    uint32_t protocol_version;
+    uint64_t services;
 
-    Peer() : connected(false), inbound(false), last_seen(0), version(0), start_height(0) {}
+    Peer() : connected(false), inbound(false), last_seen(0), version(0), start_height(0),
+             socket_fd(-1), protocol_version(0), services(0) {}
     explicit Peer(const PeerAddress& addr)
-        : address(addr), connected(false), inbound(false), last_seen(0), version(0), start_height(0) {}
+        : address(addr), connected(false), inbound(false), last_seen(0), version(0), start_height(0),
+          socket_fd(-1), protocol_version(0), services(0) {}
 
     bool is_alive() const;
     void update_last_seen();
@@ -172,6 +178,11 @@ private:
     [[maybe_unused]] bool is_testnet_;
     bool running_;
 
+    int listen_socket_;
+    std::thread discovery_thread_;
+    std::thread maintenance_thread_;
+    std::thread accept_thread_;
+
     std::vector<Peer> peers_;
     std::vector<PeerAddress> seed_nodes_;
 
@@ -198,9 +209,12 @@ namespace protocol {
     static constexpr uint32_t PROTOCOL_VERSION = 1;
     static constexpr size_t MAX_MESSAGE_SIZE = 32 * 1024 * 1024;  // 32 MB
     static constexpr size_t MAX_PEERS = 125;
+    static constexpr size_t MIN_PEERS = 8;
     static constexpr size_t MAX_OUTBOUND_CONNECTIONS = 8;
     static constexpr uint64_t TIMEOUT_SECONDS = 20;
     static constexpr uint64_t PING_INTERVAL_SECONDS = 120;
+    static constexpr uint16_t DEFAULT_PORT = 8333;
+    static constexpr uint16_t DEFAULT_PORT_TESTNET = 18333;
 }
 
 } // namespace p2p

@@ -6,6 +6,12 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <cstring>
 
 namespace intcoin {
 namespace rpc {
@@ -600,6 +606,7 @@ Client::Client(const std::string& host, uint16_t port)
     : host_(host)
     , port_(port)
     , connected_(false)
+    , socket_fd_(-1)
 {
 }
 
@@ -616,18 +623,135 @@ Response Client::call(const std::string& method, const std::vector<std::string>&
 }
 
 bool Client::connect() {
-    // TODO: Establish HTTP connection
+    // Establish HTTP connection
+    // Parse host:port
+    std::string hostname = host_;
+    uint16_t port = port_;
+
+    // Create socket
+    socket_fd_ = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd_ < 0) {
+        return false;
+    }
+
+    // Set timeout
+    struct timeval timeout;
+    timeout.tv_sec = 30;
+    timeout.tv_usec = 0;
+    setsockopt(socket_fd_, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    setsockopt(socket_fd_, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+
+    // Resolve hostname
+    struct hostent* server = gethostbyname(hostname.c_str());
+    if (!server) {
+        close(socket_fd_);
+        socket_fd_ = -1;
+        return false;
+    }
+
+    // Connect to server
+    struct sockaddr_in server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    memcpy(&server_addr.sin_addr.s_addr, server->h_addr, server->h_length);
+    server_addr.sin_port = htons(port);
+
+    if (::connect(socket_fd_, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        close(socket_fd_);
+        socket_fd_ = -1;
+        return false;
+    }
+
     connected_ = true;
     return true;
 }
 
 void Client::disconnect() {
+    if (socket_fd_ >= 0) {
+        close(socket_fd_);
+        socket_fd_ = -1;
+    }
     connected_ = false;
 }
 
 std::string Client::send_request(const std::string& json_request) {
-    // TODO: Implement HTTP POST request
-    (void)json_request;
+    // Implement HTTP POST request
+    if (!connected_) {
+        if (!connect()) {
+            return "{\"error\":\"Connection failed\"}";
+        }
+    }
+
+    // Build HTTP POST request
+    std::stringstream http_request;
+    http_request << "POST / HTTP/1.1\r\n";
+    http_request << "Host: " << host_ << "\r\n";
+    http_request << "Content-Type: application/json\r\n";
+    http_request << "Content-Length: " << json_request.length() << "\r\n";
+    http_request << "Connection: keep-alive\r\n";
+    http_request << "\r\n";
+    http_request << json_request;
+
+    std::string request_str = http_request.str();
+
+    // Send request
+    ssize_t sent = send(socket_fd_, request_str.c_str(), request_str.length(), 0);
+    if (sent < 0) {
+        disconnect();
+        return "{\"error\":\"Send failed\"}";
+    }
+
+    // Receive response
+    char buffer[8192];
+    std::string response;
+    ssize_t received;
+
+    while ((received = recv(socket_fd_, buffer, sizeof(buffer) - 1, 0)) > 0) {
+        buffer[received] = '\0';
+        response += buffer;
+
+        // Check if we've received the complete response
+        if (response.find("\r\n\r\n") != std::string::npos) {
+            // Found end of headers, check if we have the body
+            size_t header_end = response.find("\r\n\r\n");
+            size_t content_length_pos = response.find("Content-Length:");
+
+            if (content_length_pos != std::string::npos) {
+                size_t length_start = content_length_pos + 15;
+                size_t length_end = response.find("\r\n", length_start);
+                std::string length_str = response.substr(length_start, length_end - length_start);
+
+                // Trim whitespace
+                length_str.erase(0, length_str.find_first_not_of(" \t"));
+                length_str.erase(length_str.find_last_not_of(" \t") + 1);
+
+                int content_length = std::stoi(length_str);
+                size_t body_start = header_end + 4;
+                size_t body_length = response.length() - body_start;
+
+                if (static_cast<int>(body_length) >= content_length) {
+                    break;  // Complete response received
+                }
+            }
+        }
+
+        // Prevent infinite loop
+        if (response.length() > 1024 * 1024) {  // 1 MB limit
+            break;
+        }
+    }
+
+    if (received < 0) {
+        disconnect();
+        return "{\"error\":\"Receive failed\"}";
+    }
+
+    // Extract JSON body from HTTP response
+    size_t body_start = response.find("\r\n\r\n");
+    if (body_start != std::string::npos) {
+        return response.substr(body_start + 4);
+    }
+
     return "{}";
 }
 
