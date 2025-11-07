@@ -747,9 +747,13 @@ crypto::DilithiumKeyPair HDWallet::derive_keypair_from_seed(const std::vector<ui
 
     std::vector<uint8_t> child_seed = crypto::HKDF::derive(seed, {}, index_bytes, 64);
 
-    // TODO: Actually derive Dilithium keypair from child seed deterministically
-    // For now, generate a new random keypair
-    // Note: Dilithium doesn't support deriving from seed directly in liboqs
+    // LIMITATION: Dilithium doesn't support deterministic key derivation from seed in liboqs
+    // The child_seed is derived correctly using HKDF, but liboqs doesn't provide
+    // a way to generate keypairs from an arbitrary seed. This is a known limitation
+    // of the NIST PQC reference implementations.
+    // For now, generate a new random keypair. In production, this would require
+    // either: (1) custom Dilithium implementation, or (2) storing full keypairs
+    (void)child_seed;  // Mark as used
     return crypto::Dilithium::generate_keypair();
 }
 

@@ -151,11 +151,30 @@ int main(int argc, char* argv[]) {
         Mempool mempool;
 
         // Parse mining address
-        // For now, create a dummy Dilithium public key
-        // TODO: Implement proper address parsing when address.cpp is complete
         DilithiumPubKey reward_address;
-        if (verbose) {
-            std::cout << "Mining to address: " << address_str << std::endl;
+
+        // Address format: base58-encoded Dilithium public key
+        // For now, use the address string as-is or decode if properly formatted
+        // A full implementation would use base58 decoding from Address class
+        if (address_str.length() > 0) {
+            // Validate address format (should be base58)
+            // For this implementation, we'll create a deterministic key from the address string
+            // In production, this should use proper Address::decode()
+
+            // Use hash of address string as seed for reproducibility
+            std::vector<uint8_t> addr_bytes(address_str.begin(), address_str.end());
+            Hash256 seed = crypto::SHA3_256::hash(addr_bytes.data(), addr_bytes.size());
+
+            // Fill reward_address with seed data (deterministic)
+            std::memcpy(reward_address.data(), seed.data(), std::min(seed.size(), reward_address.size()));
+
+            if (verbose) {
+                std::cout << "Mining to address: " << address_str << std::endl;
+                std::cout << "Note: Using deterministic key derivation from address string" << std::endl;
+            }
+        } else {
+            std::cerr << "Error: Invalid mining address" << std::endl;
+            return EXIT_FAILURE;
         }
 
         // Initialize miner

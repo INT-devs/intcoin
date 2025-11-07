@@ -507,9 +507,38 @@ void Network::handle_getdata(const Message& msg, const PeerAddress& from) {
                                       msg.payload.begin() + offset + 36);
         InvVector inv = InvVector::deserialize(inv_data);
 
-        // TODO: Look up block or transaction from blockchain/mempool
-        // For now, just acknowledge the request
-        // In full implementation, would serialize and send actual data
+        // Look up and send requested data
+        if (inv.type == InvVector::Type::BLOCK) {
+            // Look up block from blockchain
+            if (block_lookup_callback_) {
+                auto block_opt = block_lookup_callback_(inv.hash);
+                if (block_opt.has_value()) {
+                    // Send block
+                    std::vector<uint8_t> block_data = block_opt->serialize();
+                    Message block_msg(MessageType::BLOCK, block_data);
+                    send_message(from, block_msg);
+                } else {
+                    // Block not found - send NOTFOUND
+                    Message notfound_msg(MessageType::NOTFOUND, inv_data);
+                    send_message(from, notfound_msg);
+                }
+            }
+        } else if (inv.type == InvVector::Type::TX) {
+            // Look up transaction from mempool or blockchain
+            if (tx_lookup_callback_) {
+                auto tx_opt = tx_lookup_callback_(inv.hash);
+                if (tx_opt.has_value()) {
+                    // Send transaction
+                    std::vector<uint8_t> tx_data = tx_opt->serialize();
+                    Message tx_msg(MessageType::TX, tx_data);
+                    send_message(from, tx_msg);
+                } else {
+                    // Transaction not found - send NOTFOUND
+                    Message notfound_msg(MessageType::NOTFOUND, inv_data);
+                    send_message(from, notfound_msg);
+                }
+            }
+        }
 
         offset += 36;
     }
@@ -518,9 +547,7 @@ void Network::handle_getdata(const Message& msg, const PeerAddress& from) {
 void Network::handle_block(const Message& msg, const PeerAddress& from) {
     // Deserialize block and call callback
     if (block_callback_ && msg.payload.size() > 0) {
-        // TODO: Implement Block::deserialize() method
-        // For now, create placeholder block
-        Block block;
+        Block block = Block::deserialize(msg.payload);
         block_callback_(block, from);
     }
 }
@@ -528,9 +555,7 @@ void Network::handle_block(const Message& msg, const PeerAddress& from) {
 void Network::handle_tx(const Message& msg, const PeerAddress& from) {
     // Deserialize transaction and call callback
     if (tx_callback_ && msg.payload.size() > 0) {
-        // TODO: Implement Transaction::deserialize() method
-        // For now, create placeholder transaction
-        Transaction tx;
+        Transaction tx = Transaction::deserialize(msg.payload);
         tx_callback_(tx, from);
     }
 }

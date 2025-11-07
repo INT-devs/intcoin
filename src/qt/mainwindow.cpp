@@ -296,8 +296,32 @@ QWidget* MainWindow::create_console_tab() {
         QString command = consoleInput_->text();
         if (!command.isEmpty()) {
             consoleOutput_->append("> " + command);
-            // TODO: Execute RPC command
-            consoleOutput_->append("Command executed\n");
+            // Execute RPC command
+            if (rpc_client_) {
+                try {
+                    // Parse command - simple space-separated parsing
+                    QStringList parts = command.split(' ', Qt::SkipEmptyParts);
+                    if (parts.isEmpty()) return;
+
+                    std::string method = parts[0].toStdString();
+                    std::vector<std::string> params;
+                    for (int i = 1; i < parts.size(); ++i) {
+                        params.push_back(parts[i].toStdString());
+                    }
+
+                    rpc::Response response = rpc_client_->call(method, params);
+                    if (response.error) {
+                        consoleOutput_->append("Error: " + QString::fromStdString(response.error_message));
+                    } else {
+                        consoleOutput_->append(QString::fromStdString(response.result));
+                    }
+                } catch (const std::exception& e) {
+                    consoleOutput_->append("Exception: " + QString(e.what()));
+                }
+            } else {
+                consoleOutput_->append("Error: RPC client not connected");
+            }
+            consoleOutput_->append("");  // Empty line
             consoleInput_->clear();
         }
     });
@@ -311,8 +335,29 @@ QWidget* MainWindow::create_console_tab() {
 // Menu action handlers
 
 void MainWindow::on_actionNew_Wallet_triggered() {
-    // TODO: Create new wallet dialog
-    show_success("Wallet Created", "New wallet has been created successfully");
+    // Create new wallet dialog
+    bool ok;
+    QString password = QInputDialog::getText(this, "New Wallet",
+                                            "Enter password for new wallet:",
+                                            QLineEdit::Password, "", &ok);
+    if (ok && !password.isEmpty()) {
+        // Create new HD wallet
+        wallet_ = std::make_unique<HDWallet>();
+        *wallet_ = HDWallet::create_new();
+
+        // Encrypt with password
+        if (wallet_->encrypt(password.toStdString())) {
+            // Save wallet
+            if (wallet_->save_to_disk()) {
+                show_success("Wallet Created", "New wallet has been created successfully");
+                update_balance_display();
+            } else {
+                show_error("Save Failed", "Failed to save new wallet to disk");
+            }
+        } else {
+            show_error("Encryption Failed", "Failed to encrypt wallet");
+        }
+    }
 }
 
 void MainWindow::on_actionOpen_Wallet_triggered() {
@@ -339,7 +384,32 @@ void MainWindow::on_actionBackup_Wallet_triggered() {
 }
 
 void MainWindow::on_actionEncrypt_Wallet_triggered() {
-    // TODO: Encrypt wallet dialog
+    // Encrypt wallet dialog
+    if (!wallet_) {
+        show_error("No Wallet", "Please create or open a wallet first");
+        return;
+    }
+
+    if (wallet_->is_encrypted()) {
+        show_error("Already Encrypted", "Wallet is already encrypted");
+        return;
+    }
+
+    bool ok;
+    QString password = QInputDialog::getText(this, "Encrypt Wallet",
+                                            "Enter password to encrypt wallet:",
+                                            QLineEdit::Password, "", &ok);
+    if (ok && !password.isEmpty()) {
+        if (wallet_->encrypt(password.toStdString())) {
+            if (wallet_->save_to_disk()) {
+                show_success("Encryption Complete", "Wallet encrypted successfully");
+            } else {
+                show_error("Save Failed", "Wallet encrypted but failed to save");
+            }
+        } else {
+            show_error("Encryption Failed", "Failed to encrypt wallet");
+        }
+    }
 }
 
 void MainWindow::on_actionExit_triggered() {
@@ -357,7 +427,57 @@ void MainWindow::on_actionAbout_triggered() {
 }
 
 void MainWindow::on_actionSettings_triggered() {
-    // TODO: Settings dialog
+    // Settings dialog
+    QDialog settings_dialog(this);
+    settings_dialog.setWindowTitle("Settings");
+    settings_dialog.setMinimumWidth(400);
+
+    QVBoxLayout* layout = new QVBoxLayout(&settings_dialog);
+
+    // RPC Server settings
+    QGroupBox* rpc_group = new QGroupBox("RPC Server", &settings_dialog);
+    QFormLayout* rpc_layout = new QFormLayout(rpc_group);
+
+    QLineEdit* host_edit = new QLineEdit(QString::fromStdString(rpc_host_), rpc_group);
+    QSpinBox* port_spin = new QSpinBox(rpc_group);
+    port_spin->setRange(1, 65535);
+    port_spin->setValue(rpc_port_);
+
+    rpc_layout->addRow("Host:", host_edit);
+    rpc_layout->addRow("Port:", port_spin);
+
+    layout->addWidget(rpc_group);
+
+    // Network settings
+    QGroupBox* network_group = new QGroupBox("Network", &settings_dialog);
+    QFormLayout* network_layout = new QFormLayout(network_group);
+
+    QCheckBox* testnet_check = new QCheckBox("Use Testnet", network_group);
+    testnet_check->setChecked(false);  // Default to mainnet
+
+    network_layout->addRow(testnet_check);
+
+    layout->addWidget(network_group);
+
+    // Dialog buttons
+    QDialogButtonBox* button_box = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &settings_dialog);
+    connect(button_box, &QDialogButtonBox::accepted, &settings_dialog, &QDialog::accept);
+    connect(button_box, &QDialogButtonBox::rejected, &settings_dialog, &QDialog::reject);
+
+    layout->addWidget(button_box);
+
+    if (settings_dialog.exec() == QDialog::Accepted) {
+        // Apply settings
+        rpc_host_ = host_edit->text().toStdString();
+        rpc_port_ = port_spin->value();
+
+        // Reconnect RPC client with new settings
+        rpc_client_ = std::make_unique<rpc::Client>(rpc_host_, rpc_port_);
+        rpc_client_->connect();
+
+        show_success("Settings Updated", "Settings have been applied successfully");
+    }
 }
 
 // Button handlers
@@ -496,11 +616,62 @@ void MainWindow::on_stopMiningButton_clicked() {
 }
 
 void MainWindow::on_connectPeerButton_clicked() {
-    // TODO: Connect to peer
+    // Connect to peer
+    bool ok;
+    QString peer_address = QInputDialog::getText(this, "Connect to Peer",
+                                                 "Enter peer address (IP:port):",
+                                                 QLineEdit::Normal, "", &ok);
+    if (ok && !peer_address.isEmpty()) {
+        // Parse IP and port
+        QStringList parts = peer_address.split(':');
+        if (parts.size() == 2) {
+            std::string ip = parts[0].toStdString();
+            uint16_t port = parts[1].toUInt();
+
+            if (network_) {
+                p2p::PeerAddress addr(ip, port);
+                if (network_->connect_to_peer(addr)) {
+                    show_success("Peer Connected", "Successfully connected to peer:\n" + peer_address);
+                    update_peer_list();
+                } else {
+                    show_error("Connection Failed", "Failed to connect to peer:\n" + peer_address);
+                }
+            } else {
+                show_error("Network Error", "P2P network not initialized");
+            }
+        } else {
+            show_error("Invalid Format", "Please use format: IP:port\nExample: 127.0.0.1:8333");
+        }
+    }
 }
 
 void MainWindow::on_disconnectPeerButton_clicked() {
-    // TODO: Disconnect peer
+    // Disconnect peer
+    if (!network_) {
+        show_error("Network Error", "P2P network not initialized");
+        return;
+    }
+
+    // Get selected peer from list
+    QListWidgetItem* selected = peerListWidget_->currentItem();
+    if (!selected) {
+        show_error("No Selection", "Please select a peer to disconnect");
+        return;
+    }
+
+    // Parse peer address from list item text
+    QString peer_text = selected->text();
+    QStringList parts = peer_text.split(" - ")[0].split(":");
+    if (parts.size() == 2) {
+        std::string ip = parts[0].toStdString();
+        uint16_t port = parts[1].toUInt();
+
+        p2p::PeerAddress addr(ip, port);
+        network_->disconnect_peer(addr);
+
+        show_success("Peer Disconnected", "Successfully disconnected from peer");
+        update_peer_list();
+    }
 }
 
 // Update functions
@@ -550,12 +721,58 @@ void MainWindow::update_transaction_history() {
                     continue;
                 }
 
-                // For now, just show all transactions in recent blocks
-                // TODO: Properly filter for wallet transactions by matching pubkeys
+                // Properly filter for wallet transactions by matching pubkeys
+                bool is_wallet_tx = false;
+                bool is_send = false;
+                bool is_receive = false;
+
+                // Check if any outputs belong to our wallet
+                for (const auto& output : tx.outputs) {
+                    // Check if pubkey script matches any of our addresses
+                    for (const auto& key : keys) {
+                        if (output.pubkey_script == key.public_key) {
+                            is_wallet_tx = true;
+                            is_receive = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Check if any inputs are from our wallet
+                for (const auto& input : tx.inputs) {
+                    // Extract pubkey from signature script (last 2592 bytes)
+                    if (input.signature_script.size() >= 2592) {
+                        std::vector<uint8_t> input_pubkey(
+                            input.signature_script.end() - 2592,
+                            input.signature_script.end()
+                        );
+                        for (const auto& key : keys) {
+                            if (input_pubkey == key.public_key) {
+                                is_wallet_tx = true;
+                                is_send = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Only show transactions that involve our wallet
+                if (!is_wallet_tx) {
+                    continue;
+                }
+
                 transactionTable_->insertRow(row);
 
-                // Type (simplified - just show as "Seen")
-                transactionTable_->setItem(row, 0, new QTableWidgetItem("Seen"));
+                // Type (Send/Receive based on analysis)
+                QString tx_type = "Unknown";
+                if (is_send && is_receive) {
+                    tx_type = "Self";
+                } else if (is_send) {
+                    tx_type = "Send";
+                } else if (is_receive) {
+                    tx_type = "Receive";
+                }
+                transactionTable_->setItem(row, 0, new QTableWidgetItem(tx_type));
 
                 // Amount (sum of outputs)
                 uint64_t total_output = 0;
@@ -645,9 +862,40 @@ void MainWindow::show_success(const QString& title, const QString& message) {
 }
 
 bool MainWindow::load_wallet(const QString& filepath) {
-    // TODO: Load wallet from file
-    (void)filepath;
-    return true;
+    // Load wallet from file
+    wallet_ = std::make_unique<HDWallet>();
+
+    if (wallet_->restore_from_file(filepath.toStdString())) {
+        // Check if wallet is encrypted and ask for password
+        if (wallet_->is_encrypted()) {
+            bool ok;
+            QString password = QInputDialog::getText(this, "Wallet Password",
+                                                    "Enter wallet password:",
+                                                    QLineEdit::Password, "", &ok);
+            if (ok && !password.isEmpty()) {
+                if (wallet_->decrypt(password.toStdString())) {
+                    show_success("Wallet Loaded", "Wallet loaded successfully from:\n" + filepath);
+                    update_balance_display();
+                    return true;
+                } else {
+                    show_error("Wrong Password", "Incorrect password for wallet");
+                    wallet_.reset();
+                    return false;
+                }
+            } else {
+                wallet_.reset();
+                return false;
+            }
+        } else {
+            show_success("Wallet Loaded", "Wallet loaded successfully from:\n" + filepath);
+            update_balance_display();
+            return true;
+        }
+    } else {
+        show_error("Load Failed", "Failed to load wallet from:\n" + filepath);
+        wallet_.reset();
+        return false;
+    }
 }
 
 void MainWindow::save_settings() {

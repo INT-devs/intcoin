@@ -519,8 +519,29 @@ Response Server::addnode(const std::vector<std::string>& params) {
         return Response(true, "Usage: addnode <node>", "");
     }
 
-    // TODO: Parse IP:port and connect
-    return Response("true", "");
+    // Parse IP:port and connect
+    std::string node = params[0];
+    size_t colon_pos = node.find(':');
+
+    if (colon_pos == std::string::npos) {
+        return Response(true, "Invalid node format. Use IP:port", "");
+    }
+
+    std::string ip = node.substr(0, colon_pos);
+    std::string port_str = node.substr(colon_pos + 1);
+
+    try {
+        uint16_t port = static_cast<uint16_t>(std::stoi(port_str));
+
+        p2p::PeerAddress addr(ip, port);
+        if (network_.connect_to_peer(addr)) {
+            return Response("true", "");
+        } else {
+            return Response(true, "Failed to connect to peer", "");
+        }
+    } catch (const std::exception& e) {
+        return Response(true, std::string("Invalid port: ") + e.what(), "");
+    }
 }
 
 // Mempool RPC methods

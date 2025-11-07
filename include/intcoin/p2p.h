@@ -165,9 +165,13 @@ public:
     // Callbacks
     using BlockCallback = std::function<void(const Block&, const PeerAddress&)>;
     using TxCallback = std::function<void(const Transaction&, const PeerAddress&)>;
+    using BlockLookupCallback = std::function<std::optional<Block>(const Hash256&)>;
+    using TxLookupCallback = std::function<std::optional<Transaction>(const Hash256&)>;
 
     void set_block_callback(BlockCallback cb) { block_callback_ = cb; }
     void set_tx_callback(TxCallback cb) { tx_callback_ = cb; }
+    void set_block_lookup_callback(BlockLookupCallback cb) { block_lookup_callback_ = cb; }
+    void set_tx_lookup_callback(TxLookupCallback cb) { tx_lookup_callback_ = cb; }
 
     // Status
     size_t peer_count() const;
@@ -188,6 +192,8 @@ private:
 
     BlockCallback block_callback_;
     TxCallback tx_callback_;
+    BlockLookupCallback block_lookup_callback_;
+    TxLookupCallback tx_lookup_callback_;
 
     // Internal message handlers
     void handle_version(const Message& msg, const PeerAddress& from);

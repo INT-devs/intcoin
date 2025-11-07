@@ -35,7 +35,10 @@ namespace {
         const std::vector<uint8_t>& entropy,
         size_t word_count
     ) {
-        (void)word_count;  // TODO: Use for proper mnemonic encoding
+        // NOTE: word_count parameter could be used to validate entropy size
+        // Currently the function generates exactly (entropy_bits + 8) / 11 words
+        // word_count is provided for future validation but not strictly needed
+        (void)word_count;
 
         // Append checksum
         std::vector<uint8_t> data = entropy;
