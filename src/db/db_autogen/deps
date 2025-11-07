@@ -1,0 +1,8 @@
+db_autogen/timestamp: \
+	/Users/neiladamson/Desktop/intcoin/src/db/CMakeLists.txt \
+	/Users/neiladamson/Desktop/intcoin/src/db/db.cpp \
+	/opt/homebrew/lib/cmake/rocksdb/RocksDBConfig.cmake \
+	/opt/homebrew/lib/cmake/rocksdb/RocksDBConfigVersion.cmake \
+	/opt/homebrew/lib/cmake/rocksdb/RocksDBTargets.cmake \
+	/opt/homebrew/share/cmake/Modules/CMakeFindDependencyMacro.cmake \
+	/opt/homebrew/bin/cmake

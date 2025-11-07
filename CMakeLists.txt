@@ -104,6 +104,7 @@ include_directories(
 # Find required packages
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(RocksDB REQUIRED)
 
 # Qt5 for wallet GUI
 if(BUILD_QT_WALLET)
@@ -139,6 +140,7 @@ add_subdirectory(src/core)
 add_subdirectory(src/network)
 add_subdirectory(src/consensus)
 add_subdirectory(src/utils)
+add_subdirectory(src/db)
 
 if(ENABLE_WALLET)
     add_subdirectory(src/wallet)
@@ -169,6 +171,7 @@ add_library(intcoin_core STATIC
     $<TARGET_OBJECTS:network>
     $<TARGET_OBJECTS:consensus>
     $<TARGET_OBJECTS:utils>
+    $<TARGET_OBJECTS:db>
     $<TARGET_OBJECTS:rpc>
     $<$<BOOL:${ENABLE_WALLET}>:$<TARGET_OBJECTS:wallet>>
     $<$<BOOL:${BUILD_MINER}>:$<TARGET_OBJECTS:miner_lib>>
@@ -180,6 +183,7 @@ target_link_libraries(intcoin_core
         OpenSSL::SSL
         OpenSSL::Crypto
         Boost::boost
+        RocksDB::rocksdb
         dilithium
         kyber
 )
