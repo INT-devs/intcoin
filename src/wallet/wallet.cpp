@@ -6,6 +6,7 @@
 #include "intcoin/crypto.h"
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 
 namespace intcoin {
 
@@ -85,8 +86,36 @@ bool HDWallet::decrypt(const std::string& password) {
         return true;
     }
 
-    // TODO: Implement actual decryption verification
-    (void)password;
+    // Verify the password by attempting to derive the same encryption key
+    // The actual encryption key is derived during encrypt()
+    std::vector<uint8_t> test_key = crypto::HKDF::derive(
+        std::vector<uint8_t>(password.begin(), password.end()),
+        master_seed_,  // Use master seed as salt
+        std::vector<uint8_t>(),
+        32
+    );
+
+    // Compare keys in constant time to prevent timing attacks
+    if (test_key.size() != encryption_key_.size()) {
+        crypto::SecureMemory::secure_zero(test_key);
+        return false;
+    }
+
+    bool keys_match = crypto::SecureMemory::constant_time_compare(
+        test_key.data(),
+        encryption_key_.data(),
+        test_key.size()
+    );
+
+    // Clear the test key from memory
+    crypto::SecureMemory::secure_zero(test_key);
+
+    if (!keys_match) {
+        return false;  // Wrong password
+    }
+
+    // Password verified successfully
+    encrypted_ = false;
     return true;
 }
 
@@ -200,8 +229,17 @@ std::optional<Transaction> HDWallet::create_transaction(
     }
 
     // Add output to recipient
-    // TODO: Get public key from address
+    // Decode address to get public key hash
+    auto pubkey_hash = crypto::Address::decode(to_address);
+    if (!pubkey_hash) {
+        return std::nullopt;  // Invalid address
+    }
+
+    // For now, we'll create a script that locks to the pubkey hash
+    // In a full implementation, we'd use OP_DUP OP_HASH256 OP_EQUALVERIFY OP_CHECKSIG
+    // Here we'll use the hash directly as a simplified pubkey script
     DilithiumPubKey recipient_pubkey{};
+    std::memcpy(recipient_pubkey.data(), pubkey_hash->data(), std::min(pubkey_hash->size(), recipient_pubkey.size()));
     builder.add_output(amount, recipient_pubkey);
 
     // Add change output if needed
@@ -222,9 +260,56 @@ std::optional<Transaction> HDWallet::create_transaction(
 }
 
 bool HDWallet::sign_transaction(Transaction& tx, const Blockchain& blockchain) {
-    // TODO: Sign each input with corresponding private key
-    (void)tx;
-    (void)blockchain;
+    // Sign each input with the corresponding private key
+    for (size_t i = 0; i < tx.inputs.size(); ++i) {
+        auto& input = tx.inputs[i];
+
+        // Get the previous output to find which key owns it
+        std::optional<Transaction::Output> prev_output =
+            blockchain.get_output(input.previous_output);
+
+        if (!prev_output) {
+            return false;  // Previous output not found
+        }
+
+        // Find the key that owns this output by matching public key
+        const DilithiumKeyPair* signing_key = nullptr;
+        for (const auto& [index, wallet_key] : keys_) {
+            if (wallet_key.public_key == prev_output->pubkey_script) {
+                signing_key = &wallet_key.keypair;
+                break;
+            }
+        }
+
+        if (!signing_key) {
+            return false;  // We don't own this input
+        }
+
+        // Create signature hash (sign everything except signature scripts)
+        std::vector<uint8_t> sig_hash = tx.get_signature_hash(i);
+
+        // Sign the hash with Dilithium
+        DilithiumSignature signature = crypto::Dilithium::sign(
+            sig_hash,
+            *signing_key
+        );
+
+        // Set the signature script (contains signature + public key for verification)
+        input.signature_script.clear();
+        input.signature_script.insert(
+            input.signature_script.end(),
+            signature.begin(),
+            signature.end()
+        );
+
+        // Append public key
+        input.signature_script.insert(
+            input.signature_script.end(),
+            signing_key->public_key.begin(),
+            signing_key->public_key.end()
+        );
+    }
+
     return true;
 }
 

@@ -2,7 +2,9 @@
 #include "intcoin/validation.h"
 #include "intcoin/safe_math.h"
 #include "intcoin/memory_safety.h"
+#include "intcoin/crypto.h"
 #include <optional>
+#include <cstring>
 
 namespace intcoin {
 
@@ -239,8 +241,35 @@ std::optional<bool> verify_signature_safe(
         return std::nullopt;  // Shouldn't happen after validation
     }
 
-    // TODO: Actual cryptographic verification would go here
-    // This is just demonstrating safe memory handling
+    // 5. Actual cryptographic verification
+    // Convert message hash to DilithiumSignature structure
+    if (signature.size() != 4627) {
+        // Dilithium5 signatures are 4627 bytes
+        return std::nullopt;
+    }
+
+    DilithiumSignature dilithium_sig;
+    std::memcpy(dilithium_sig.data(), signature.data(), signature.size());
+
+    // Convert public key to DilithiumPubKey structure
+    if (public_key.size() != 2592) {
+        // Dilithium5 public keys are 2592 bytes
+        return std::nullopt;
+    }
+
+    DilithiumPubKey dilithium_pubkey;
+    std::memcpy(dilithium_pubkey.data(), public_key.data(), public_key.size());
+
+    // Verify signature using Dilithium
+    bool verification_result = crypto::Dilithium::verify(
+        message_hash,
+        dilithium_sig,
+        dilithium_pubkey
+    );
+
+    if (!verification_result) {
+        return std::nullopt;  // Signature verification failed
+    }
 
     return true;
 }
