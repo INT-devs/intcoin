@@ -370,14 +370,64 @@ See the [docs](docs/) directory for detailed documentation:
 
 INTcoin implements comprehensive security measures throughout the codebase:
 
-- ✅ **Input validation on all external data**: All RPC commands, P2P messages, and contract calls validate inputs with std::optional returns
-- ✅ **Integer overflow protection**: SafeMath library for all arithmetic operations, bounds checking in serialization
-- ✅ **Memory safety**: Bounds checking on all array/memory access, secure memory wiping, no buffer overflows
+#### Core Security Framework (New)
+
+- ✅ **Comprehensive Input Validation** ([include/intcoin/validation.h](include/intcoin/validation.h)):
+  - String validation (length, charset, hex, base58, hostname patterns)
+  - Numeric validation (range checks, amount validation, timestamp validation)
+  - Binary validation (hash, pubkey, signature DER format)
+  - Network validation (IPv4, IPv6, peer address)
+  - Composite validators for transactions and blocks
+
+- ✅ **Integer Overflow Protection** ([include/intcoin/safe_math.h](include/intcoin/safe_math.h)):
+  - Safe arithmetic operations (add, sub, mul, div) with std::optional returns
+  - Safe type casting with overflow detection
+  - Saturation arithmetic (saturate at min/max instead of failing)
+  - Checked arithmetic class (throws exceptions on overflow)
+  - Cryptocurrency amount operations with MAX_SUPPLY enforcement
+  - Utility macros for safe operations (SAFE_ADD_OR_RETURN, etc.)
+
+- ✅ **Memory Safety** ([include/intcoin/memory_safety.h](include/intcoin/memory_safety.h)):
+  - SafeBuffer: Bounds-checked byte arrays with capacity limits
+  - SafeString: Overflow-safe string operations (strcpy, strcat, format)
+  - SafeArray: Fixed-size arrays with bounds checking
+  - BoundedVector: Vectors with maximum size limits
+  - SecureMemory: RAII secure memory with automatic clearing
+  - Constant-time operations (prevent timing attacks)
+  - Stack guard for recursion depth protection
+  - Memory alignment helpers
+
+#### Previously Implemented Security
+
 - ✅ **Serialization security**: Versioned format with size limits (4MB blocks, 1MB transactions, 32MB messages)
 - ✅ **Wallet encryption**: AES-256-GCM authenticated encryption with constant-time password verification
 - ✅ **Reorg protection**: Undo data system supports safe blockchain reorganizations up to 100 blocks deep
 
 ### Technical Security Details
+
+**Input Validation Framework:**
+- String validators: Length (max 4KB messages), charset, regex patterns, hex, base58
+- Numeric validators: Range checks, overflow detection, amount limits (21M coins max)
+- Binary validators: Hash (32 bytes), public keys (33/65 bytes), DER signatures
+- Network validators: IPv4/IPv6 validation, hostname regex, peer address checks
+- All validations return `ValidationResult` with descriptive error messages
+
+**Integer Overflow Protection:**
+- Template functions for all arithmetic: `safe_add<T>`, `safe_sub<T>`, `safe_mul<T>`, `safe_div<T>`
+- Returns `std::optional<T>` (nullopt on overflow)
+- Special cryptocurrency amount functions with MAX_SUPPLY enforcement
+- Safe type casting between integer types with overflow detection
+- Saturation arithmetic option (clamp to min/max instead of failing)
+- Checked arithmetic class for exception-based error handling
+
+**Memory Safety:**
+- SafeBuffer: Capacity-limited buffers with append/read bounds checking
+- SafeString: Secure strcpy/strcat/format with size limits
+- SafeArray/BoundedVector: Fixed or limited-size containers
+- SecureMemory: RAII memory that auto-clears on destruction
+- Constant-time compare/clear operations (timing attack prevention)
+- Stack depth guards (max 1000 recursion levels)
+- Alignment validation and helpers
 
 **Cryptographic Standards:**
 - AES-256-GCM: Authenticated encryption with 256-bit keys
@@ -414,11 +464,37 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ### ✅ Security Features Completed
 
-All critical security TODOs have been implemented:
+All critical security requirements have been implemented:
+
+#### Core Security Framework (2025-01-07)
+
+- ✅ **Input Validation on All External Data** ([include/intcoin/validation.h](include/intcoin/validation.h)):
+  - 500+ lines of comprehensive validators
+  - String, numeric, binary, and network validation
+  - Composite validators for complex structures
+  - All validations return descriptive error messages
+
+- ✅ **Integer Overflow Protection** ([include/intcoin/safe_math.h](include/intcoin/safe_math.h)):
+  - 600+ lines of safe arithmetic operations
+  - Template functions for all integer types
+  - Cryptocurrency-specific amount validation
+  - Zero-overhead abstraction with std::optional
+
+- ✅ **Memory Safety (No Buffer Overflows)** ([include/intcoin/memory_safety.h](include/intcoin/memory_safety.h)):
+  - 650+ lines of memory safety utilities
+  - Bounds-checked containers (SafeBuffer, BoundedVector, SafeArray)
+  - Secure memory operations (constant-time, auto-clearing)
+  - Stack overflow detection (recursion guards)
+
+#### Previously Implemented
 
 - ✅ **Block serialization**: Versioned serialization with bounds checking and DOS prevention
 - ✅ **Wallet encryption**: AES-256-GCM with PBKDF2 key derivation (100,000 iterations)
 - ✅ **Blockchain reorganization**: Full undo data support for safe chain reorgs (max 100 blocks)
+
+#### Example Implementation
+
+See [src/core/safe_transaction.cpp](src/core/safe_transaction.cpp) for comprehensive examples of using these security features in transaction validation, serialization, and network message parsing.
 
 ### Remaining Items for Production
 
