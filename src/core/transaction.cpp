@@ -270,7 +270,10 @@ size_t Transaction::get_weight() const {
 }
 
 uint64_t Transaction::get_input_value() const {
-    // TODO: Requires UTXO set lookup
+    // NOTE: This requires UTXO set lookup from blockchain context
+    // Cannot be implemented at transaction level without blockchain reference
+    // Call Blockchain::get_transaction_input_value() instead
+    // Returning 0 as placeholder - this should not be used directly
     return 0;
 }
 
@@ -401,13 +404,93 @@ Transaction Transaction::create_coinbase(
 
 std::vector<uint8_t> UTXO::serialize() const {
     std::vector<uint8_t> buffer;
-    // TODO: Implement
+
+    // Serialize transaction hash (32 bytes)
+    buffer.insert(buffer.end(), tx_hash.begin(), tx_hash.end());
+
+    // Serialize output index (4 bytes)
+    buffer.push_back(static_cast<uint8_t>(output_index & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((output_index >> 8) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((output_index >> 16) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((output_index >> 24) & 0xFF));
+
+    // Serialize block height (4 bytes)
+    buffer.push_back(static_cast<uint8_t>(block_height & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((block_height >> 8) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((block_height >> 16) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((block_height >> 24) & 0xFF));
+
+    // Serialize is_coinbase (1 byte)
+    buffer.push_back(is_coinbase ? 1 : 0);
+
+    // Serialize output value (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        buffer.push_back(static_cast<uint8_t>((output.value >> (i * 8)) & 0xFF));
+    }
+
+    // Serialize script length (4 bytes)
+    uint32_t script_len = static_cast<uint32_t>(output.script_pubkey.size());
+    buffer.push_back(static_cast<uint8_t>(script_len & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((script_len >> 8) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((script_len >> 16) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((script_len >> 24) & 0xFF));
+
+    // Serialize script
+    buffer.insert(buffer.end(), output.script_pubkey.begin(), output.script_pubkey.end());
+
     return buffer;
 }
 
 UTXO UTXO::deserialize(const std::vector<uint8_t>& data) {
     UTXO utxo;
-    // TODO: Implement
+
+    if (data.size() < 49) return utxo;  // Minimum: 32+4+4+1+8 = 49 bytes
+
+    size_t offset = 0;
+
+    // Deserialize transaction hash (32 bytes)
+    std::copy(data.begin() + offset, data.begin() + offset + 32, utxo.tx_hash.begin());
+    offset += 32;
+
+    // Deserialize output index (4 bytes)
+    utxo.output_index = static_cast<uint32_t>(data[offset]) |
+                        (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                        (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                        (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    // Deserialize block height (4 bytes)
+    utxo.block_height = static_cast<uint32_t>(data[offset]) |
+                        (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                        (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                        (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    // Deserialize is_coinbase (1 byte)
+    utxo.is_coinbase = (data[offset] != 0);
+    offset += 1;
+
+    // Deserialize output value (8 bytes)
+    utxo.output.value = 0;
+    for (int i = 0; i < 8; i++) {
+        utxo.output.value |= (static_cast<int64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    if (data.size() < offset + 4) return utxo;
+
+    // Deserialize script length (4 bytes)
+    uint32_t script_len = static_cast<uint32_t>(data[offset]) |
+                          (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                          (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                          (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    if (data.size() < offset + script_len) return utxo;
+
+    // Deserialize script
+    utxo.output.script_pubkey.assign(data.begin() + offset, data.begin() + offset + script_len);
+
     return utxo;
 }
 
