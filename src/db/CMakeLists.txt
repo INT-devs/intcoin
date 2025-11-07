@@ -6,6 +6,7 @@
 
 add_library(db OBJECT
     db.cpp
+    wallet_db.cpp
 )
 
 target_include_directories(db
