@@ -281,6 +281,30 @@ db_autogen/mocs_compilation.cpp.s:
 	cd /Users/neiladamson/Desktop/intcoin && $(MAKE) $(MAKESILENT) -f src/db/CMakeFiles/db.dir/build.make src/db/CMakeFiles/db.dir/db_autogen/mocs_compilation.cpp.s
 .PHONY : db_autogen/mocs_compilation.cpp.s
 
+wallet_db.o: wallet_db.cpp.o
+.PHONY : wallet_db.o
+
+# target to build an object file
+wallet_db.cpp.o:
+	cd /Users/neiladamson/Desktop/intcoin && $(MAKE) $(MAKESILENT) -f src/db/CMakeFiles/db.dir/build.make src/db/CMakeFiles/db.dir/wallet_db.cpp.o
+.PHONY : wallet_db.cpp.o
+
+wallet_db.i: wallet_db.cpp.i
+.PHONY : wallet_db.i
+
+# target to preprocess a source file
+wallet_db.cpp.i:
+	cd /Users/neiladamson/Desktop/intcoin && $(MAKE) $(MAKESILENT) -f src/db/CMakeFiles/db.dir/build.make src/db/CMakeFiles/db.dir/wallet_db.cpp.i
+.PHONY : wallet_db.cpp.i
+
+wallet_db.s: wallet_db.cpp.s
+.PHONY : wallet_db.s
+
+# target to generate assembly for a file
+wallet_db.cpp.s:
+	cd /Users/neiladamson/Desktop/intcoin && $(MAKE) $(MAKESILENT) -f src/db/CMakeFiles/db.dir/build.make src/db/CMakeFiles/db.dir/wallet_db.cpp.s
+.PHONY : wallet_db.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -305,6 +329,9 @@ help:
 	@echo "... db_autogen/mocs_compilation.o"
 	@echo "... db_autogen/mocs_compilation.i"
 	@echo "... db_autogen/mocs_compilation.s"
+	@echo "... wallet_db.o"
+	@echo "... wallet_db.i"
+	@echo "... wallet_db.s"
 .PHONY : help
 
 

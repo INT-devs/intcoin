@@ -255,8 +255,8 @@ bool SOCKS5Proxy::socks5_connect_command(int socket_fd, const std::string& host,
     request.push_back(static_cast<uint8_t>(SOCKS5Command::CONNECT));  // Connect command
     request.push_back(0x00);  // Reserved
 
-    // Address type - domain name
-    request.push_back(static_cast<uint8_t>(SOCKS5AddressType::DOMAIN));
+    // Address type - domain name (0x03 for DOMAIN_NAME to avoid macro collision)
+    request.push_back(static_cast<uint8_t>(SOCKS5AddressType::DOMAIN_NAME));
 
     // Domain name length and name
     request.push_back(static_cast<uint8_t>(host.length()));

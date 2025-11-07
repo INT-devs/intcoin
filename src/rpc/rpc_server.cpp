@@ -534,9 +534,9 @@ Response Server::addnode(const std::vector<std::string>& params) {
         uint16_t port = static_cast<uint16_t>(std::stoi(port_str));
 
         p2p::PeerAddress addr(ip, port);
-        if (network_.connect_to_peer(addr)) {
+        if (network_->connect_to_peer(addr)) {
             return Response("true", "");
-        } else {
+        } else{
             return Response(true, "Failed to connect to peer", "");
         }
     } catch (const std::exception& e) {

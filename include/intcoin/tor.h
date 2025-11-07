@@ -88,10 +88,11 @@ enum class SOCKS5Command : uint8_t {
 
 /**
  * SOCKS5 address types
+ * Note: DOMAIN renamed to DOMAIN_NAME to avoid collision with math.h DOMAIN macro
  */
 enum class SOCKS5AddressType : uint8_t {
     IPV4 = 0x01,
-    DOMAIN = 0x03,
+    DOMAIN_NAME = 0x03,  // Was DOMAIN, renamed to avoid math.h macro collision
     IPV6 = 0x04
 };
 
@@ -317,7 +318,7 @@ private:
     mutable size_t connections_through_tor_;
 
     // Helper methods
-    bool check_tor_available();
+    bool check_tor_available() const;
     bool validate_onion_address(const std::string& addr) const;
 };
 

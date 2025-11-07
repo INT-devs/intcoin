@@ -17,6 +17,7 @@ set(TEST_TARGETS
     test_lightning
     test_tor
     test_security
+    test_dilithium_nist
 )
 
 # Crypto tests
@@ -67,6 +68,13 @@ target_link_libraries(test_security PRIVATE intcoin_core)
 target_compile_definitions(test_security PRIVATE ${TEST_DEFINITIONS})
 target_compile_options(test_security PRIVATE ${TEST_COMPILE_OPTIONS})
 add_test(NAME security_tests COMMAND test_security)
+
+# Dilithium NIST verification tests
+add_executable(test_dilithium_nist test_dilithium_nist.cpp)
+target_link_libraries(test_dilithium_nist PRIVATE intcoin_core)
+target_compile_definitions(test_dilithium_nist PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_dilithium_nist PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME dilithium_nist_tests COMMAND test_dilithium_nist)
 
 # Test coverage (optional, requires gcov/lcov)
 if(ENABLE_COVERAGE)

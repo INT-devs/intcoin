@@ -487,7 +487,7 @@ void Network::handle_inv(const Message& msg, const PeerAddress& from) {
     while (offset + 36 <= msg.payload.size()) {
         std::vector<uint8_t> inv_data(msg.payload.begin() + offset,
                                       msg.payload.begin() + offset + 36);
-        InvVector inv = InvVector::deserialize(inv_data);
+        (void)InvVector::deserialize(inv_data); // Validation only
 
         // Request data we don't have
         Message getdata(MessageType::GETDATA, inv_data);
