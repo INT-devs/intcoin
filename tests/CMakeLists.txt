@@ -4,22 +4,80 @@
 
 # Tests
 
-# C++ unit tests
-add_executable(test_crypto
-    test_crypto.cpp
+# Common test settings
+set(TEST_COMPILE_OPTIONS -Wno-unused-variable -Wno-unused-parameter)
+set(TEST_DEFINITIONS UNDEBUG)  # Disable NDEBUG for tests so assert() works
+
+# Test executables
+set(TEST_TARGETS
+    test_crypto
+    test_blockchain
+    test_wallet
+    test_network
+    test_lightning
+    test_tor
+    test_security
 )
 
-target_link_libraries(test_crypto
-    PRIVATE
-        intcoin_core
-)
-
-# Disable NDEBUG for tests so assert() works
-target_compile_definitions(test_crypto PRIVATE UNDEBUG)
-target_compile_options(test_crypto PRIVATE -Wno-unused-variable)
-
-# Add test
+# Crypto tests
+add_executable(test_crypto test_crypto.cpp)
+target_link_libraries(test_crypto PRIVATE intcoin_core)
+target_compile_definitions(test_crypto PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_crypto PRIVATE ${TEST_COMPILE_OPTIONS})
 add_test(NAME crypto_tests COMMAND test_crypto)
+
+# Blockchain tests
+add_executable(test_blockchain test_blockchain.cpp)
+target_link_libraries(test_blockchain PRIVATE intcoin_core)
+target_compile_definitions(test_blockchain PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_blockchain PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME blockchain_tests COMMAND test_blockchain)
+
+# Wallet tests
+add_executable(test_wallet test_wallet.cpp)
+target_link_libraries(test_wallet PRIVATE intcoin_core)
+target_compile_definitions(test_wallet PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_wallet PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME wallet_tests COMMAND test_wallet)
+
+# Network tests
+add_executable(test_network test_network.cpp)
+target_link_libraries(test_network PRIVATE intcoin_core)
+target_compile_definitions(test_network PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_network PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME network_tests COMMAND test_network)
+
+# Lightning tests
+add_executable(test_lightning test_lightning.cpp)
+target_link_libraries(test_lightning PRIVATE intcoin_core)
+target_compile_definitions(test_lightning PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_lightning PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME lightning_tests COMMAND test_lightning)
+
+# TOR tests
+add_executable(test_tor test_tor.cpp)
+target_link_libraries(test_tor PRIVATE intcoin_core)
+target_compile_definitions(test_tor PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_tor PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME tor_tests COMMAND test_tor)
+
+# Security tests
+add_executable(test_security test_security.cpp)
+target_link_libraries(test_security PRIVATE intcoin_core)
+target_compile_definitions(test_security PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_security PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME security_tests COMMAND test_security)
+
+# Test coverage (optional, requires gcov/lcov)
+if(ENABLE_COVERAGE)
+    include(CodeCoverage)
+    append_coverage_compiler_flags()
+    setup_target_for_coverage_lcov(
+        NAME coverage
+        EXECUTABLE ctest
+        EXCLUDE "/usr/*" "*/tests/*" "*/external/*"
+    )
+endif()
 
 # Python tests (to be added later)
 # find_package(Python3 COMPONENTS Interpreter REQUIRED)
