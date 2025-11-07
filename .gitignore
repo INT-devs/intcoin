@@ -117,6 +117,12 @@ cmake_install.cmake
 install_manifest.txt
 compile_commands.json
 
+# Generated header files
+include/intcoin/config.h
+include/intcoin/version.h
+src/config.h
+src/version.h
+
 # Generated executables
 intcoin-cli
 intcoin-qt
@@ -196,3 +202,14 @@ core.*
 
 # PID files
 *.pid
+
+# Wiki (tracked separately)
+wiki/
+
+# Qt MOC parameter files
+src/qt/moc_*_parameters
+src/qt/*_parameters
+
+# Auto-generated dependency files
+src/*/deps
+src/*/*_autogen/deps
