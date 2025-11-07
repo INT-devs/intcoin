@@ -5,11 +5,7 @@
 # Consensus module
 
 add_library(consensus OBJECT
-    placeholder.cpp
-    # pow.cpp
-    # difficulty.cpp
-    # validation.cpp
-    # Add more as implemented
+    consensus.cpp
 )
 
 target_include_directories(consensus
