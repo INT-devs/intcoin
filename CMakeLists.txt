@@ -4,7 +4,7 @@
 #
 # INTcoin Core CMake Build System
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 # Project information
 project(INTcoin
@@ -103,12 +103,12 @@ include_directories(
 
 # Find required packages
 find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED)
+find_package(OpenSSL 3.0 REQUIRED)
 find_package(RocksDB REQUIRED)
 
 # Qt5 for wallet GUI
 if(BUILD_QT_WALLET)
-    find_package(Qt5 COMPONENTS Core Widgets Network Gui REQUIRED)
+    find_package(Qt5 5.15 COMPONENTS Core Widgets Network Gui REQUIRED)
     set(CMAKE_AUTOMOC ON)
     set(CMAKE_AUTORCC ON)
     set(CMAKE_AUTOUIC ON)
@@ -117,7 +117,7 @@ endif()
 # Boost libraries (simplified for modern Boost/CMake)
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.70.0 REQUIRED)
+find_package(Boost 1.85.0 REQUIRED)
 
 # External dependencies
 add_subdirectory(external/dilithium EXCLUDE_FROM_ALL)

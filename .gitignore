@@ -86,3 +86,15 @@ Desktop.ini
 *.pem
 wallet.dat
 privkey.pem
+
+# Internal documentation (not for public repository)
+DEVELOPMENT-STATUS.md
+docs/IMPLEMENTATION-GUIDE.md
+docs/PROJECT-COMPLETION-SUMMARY.md
+docs/PROJECT-SUMMARY.md
+docs/QUANTUM-CRYPTO-STATUS.md
+docs/PHASE*-STATUS.md
+docs/PHASE*-COMPLETE.md
+docs/CONSENSUS-INTEGRATION.md
+docs/FORK-DETECTION-REORG.md
+docs/QT-GUI-ENHANCEMENTS.md
