@@ -193,9 +193,18 @@ int main(int argc, char* argv[]) {
         if (wallet_test.good()) {
             wallet_test.close();
             log_message(config, "Wallet file found: " + wallet_path);
-            // TODO: Load wallet from file
+
+            // Load wallet from file
             wallet = new HDWallet();
-            log_message(config, "Wallet loaded successfully.");
+            HDWallet loaded = HDWallet::restore_from_file(wallet_path, "");
+            if (!loaded.get_seed().empty()) {
+                *wallet = loaded;
+                log_message(config, "Wallet loaded successfully.");
+            } else {
+                log_message(config, "ERROR: Failed to load wallet from file");
+                delete wallet;
+                return 1;
+            }
         } else {
             log_message(config, "Creating new wallet...");
             wallet = new HDWallet();
@@ -203,7 +212,13 @@ int main(int argc, char* argv[]) {
             wallet->generate_new_key("Default");
             log_message(config, "New wallet created.");
             log_message(config, "Default address: " + wallet->get_all_addresses()[0]);
-            // TODO: Save wallet to file
+
+            // Save wallet to file
+            if (wallet->backup_to_file(wallet_path)) {
+                log_message(config, "Wallet saved to: " + wallet_path);
+            } else {
+                log_message(config, "WARNING: Failed to save wallet to file");
+            }
         }
 
         // Initialize P2P network
@@ -338,9 +353,12 @@ int main(int argc, char* argv[]) {
         // Save wallet
         if (wallet) {
             log_message(config, "Saving wallet...");
-            // TODO: wallet->backup_to_file(wallet_path);
+            if (wallet->backup_to_file(wallet_path)) {
+                log_message(config, "Wallet saved successfully.");
+            } else {
+                log_message(config, "WARNING: Failed to save wallet.");
+            }
             delete wallet;
-            log_message(config, "Wallet saved.");
         }
 
         log_message(config, "");

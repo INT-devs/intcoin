@@ -5,6 +5,7 @@
 #include "intcoin/transaction.h"
 #include "intcoin/crypto.h"
 #include <algorithm>
+#include <cstring>
 
 namespace intcoin {
 
@@ -169,18 +170,81 @@ bool Transaction::validate_structure() const {
 }
 
 bool Transaction::sign(const std::vector<uint8_t>& private_key, size_t input_index) {
-    // TODO: Implement signing
-    return false;
+    if (input_index >= inputs.size()) {
+        return false;
+    }
+
+    // Create signature hash for this input
+    std::vector<uint8_t> sig_hash = get_signature_hash(input_index);
+
+    // Convert private key to Dilithium keypair structure
+    if (private_key.size() != 4896) {  // Dilithium5 private key size
+        return false;
+    }
+
+    crypto::DilithiumKeyPair keypair;
+    std::memcpy(keypair.private_key.data(), private_key.data(), private_key.size());
+
+    // Sign the hash
+    crypto::DilithiumSignature signature = crypto::Dilithium::sign(sig_hash, keypair);
+
+    // Set signature script (signature + pubkey)
+    inputs[input_index].signature_script.clear();
+    inputs[input_index].signature_script.insert(
+        inputs[input_index].signature_script.end(),
+        signature.begin(),
+        signature.end()
+    );
+
+    // Append public key
+    inputs[input_index].signature_script.insert(
+        inputs[input_index].signature_script.end(),
+        keypair.public_key.begin(),
+        keypair.public_key.end()
+    );
+
+    return true;
 }
 
 bool Transaction::verify_signature(size_t input_index) const {
-    // TODO: Implement signature verification
-    return false;
+    if (input_index >= inputs.size()) {
+        return false;
+    }
+
+    const auto& input = inputs[input_index];
+
+    // Signature script should contain: signature (4627 bytes) + pubkey (2592 bytes)
+    constexpr size_t DILITHIUM_SIG_SIZE = 4627;
+    constexpr size_t DILITHIUM_PUBKEY_SIZE = 2592;
+    constexpr size_t EXPECTED_SIZE = DILITHIUM_SIG_SIZE + DILITHIUM_PUBKEY_SIZE;
+
+    if (input.signature_script.size() != EXPECTED_SIZE) {
+        return false;  // Invalid signature script size
+    }
+
+    // Extract signature
+    crypto::DilithiumSignature signature;
+    std::memcpy(signature.data(), input.signature_script.data(), DILITHIUM_SIG_SIZE);
+
+    // Extract public key
+    crypto::DilithiumPubKey pubkey;
+    std::memcpy(pubkey.data(), input.signature_script.data() + DILITHIUM_SIG_SIZE, DILITHIUM_PUBKEY_SIZE);
+
+    // Get signature hash
+    std::vector<uint8_t> sig_hash = get_signature_hash(input_index);
+
+    // Verify signature
+    return crypto::Dilithium::verify(sig_hash, signature, pubkey);
 }
 
 bool Transaction::verify_all_signatures() const {
-    // TODO: Implement verification
-    return false;
+    // Verify all input signatures
+    for (size_t i = 0; i < inputs.size(); ++i) {
+        if (!verify_signature(i)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 Transaction Transaction::create_coinbase(

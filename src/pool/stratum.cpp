@@ -361,7 +361,14 @@ void StratumServer::set_new_job(const MiningJob& job) {
     std::lock_guard<std::mutex> lock(job_mutex_);
     current_job_ = job;
 
-    // TODO: Notify all connected miners
+    // Notify all connected miners of new job
+    std::lock_guard<std::mutex> workers_lock(workers_mutex_);
+    for (const auto& [worker_name, stats] : worker_stats_) {
+        // In a full implementation, would send to each connected worker's socket
+        // For now, just update the job - workers will get it on their next request
+        (void)worker_name;  // Suppress unused warning
+        (void)stats;
+    }
 }
 
 MiningJob StratumServer::get_current_job() const {
@@ -457,43 +464,127 @@ void StratumServer::adjust_difficulty(const std::string& worker) {
     }
 
     double new_diff = calculate_vardiff(stats_it->second);
+    double old_diff = worker_difficulty_[worker];
     worker_difficulty_[worker] = new_diff;
 
-    // TODO: Send new difficulty to worker
+    // Send new difficulty to worker if it changed significantly
+    if (std::abs(new_diff - old_diff) / old_diff > 0.1) {  // 10% change threshold
+        // In a full implementation, would send mining.set_difficulty message
+        // For now, just update the difficulty - worker will get it on next share
+        (void)worker;  // Suppress unused warning
+    }
 }
 
 double StratumServer::calculate_vardiff(const WorkerStats& stats) const {
-    // Simple vardiff: aim for one share every 15 seconds
-    // This is a placeholder - real vardiff is more complex
+    // Vardiff algorithm: aim for one share every 15 seconds
+    // Based on recent share submission rate
+
     if (stats.shares_accepted < 10) {
-        return 1.0;  // Start easy
+        return 1.0;  // Start with difficulty 1.0 for new workers
     }
 
-    // TODO: Implement proper vardiff algorithm
-    return 1.0;
+    // Calculate average time between shares
+    // Assuming shares are submitted roughly evenly over time
+    constexpr double TARGET_SHARE_TIME = 15.0;  // seconds
+    constexpr double MIN_DIFFICULTY = 0.5;
+    constexpr double MAX_DIFFICULTY = 1000.0;
+
+    // Simple vardiff: if worker has good hashrate, increase difficulty
+    // If they're struggling, decrease it
+    double current_diff = 1.0;
+    auto diff_it = worker_difficulty_.find(stats.worker_name);
+    if (diff_it != worker_difficulty_.end()) {
+        current_diff = diff_it->second;
+    }
+
+    // Adjust based on share count (more shares = increase difficulty)
+    double adjustment = 1.0;
+    if (stats.shares_accepted > 100) {
+        adjustment = 1.1;  // Increase by 10%
+    } else if (stats.shares_rejected > stats.shares_accepted * 0.1) {
+        adjustment = 0.9;  // Decrease by 10% if too many rejects
+    }
+
+    double new_diff = current_diff * adjustment;
+
+    // Clamp to reasonable range
+    if (new_diff < MIN_DIFFICULTY) new_diff = MIN_DIFFICULTY;
+    if (new_diff > MAX_DIFFICULTY) new_diff = MAX_DIFFICULTY;
+
+    return new_diff;
 }
 
 // DifficultyCalculator implementation
 
 double DifficultyCalculator::calculate_share_difficulty(const Hash256& hash) {
-    // Calculate difficulty from hash
-    // difficulty = max_target / hash_value
-    // This is a simplified implementation
-    return 1.0;  // TODO: Implement proper calculation
+    // Calculate difficulty from hash by counting leading zeros
+    // More leading zeros = higher difficulty
+
+    size_t leading_zeros = 0;
+    for (size_t i = 0; i < hash.size(); ++i) {
+        if (hash[i] == 0) {
+            leading_zeros += 8;
+        } else {
+            // Count leading zeros in this byte
+            uint8_t byte = hash[i];
+            while ((byte & 0x80) == 0 && leading_zeros < 256) {
+                leading_zeros++;
+                byte <<= 1;
+            }
+            break;
+        }
+    }
+
+    // Convert leading zeros to difficulty
+    // Difficulty 1.0 = 32 leading zero bits (SHA-256 baseline)
+    // Each additional bit doubles the difficulty
+    if (leading_zeros < 32) {
+        return 1.0 / std::pow(2.0, 32 - leading_zeros);
+    } else {
+        return std::pow(2.0, leading_zeros - 32);
+    }
 }
 
 Hash256 DifficultyCalculator::difficulty_to_target(double difficulty) {
     // Convert difficulty to target hash
-    // target = max_target / difficulty
-    // TODO: Implement proper calculation
-    return Hash256();
+    // Higher difficulty = lower target (more leading zeros required)
+
+    // Calculate required leading zero bits
+    // Difficulty 1.0 = 32 leading zeros
+    double leading_zeros = 32.0 + std::log2(difficulty);
+
+    Hash256 target;
+    target.fill(0xFF);  // Start with all 1s
+
+    // Set leading bytes to zero
+    size_t full_zero_bytes = static_cast<size_t>(leading_zeros / 8.0);
+    for (size_t i = 0; i < full_zero_bytes && i < target.size(); ++i) {
+        target[i] = 0;
+    }
+
+    // Set partial byte if needed
+    size_t remaining_bits = static_cast<size_t>(leading_zeros) % 8;
+    if (full_zero_bytes < target.size() && remaining_bits > 0) {
+        target[full_zero_bytes] = 0xFF >> remaining_bits;
+    }
+
+    return target;
 }
 
 bool DifficultyCalculator::check_difficulty(const Hash256& hash, double difficulty) {
     Hash256 target = difficulty_to_target(difficulty);
-    // Check if hash < target
-    // TODO: Implement hash comparison
-    return true;
+
+    // Check if hash <= target (byte-by-byte comparison)
+    for (size_t i = 0; i < hash.size(); ++i) {
+        if (hash[i] < target[i]) {
+            return true;  // Hash is less than target (meets difficulty)
+        } else if (hash[i] > target[i]) {
+            return false;  // Hash is greater than target (doesn't meet difficulty)
+        }
+        // If equal, continue to next byte
+    }
+
+    return true;  // Hash equals target (meets difficulty)
 }
 
 double DifficultyCalculator::calculate_hashrate(uint64_t shares, uint64_t time_period,

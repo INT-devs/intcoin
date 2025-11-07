@@ -734,12 +734,32 @@ crypto::DilithiumKeyPair HDWallet::derive_keypair_from_seed(const std::vector<ui
 }
 
 bool HDWallet::save_to_disk() const {
-    // TODO: Implement wallet persistence
-    return true;
+    // Use default wallet file path in data directory
+    // In production, this should use a configurable data directory
+    std::string wallet_path = "wallet.dat";
+    return backup_to_file(wallet_path);
 }
 
 bool HDWallet::load_from_disk() {
-    // TODO: Implement wallet loading
+    // Use default wallet file path
+    std::string wallet_path = "wallet.dat";
+
+    // Load wallet from file (no password for this method)
+    HDWallet loaded = restore_from_file(wallet_path, "");
+
+    if (loaded.master_seed_.empty()) {
+        return false;  // Failed to load
+    }
+
+    // Copy loaded wallet data to this wallet
+    this->master_seed_ = loaded.master_seed_;
+    this->mnemonic_ = loaded.mnemonic_;
+    this->keys_ = loaded.keys_;
+    this->next_key_index_ = loaded.next_key_index_;
+    this->address_labels_ = loaded.address_labels_;
+    this->encrypted_ = loaded.encrypted_;
+    this->encryption_key_ = loaded.encryption_key_;
+
     return true;
 }
 
