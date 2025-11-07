@@ -89,6 +89,11 @@ privkey.pem
 
 # Internal documentation (not for public repository)
 DEVELOPMENT-STATUS.md
+PROJECT-SUMMARY.md
+PROJECT-COMPLETION-SUMMARY.md
+IMPLEMENTATION-GUIDE.md
+IMPLEMENTATION-SUMMARY.md
+QUANTUM-CRYPTO-STATUS.md
 docs/IMPLEMENTATION-GUIDE.md
 docs/PROJECT-COMPLETION-SUMMARY.md
 docs/PROJECT-SUMMARY.md
@@ -98,3 +103,96 @@ docs/PHASE*-COMPLETE.md
 docs/CONSENSUS-INTEGRATION.md
 docs/FORK-DETECTION-REORG.md
 docs/QT-GUI-ENHANCEMENTS.md
+docs/*-STATUS.md
+docs/*-COMPLETE.md
+docs/*-SUMMARY.md
+docs/*-GUIDE.md
+
+# Build artifacts (generated files)
+Makefile
+CPackConfig.cmake
+CPackSourceConfig.cmake
+CTestTestfile.cmake
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
+# Generated executables
+intcoin-cli
+intcoin-qt
+intcoin-wallet
+intcoin-miner
+intcoind
+intcoin-explorer
+test_*
+
+# Generated libraries
+libintcoin_*.a
+*.so.*
+
+# Qt generated files
+*_autogen/
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.qm
+
+# CMake build artifacts
+CMakeFiles/
+CMakeCache.txt
+*_autogen_timestamp_deps
+*.dir/
+
+# Test executables and outputs
+tests/test_*
+tests/*.log
+tests/*.dat
+
+# External library build artifacts
+external/*/Makefile
+external/*/CMakeFiles/
+external/*/CMakeCache.txt
+external/*/*.a
+external/*/*_autogen/
+
+# Source directory build artifacts
+src/*/Makefile
+src/*/CMakeFiles/
+src/*/*.dir/
+src/*/*_autogen/
+src/*/*.a
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage/
+htmlcov/
+
+# Profiling data
+*.prof
+gmon.out
+perf.data*
+
+# Core dumps
+core
+core.*
+*.core
+
+# Backup files
+*~
+*.backup
+*.bak
+*.old
+
+# Lock files
+*.lock
+.lock-*
+
+# PID files
+*.pid
