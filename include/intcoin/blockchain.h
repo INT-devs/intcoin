@@ -11,6 +11,7 @@
 #include "transaction.h"
 #include "primitives.h"
 #include "merkle.h"
+#include "db.h"
 #include <map>
 #include <unordered_map>
 #include <optional>
@@ -26,6 +27,7 @@ namespace intcoin {
 class Blockchain {
 public:
     Blockchain();
+    Blockchain(const std::string& datadir);  // Constructor with data directory
 
     // Add a new block to the chain
     bool add_block(const Block& block);
@@ -82,14 +84,23 @@ private:
     // Extract address from transaction output
     std::optional<std::string> extract_address(const TxOutput& output) const;
 
-    // Storage
+    // Database initialization
+    bool init_databases(const std::string& datadir);
+
+    // In-memory storage (cache)
     std::unordered_map<Hash256, Block> blocks_;  // All blocks indexed by hash
     std::map<uint32_t, Hash256> block_index_;    // Height to hash mapping
     std::unordered_map<OutPoint, UTXO> utxo_set_;  // All unspent outputs
 
-    // Address indexing
+    // Address indexing (in-memory for now)
     std::unordered_map<std::string, std::vector<OutPoint>> address_index_;  // Address to UTXOs
     std::unordered_map<Hash256, Transaction> transactions_;  // All transactions by hash
+
+    // Persistent storage
+    BlockIndexDB block_db_;
+    UTXODatabase utxo_db_;
+    TransactionIndexDB tx_db_;
+    bool use_database_;  // Whether to use persistent storage
 
     // Chain state
     Hash256 best_block_;

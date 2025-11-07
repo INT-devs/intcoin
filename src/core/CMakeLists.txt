@@ -18,3 +18,10 @@ target_include_directories(core
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_BINARY_DIR}/include
 )
+
+# Link RocksDB for database support
+find_package(RocksDB REQUIRED)
+target_link_libraries(core
+    PUBLIC
+        RocksDB::rocksdb
+)

@@ -9,7 +9,7 @@
 
 namespace intcoin {
 
-Blockchain::Blockchain() : chain_height_(0), total_work_(0) {
+Blockchain::Blockchain() : use_database_(false), chain_height_(0), total_work_(0) {
     // Create and add genesis block
     Block genesis = create_genesis_block();
     Hash256 genesis_hash = genesis.get_hash();
@@ -18,6 +18,60 @@ Blockchain::Blockchain() : chain_height_(0), total_work_(0) {
     block_index_[0] = genesis_hash;
     best_block_ = genesis_hash;
     chain_height_ = 0;
+}
+
+Blockchain::Blockchain(const std::string& datadir)
+    : use_database_(false), chain_height_(0), total_work_(0) {
+
+    // Initialize databases
+    if (init_databases(datadir)) {
+        use_database_ = true;
+
+        // Try to load blockchain state from database
+        auto best_height = block_db_.get_best_height();
+        if (best_height) {
+            // Database exists, load from it
+            chain_height_ = *best_height;
+            auto best_hash = block_db_.get_block_hash(chain_height_);
+            if (best_hash) {
+                best_block_ = *best_hash;
+            }
+        } else {
+            // New database, create genesis block
+            Block genesis = create_genesis_block();
+            add_block(genesis);
+        }
+    } else {
+        // Fall back to in-memory mode
+        Block genesis = create_genesis_block();
+        Hash256 genesis_hash = genesis.get_hash();
+
+        blocks_[genesis_hash] = genesis;
+        block_index_[0] = genesis_hash;
+        best_block_ = genesis_hash;
+        chain_height_ = 0;
+    }
+}
+
+bool Blockchain::init_databases(const std::string& datadir) {
+    bool success = true;
+
+    // Open block database
+    if (!block_db_.open(datadir)) {
+        success = false;
+    }
+
+    // Open UTXO database
+    if (!utxo_db_.open(datadir)) {
+        success = false;
+    }
+
+    // Open transaction index database
+    if (!tx_db_.open(datadir)) {
+        success = false;
+    }
+
+    return success;
 }
 
 Block Blockchain::create_genesis_block() {
@@ -65,6 +119,17 @@ bool Blockchain::add_block(const Block& block) {
         chain_height_ = new_height;
         update_utxo_set(block, true);
         update_address_index(block, true);
+
+        // Persist to database if enabled
+        if (use_database_) {
+            // Serialize block (simple approach: we'd need proper serialization)
+            // For now, just store a placeholder
+            // TODO: Implement proper block serialization
+            std::vector<uint8_t> block_data;  // Placeholder
+
+            block_db_.write_block(block_hash, new_height, block_data);
+            block_db_.set_best_block(block_hash, new_height);
+        }
     }
 
     return true;
@@ -159,12 +224,20 @@ bool Blockchain::verify_transaction(const Transaction& tx) const {
 
 void Blockchain::update_utxo_set(const Block& block, bool connect) {
     if (connect) {
+        // Prepare database batch if using persistent storage
+        UTXODatabase::Batch db_batch;
+
         // Remove spent outputs
         for (const auto& tx : block.transactions) {
             if (!tx.is_coinbase()) {
                 for (const auto& input : tx.inputs) {
                     OutPoint key(input.previous_output.tx_hash, input.previous_output.index);
                     utxo_set_.erase(key);
+
+                    // Remove from database
+                    if (use_database_) {
+                        db_batch.spend_utxo(key);
+                    }
                 }
             }
         }
@@ -180,7 +253,17 @@ void Blockchain::update_utxo_set(const Block& block, bool connect) {
                 utxo.height = chain_height_;
                 utxo.is_coinbase = tx.is_coinbase();
                 utxo_set_[outpoint] = utxo;
+
+                // Add to database
+                if (use_database_) {
+                    db_batch.add_utxo(outpoint, tx.outputs[i], chain_height_);
+                }
             }
+        }
+
+        // Apply database batch
+        if (use_database_) {
+            utxo_db_.apply_batch(db_batch);
         }
     } else {
         // Disconnect block (reorg)
@@ -190,6 +273,11 @@ void Blockchain::update_utxo_set(const Block& block, bool connect) {
             for (uint32_t i = 0; i < tx.outputs.size(); ++i) {
                 OutPoint key(tx_hash, i);
                 utxo_set_.erase(key);
+
+                // Remove from database
+                if (use_database_) {
+                    utxo_db_.erase_utxo(key);
+                }
             }
         }
         // TODO: Add back spent outputs (would need to store them)
