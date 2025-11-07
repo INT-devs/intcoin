@@ -21,11 +21,12 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 - ✅ **Transaction Mempool**: Fee-based transaction prioritization
 - ✅ **Qt GUI Wallet**: Professional cross-platform graphical interface
 - ✅ **JSON-RPC API**: Complete remote control capabilities
-- 🔄 **Lightning Network**: Fast, low-cost payment channels (planned)
-- 🔄 **Smart Contracts**: Decentralized application support (planned)
-- 🔄 **Cross-Chain Bridges**: Interoperability with other blockchains (planned)
+- ✅ **Lightning Network**: Fast, low-cost Layer 2 payment channels
+- ✅ **Smart Contracts**: Secure VM with gas metering and SafeMath
+- ✅ **Cross-Chain Bridges**: Atomic swaps with Bitcoin and Ethereum
 - ✅ **Merkle Tree Structure**: SHA3-256 based efficient transaction verification
 - ✅ **Pure PoW**: No staking, governance, or centralization mechanisms
+- ✅ **Mining Pool Support**: Stratum protocol V1 for pooled mining
 
 ### Specifications
 
@@ -141,6 +142,21 @@ cmake --build . -j$(nproc)
 # Install (optional)
 sudo cmake --install .
 ```
+
+### Installation Scripts
+
+Automated installation scripts are available for various platforms:
+
+**Linux:**
+- Debian/Ubuntu: `./scripts/install-debian.sh`
+- Fedora/RHEL: `./scripts/install-fedora.sh`
+- Arch Linux: `./scripts/install-arch.sh`
+
+**FreeBSD:**
+- `./scripts/install-freebsd.sh`
+
+**Windows:**
+- PowerShell installer: `.\scripts\install-windows.ps1`
 
 For detailed platform-specific instructions, see:
 - Windows: [docs/BUILD-WINDOWS.md](docs/BUILD-WINDOWS.md)
@@ -259,6 +275,51 @@ cmake .. -DBUILD_TESTS=ON
 ./intcoin-miner -t 4  # Use 4 threads
 ```
 
+## Advanced Features
+
+### Lightning Network
+
+INTcoin includes a fully-featured Lightning Network implementation for instant, low-cost transactions:
+
+**Current Features:**
+- Payment channels with HTLC support
+- Multi-hop routing with onion encryption
+- BOLT #11 invoice support
+- Channel management (open, close, force-close)
+- Real-time fee estimation
+
+**Future Enhancements:**
+- **Watchtowers**: Third-party monitoring services for channel security
+- **Submarine Swaps**: Seamless on-chain ↔ off-chain conversions
+- **Atomic Multi-Path Payments (AMP)**: Split large payments across multiple routes
+- **Trampoline Routing**: Lightweight routing for mobile clients
+- **Channel Factories**: Batch channel creation for efficiency
+- **Splicing**: Dynamic channel capacity adjustments without closing
+- **Dual-Funded Channels**: Both parties contribute to initial funding
+
+See [src/lightning/README.md](src/lightning/README.md) for complete documentation.
+
+### Smart Contracts
+
+Secure virtual machine with comprehensive safety features:
+- Gas metering to prevent infinite loops
+- SafeMath for overflow protection
+- Memory and stack safety
+- ERC20-compatible token support
+- Security analyzer for vulnerability detection
+
+See [src/contracts/README.md](src/contracts/README.md) for contract development guide.
+
+### Cross-Chain Bridges
+
+Trustless atomic swaps with other blockchains:
+- Bitcoin bridge with SPV proofs
+- Ethereum bridge with smart contract integration
+- Hash Time Locked Contracts (HTLC)
+- Multi-signature security
+
+See [src/bridge/README.md](src/bridge/README.md) for usage examples.
+
 ## Testing
 
 ```bash
@@ -268,6 +329,15 @@ python3 -m pytest
 
 # Run C++ unit tests
 ./build/tests/intcoin-tests
+
+# Run Lightning Network tests
+./build/tests/test_lightning
+
+# Run smart contract VM tests
+./build/tests/test_contracts
+
+# Run bridge tests
+./build/tests/test_bridge
 ```
 
 ## Network Types
@@ -288,11 +358,22 @@ See the [docs](docs/) directory for detailed documentation:
 - [API Reference](docs/api.md)
 - [Mining Guide](docs/mining.md)
 - [Wallet Guide](docs/wallet.md)
-- [Lightning Network](docs/lightning.md)
-- [Smart Contracts](docs/contracts.md)
-- [Cross-Chain Bridges](docs/bridges.md)
+- [Lightning Network](src/lightning/README.md) - Layer 2 payment channels
+- [Smart Contracts](src/contracts/README.md) - Secure VM and contract development
+- [Cross-Chain Bridges](src/bridge/README.md) - Atomic swaps with other chains
+- [Mining Pools](src/pool/README.md) - Stratum protocol implementation
 
 ## Security
+
+### Security Features Implemented
+
+INTcoin implements comprehensive security measures throughout the codebase:
+
+- ✅ **Input validation on all external data**: All RPC commands, P2P messages, and contract calls validate inputs
+- ✅ **Integer overflow protection**: SafeMath library for all arithmetic operations (returns `std::optional`)
+- ✅ **Memory safety**: Bounds checking on all array/memory access, no buffer overflows
+
+### Security Reporting
 
 If you discover a security vulnerability, please email security@international-coin.org with details. Do not open a public issue.
 
@@ -304,6 +385,27 @@ All security communications should be encrypted with our GPG key:
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Known Issues and TODOs
+
+The following items need to be addressed before production release:
+
+- ⚠️ **Block serialization is placeholder**: Current implementation needs proper versioning and validation
+- ⚠️ **Wallet encryption is placeholder XOR**: Must implement AES-256-GCM encryption before mainnet
+- ⚠️ **Full reorg support needs undo data**: Blockchain reorganization requires transaction undo information
+
+### Current Development Phase
+
+- **Phase 12**: Full P2P Implementation (in progress)
+  - Enhanced peer discovery
+  - Connection management improvements
+  - Network protocol optimizations
+
+- **Phase 13**: Testing & Production Readiness (planned)
+  - Comprehensive security audits
+  - Stress testing and load testing
+  - Testnet deployment and validation
+  - Production hardening
 
 ## Roadmap
 
