@@ -6,20 +6,12 @@
 
 # Source files
 set(LIGHTNING_SOURCES
-    channel.cpp
-    routing.cpp
-    invoice.cpp
-    lightning_node.cpp
-    onion.cpp
-    htlc.cpp
+    lightning.cpp
 )
 
 # Header files
 set(LIGHTNING_HEADERS
-    ${CMAKE_SOURCE_DIR}/include/intcoin/lightning/channel.h
-    ${CMAKE_SOURCE_DIR}/include/intcoin/lightning/routing.h
-    ${CMAKE_SOURCE_DIR}/include/intcoin/lightning/invoice.h
-    ${CMAKE_SOURCE_DIR}/include/intcoin/lightning/lightning_node.h
+    ${CMAKE_SOURCE_DIR}/include/intcoin/lightning.h
 )
 
 # Create library
