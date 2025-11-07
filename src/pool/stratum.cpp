@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <cstring>
+#include <cmath>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -314,8 +315,32 @@ bool StratumServer::validate_share(const MiningShare& share) const {
         return false;  // Stale share
     }
 
-    // TODO: Validate hash meets difficulty
-    // This would involve reconstructing the block and checking PoW
+    // Validate hash meets difficulty requirement
+    // Check if hash has sufficient leading zeros for the difficulty
+    // Count leading zero bits in the hash
+    size_t leading_zeros = 0;
+    for (size_t i = 0; i < share.hash.size(); ++i) {
+        if (share.hash[i] == 0) {
+            leading_zeros += 8;
+        } else {
+            // Count leading zeros in this byte
+            uint8_t byte = share.hash[i];
+            while ((byte & 0x80) == 0 && leading_zeros < 256) {
+                leading_zeros++;
+                byte <<= 1;
+            }
+            break;
+        }
+    }
+
+    // Calculate required leading zeros from difficulty
+    // Difficulty 1.0 = approximately 32 leading zero bits (for SHA-256)
+    // Higher difficulty = more leading zeros required
+    size_t required_zeros = static_cast<size_t>(32 + std::log2(share.difficulty));
+
+    if (leading_zeros < required_zeros) {
+        return false;  // Hash doesn't meet difficulty requirement
+    }
 
     return true;
 }
