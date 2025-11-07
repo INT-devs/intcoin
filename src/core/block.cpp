@@ -250,19 +250,27 @@ uint64_t Block::get_total_fees() const {
 }
 
 uint64_t Block::get_block_reward(uint32_t height) {
-    // Initial reward: 50 INT
-    // Halving every 210,000 blocks (approximately 4 years at 2-minute blocks)
-    const uint64_t initial_reward = 50 * COIN;
+    // Initial reward: 100 INT
+    // 12.5% reduction every 210,000 blocks (approximately 4 years at 2-minute blocks)
+    // Each halving: reward = reward * 0.875 (87.5% of previous)
+    const uint64_t initial_reward = 100 * COIN;
     const uint32_t halving_interval = 210000;
 
     uint32_t halvings = height / halving_interval;
 
-    // Max 64 halvings (reward becomes 0)
-    if (halvings >= 64) {
+    // After ~53 halvings, reward becomes negligible (< 1 satoshi)
+    if (halvings >= 53) {
         return 0;
     }
 
-    return initial_reward >> halvings;
+    // Calculate reward with 12.5% reduction per halving
+    // reward = initial_reward * (0.875)^halvings
+    uint64_t reward = initial_reward;
+    for (uint32_t i = 0; i < halvings; ++i) {
+        reward = (reward * 875) / 1000;  // Multiply by 0.875 (87.5%)
+    }
+
+    return reward;
 }
 
 bool Block::verify_block_reward(uint32_t height) const {

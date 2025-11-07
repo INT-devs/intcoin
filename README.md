@@ -33,15 +33,16 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 |-----------|-------|
 | Ticker | INT |
 | Change Unit | INTS |
-| Max Supply | 221 Trillion INT |
+| Max Supply | ~10.56 Billion INT |
 | Block Time | 2 minutes (120 seconds) |
 | Consensus | Proof of Work (PoW) |
 | Mining Algorithm | SHA-256 (quantum-era ASIC-resistant) |
 | Hash Function | SHA3-256 (transactions, merkle trees) |
 | Signature Scheme | CRYSTALS-Dilithium5 (NIST Level 5) |
 | Key Exchange | CRYSTALS-Kyber1024 (NIST Level 5) |
-| Initial Reward | 50 INT |
-| Halving Interval | 210,000 blocks (~4 years) |
+| Initial Reward | 100 INT |
+| Reward Reduction | 12.5% per interval (87.5% retained) |
+| Reduction Interval | 210,000 blocks (~4 years) |
 | Address Format | Base58Check |
 
 ## Project Information
