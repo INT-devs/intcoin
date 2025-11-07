@@ -5,6 +5,7 @@
 # Qt GUI Wallet
 
 set(QT_SOURCES
+    main.cpp
     mainwindow.cpp
 )
 

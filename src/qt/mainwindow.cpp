@@ -8,6 +8,9 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QHeaderView>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSettings>
@@ -59,27 +62,14 @@ void MainWindow::setup_ui() {
 
     // Create central widget with tabs
     QTabWidget* tabs = new QTabWidget(this);
-
-    // Create tabs
-    QWidget* walletTab = new QWidget();
-    QWidget* transactionsTab = new QWidget();
-    QWidget* miningTab = new QWidget();
-    QWidget* networkTab = new QWidget();
-    QWidget* consoleTab = new QWidget();
-
-    create_wallet_tab();
-    create_transactions_tab();
-    create_mining_tab();
-    create_network_tab();
-    create_console_tab();
-
-    tabs->addTab(walletTab, "Wallet");
-    tabs->addTab(transactionsTab, "Transactions");
-    tabs->addTab(miningTab, "Mining");
-    tabs->addTab(networkTab, "Network");
-    tabs->addTab(consoleTab, "Console");
-
     setCentralWidget(tabs);
+
+    // Create and add tabs
+    tabs->addTab(create_wallet_tab(), "Wallet");
+    tabs->addTab(create_transactions_tab(), "Transactions");
+    tabs->addTab(create_mining_tab(), "Mining");
+    tabs->addTab(create_network_tab(), "Network");
+    tabs->addTab(create_console_tab(), "Console");
 }
 
 void MainWindow::create_menu_bar() {
@@ -124,8 +114,8 @@ void MainWindow::create_status_bar() {
     setStatusBar(statusBar);
 }
 
-void MainWindow::create_wallet_tab() {
-    QWidget* walletTab = new QWidget(this);
+QWidget* MainWindow::create_wallet_tab() {
+    QWidget* walletTab = new QWidget();
     QVBoxLayout* mainLayout = new QVBoxLayout(walletTab);
 
     // Balance section
@@ -178,10 +168,11 @@ void MainWindow::create_wallet_tab() {
     mainLayout->addWidget(addressGroup);
 
     mainLayout->addStretch();
+    return walletTab;
 }
 
-void MainWindow::create_transactions_tab() {
-    QWidget* transactionsTab = new QWidget(this);
+QWidget* MainWindow::create_transactions_tab() {
+    QWidget* transactionsTab = new QWidget();
     QVBoxLayout* layout = new QVBoxLayout(transactionsTab);
 
     transactionTable_ = new QTableWidget(0, 5, transactionsTab);
@@ -191,10 +182,11 @@ void MainWindow::create_transactions_tab() {
     transactionTable_->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     layout->addWidget(transactionTable_);
+    return transactionsTab;
 }
 
-void MainWindow::create_mining_tab() {
-    QWidget* miningTab = new QWidget(this);
+QWidget* MainWindow::create_mining_tab() {
+    QWidget* miningTab = new QWidget();
     QVBoxLayout* mainLayout = new QVBoxLayout(miningTab);
 
     // Mining controls
@@ -234,10 +226,11 @@ void MainWindow::create_mining_tab() {
 
     mainLayout->addWidget(statsGroup);
     mainLayout->addStretch();
+    return miningTab;
 }
 
-void MainWindow::create_network_tab() {
-    QWidget* networkTab = new QWidget(this);
+QWidget* MainWindow::create_network_tab() {
+    QWidget* networkTab = new QWidget();
     QVBoxLayout* mainLayout = new QVBoxLayout(networkTab);
 
     // Peer list
@@ -270,10 +263,11 @@ void MainWindow::create_network_tab() {
 
     mainLayout->addWidget(addPeerGroup);
     mainLayout->addStretch();
+    return networkTab;
 }
 
-void MainWindow::create_console_tab() {
-    QWidget* consoleTab = new QWidget(this);
+QWidget* MainWindow::create_console_tab() {
+    QWidget* consoleTab = new QWidget();
     QVBoxLayout* layout = new QVBoxLayout(consoleTab);
 
     // Console output
@@ -302,6 +296,7 @@ void MainWindow::create_console_tab() {
     inputLayout->addWidget(consoleInput_);
     inputLayout->addWidget(executeButton);
     layout->addLayout(inputLayout);
+    return consoleTab;
 }
 
 // Menu action handlers
@@ -393,7 +388,8 @@ void MainWindow::on_disconnectPeerButton_clicked() {
 void MainWindow::update_balance() {
     if (wallet_ && blockchain_) {
         uint64_t balance = wallet_->get_balance(*blockchain_);
-        // TODO: Update balance display
+        double balance_coins = static_cast<double>(balance) / COIN;
+        balanceLabel_->setText(QString::number(balance_coins, 'f', 8) + " INT");
     }
 }
 

@@ -71,11 +71,11 @@ private:
     void setup_ui();
     void create_menu_bar();
     void create_status_bar();
-    void create_wallet_tab();
-    void create_transactions_tab();
-    void create_mining_tab();
-    void create_network_tab();
-    void create_console_tab();
+    QWidget* create_wallet_tab();
+    QWidget* create_transactions_tab();
+    QWidget* create_mining_tab();
+    QWidget* create_network_tab();
+    QWidget* create_console_tab();
 
     // Core components
     std::unique_ptr<Blockchain> blockchain_;
