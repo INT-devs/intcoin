@@ -7,6 +7,7 @@
 add_library(network OBJECT
     placeholder.cpp
     p2p.cpp
+    tor.cpp
     # net.cpp
     # peer.cpp
     # protocol.cpp

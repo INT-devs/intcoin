@@ -24,6 +24,7 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 - ✅ **Lightning Network**: Fast, low-cost Layer 2 payment channels
 - ✅ **Smart Contracts**: Secure VM with gas metering and SafeMath
 - ✅ **Cross-Chain Bridges**: Atomic swaps with Bitcoin and Ethereum
+- ✅ **TOR Support**: Anonymous networking with hidden service capability
 - ✅ **Merkle Tree Structure**: SHA3-256 based efficient transaction verification
 - ✅ **Pure PoW**: No staking, governance, or centralization mechanisms
 - ✅ **Mining Pool Support**: Stratum protocol V1 for pooled mining
