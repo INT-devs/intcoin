@@ -106,12 +106,17 @@ private:
     // Consensus
     consensus::ConsensusParams consensus_params_;
     consensus::DifficultyCalculator difficulty_calc_;
+    consensus::ForkDetector fork_detector_;
     consensus::CheckpointSystem checkpoint_system_;
 
     // Chain state
     Hash256 best_block_;
     uint32_t chain_height_;
     uint64_t total_work_ [[maybe_unused]];  // Reserved for future difficulty tracking
+
+    // Fork handling
+    bool handle_potential_fork(const Block& new_block, uint32_t new_height);
+    bool perform_reorganization(const consensus::ReorgHandler::ReorgInfo& reorg_info);
 };
 
 } // namespace intcoin

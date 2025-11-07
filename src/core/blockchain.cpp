@@ -13,6 +13,7 @@ Blockchain::Blockchain()
     : use_database_(false),
       consensus_params_(),  // Default mainnet parameters
       difficulty_calc_(consensus_params_),
+      fork_detector_(consensus_params_),
       checkpoint_system_(consensus_params_),
       chain_height_(0),
       total_work_(0) {
@@ -32,6 +33,7 @@ Blockchain::Blockchain(const std::string& datadir)
     : use_database_(false),
       consensus_params_(),  // Default mainnet parameters
       difficulty_calc_(consensus_params_),
+      fork_detector_(consensus_params_),
       checkpoint_system_(consensus_params_),
       chain_height_(0),
       total_work_(0) {
@@ -129,12 +131,13 @@ bool Blockchain::add_block(const Block& block) {
         return false;  // Block doesn't match checkpoint
     }
 
-    // Add block to chain
+    // Add block to chain storage
     blocks_[block_hash] = block;
-    block_index_[new_height] = block_hash;
 
-    // Update chain if this is the best block
+    // Check if this creates a fork or extends the main chain
     if (new_height > chain_height_) {
+        // Simple case: extends main chain
+        block_index_[new_height] = block_hash;
         best_block_ = block_hash;
         chain_height_ = new_height;
         update_utxo_set(block, true);
@@ -142,14 +145,42 @@ bool Blockchain::add_block(const Block& block) {
 
         // Persist to database if enabled
         if (use_database_) {
-            // Serialize block (simple approach: we'd need proper serialization)
-            // For now, just store a placeholder
-            // TODO: Implement proper block serialization
             std::vector<uint8_t> block_data;  // Placeholder
-
             block_db_.write_block(block_hash, new_height, block_data);
             block_db_.set_best_block(block_hash, new_height);
         }
+    } else if (new_height == chain_height_) {
+        // Potential fork at same height - need to check accumulated work
+        return handle_potential_fork(block, new_height);
+    } else {
+        // Block builds on an older chain - potential reorganization needed
+        // Detect forks and select best chain
+        auto forks = fork_detector_.detect_forks(block_index_, blocks_);
+
+        if (forks.size() > 1) {
+            // Multiple competing chains found
+            auto best_chain = fork_detector_.select_best_chain(forks);
+
+            // Check if best chain is different from current chain
+            if (best_chain.tip_hash != best_block_) {
+                // Need to reorganize to the better chain
+                auto reorg_info = consensus::ReorgHandler::calculate_reorg(
+                    best_block_, best_chain.tip_hash, blocks_);
+
+                // Validate reorganization
+                if (consensus::ReorgHandler::validate_reorg(reorg_info, consensus_params_.max_reorg_depth)) {
+                    // Check if reorg violates any checkpoints (use common ancestor)
+                    if (!checkpoint_system_.reorg_violates_checkpoint(
+                            reorg_info.reorg_depth, best_chain.tip_hash)) {
+                        // Perform the reorganization
+                        return perform_reorganization(reorg_info);
+                    }
+                }
+            }
+        }
+
+        // If no reorganization needed, just store the block as an orphan/side chain block
+        // It might become part of the main chain later
     }
 
     return true;
@@ -418,6 +449,113 @@ std::optional<std::string> Blockchain::extract_address(const TxOutput& output) c
     }
 
     return std::nullopt;
+}
+
+// Fork handling implementation
+
+bool Blockchain::handle_potential_fork(const Block& new_block, uint32_t new_height) {
+    // Fork at same height as current tip
+    // Compare accumulated work to decide which chain to follow
+
+    Hash256 new_hash = new_block.get_hash();
+
+    // Calculate work for both chains
+    double current_work = fork_detector_.calculate_chain_work(best_block_, blocks_);
+    double new_work = fork_detector_.calculate_chain_work(new_hash, blocks_);
+
+    if (new_work > current_work) {
+        // New chain has more work - switch to it
+        Hash256 old_best = best_block_;
+
+        // Update to new tip
+        block_index_[new_height] = new_hash;
+        best_block_ = new_hash;
+
+        // Disconnect old tip and connect new tip
+        Block old_block = blocks_[old_best];
+        update_utxo_set(old_block, false);  // Disconnect
+        update_address_index(old_block, false);
+
+        update_utxo_set(new_block, true);  // Connect
+        update_address_index(new_block, true);
+
+        // Persist to database
+        if (use_database_) {
+            std::vector<uint8_t> block_data;
+            block_db_.write_block(new_hash, new_height, block_data);
+            block_db_.set_best_block(new_hash, new_height);
+        }
+
+        return true;
+    }
+
+    // Current chain has more work, keep it
+    // New block is stored but not on main chain
+    return true;
+}
+
+bool Blockchain::perform_reorganization(const consensus::ReorgHandler::ReorgInfo& reorg_info) {
+    // Perform chain reorganization
+    // 1. Disconnect blocks from old chain
+    // 2. Connect blocks from new chain
+    // 3. Update UTXO set and indexes
+    // 4. Update best block and height
+
+    // Disconnect blocks in reverse order
+    for (auto it = reorg_info.disconnect_blocks.rbegin();
+         it != reorg_info.disconnect_blocks.rend(); ++it) {
+
+        const Hash256& block_hash = *it;
+        Block block = blocks_[block_hash];
+
+        // Disconnect from UTXO set
+        update_utxo_set(block, false);
+        update_address_index(block, false);
+
+        // Remove from block index
+        // Find and remove this block from the index
+        for (auto index_it = block_index_.begin(); index_it != block_index_.end(); ++index_it) {
+            if (index_it->second == block_hash) {
+                block_index_.erase(index_it);
+                break;
+            }
+        }
+    }
+
+    // Connect new blocks in forward order
+    // Height starts from common ancestor + 1
+    uint32_t height = chain_height_ - reorg_info.reorg_depth + 1;
+    for (const auto& block_hash : reorg_info.connect_blocks) {
+        Block block = blocks_[block_hash];
+
+        // Connect to UTXO set
+        update_utxo_set(block, true);
+        update_address_index(block, true);
+
+        // Add to block index
+        block_index_[height] = block_hash;
+
+        // Persist to database
+        if (use_database_) {
+            std::vector<uint8_t> block_data;
+            block_db_.write_block(block_hash, height, block_data);
+        }
+
+        height++;
+    }
+
+    // Update chain state
+    if (!reorg_info.connect_blocks.empty()) {
+        best_block_ = reorg_info.connect_blocks.back();
+        chain_height_ = height - 1;
+
+        // Update best block in database
+        if (use_database_) {
+            block_db_.set_best_block(best_block_, chain_height_);
+        }
+    }
+
+    return true;
 }
 
 } // namespace intcoin
