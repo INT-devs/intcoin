@@ -5,6 +5,7 @@
 #include "intcoin/block.h"
 #include "intcoin/crypto.h"
 #include "intcoin/merkle.h"
+#include "intcoin/serialization.h"
 #include <cstring>
 
 namespace intcoin {
@@ -138,58 +139,88 @@ bool BlockHeader::check_proof_of_work() const {
 // Block implementation
 
 std::vector<uint8_t> Block::serialize() const {
-    std::vector<uint8_t> buffer;
+    serialization::Serializer s(serialization::MAX_BLOCK_SIZE);
 
-    // Serialize header
+    // Write version header
+    serialization::VersionHeader version_header{
+        serialization::SERIALIZATION_VERSION,
+        serialization::VersionHeader::TYPE_BLOCK
+    };
+    version_header.serialize(s);
+
+    // Serialize block header
     std::vector<uint8_t> header_data = header.serialize();
-    buffer.insert(buffer.end(), header_data.begin(), header_data.end());
+    s.write_bytes(header_data.data(), header_data.size());
 
-    // Transaction count (simple 4-byte count for now)
-    uint32_t tx_count = static_cast<uint32_t>(transactions.size());
-    buffer.push_back(static_cast<uint8_t>(tx_count & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((tx_count >> 8) & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((tx_count >> 16) & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((tx_count >> 24) & 0xFF));
+    // Transaction count (with bounds checking via varint)
+    s.write_varint(transactions.size());
 
-    // Serialize transactions
+    // Serialize each transaction
     for (const auto& tx : transactions) {
         std::vector<uint8_t> tx_data = tx.serialize();
-        buffer.insert(buffer.end(), tx_data.begin(), tx_data.end());
+        s.write_bytes(tx_data.data(), tx_data.size());
     }
 
-    return buffer;
+    return s.data();
 }
 
 Block Block::deserialize(const std::vector<uint8_t>& data) {
     Block block;
+    serialization::Deserializer d(data);
 
-    if (data.size() < 92) {  // 88 header + 4 tx count
+    // Read and validate version header
+    auto version_header = serialization::VersionHeader::deserialize(d);
+    if (!version_header) {
+        return block;  // Invalid version header
+    }
+
+    if (version_header->type != serialization::VersionHeader::TYPE_BLOCK) {
+        return block;  // Wrong object type
+    }
+
+    if (version_header->version != serialization::SERIALIZATION_VERSION) {
+        // Handle version migration here if needed
         return block;
     }
 
-    size_t offset = 0;
+    // Deserialize block header (88 bytes)
+    auto header_bytes = d.read_bytes(88);
+    if (!header_bytes) {
+        return block;
+    }
+    block.header = BlockHeader::deserialize(*header_bytes);
 
-    // Deserialize header
-    std::vector<uint8_t> header_data(data.begin(), data.begin() + 88);
-    block.header = BlockHeader::deserialize(header_data);
-    offset += 88;
+    // Read transaction count
+    auto tx_count = d.read_varint();
+    if (!tx_count) {
+        return block;
+    }
 
-    // Transaction count
-    uint32_t tx_count = static_cast<uint32_t>(data[offset]) |
-                        (static_cast<uint32_t>(data[offset + 1]) << 8) |
-                        (static_cast<uint32_t>(data[offset + 2]) << 16) |
-                        (static_cast<uint32_t>(data[offset + 3]) << 24);
-    offset += 4;
+    // Validate transaction count (prevent DOS)
+    if (*tx_count > 1000000) {  // Reasonable max transactions per block
+        return block;
+    }
 
-    // Deserialize transactions
+    // Deserialize each transaction
     block.transactions.clear();
-    block.transactions.reserve(tx_count);
+    block.transactions.reserve(static_cast<size_t>(*tx_count));
 
-    for (uint32_t i = 0; i < tx_count; ++i) {
-        std::vector<uint8_t> remaining(data.begin() + offset, data.end());
-        Transaction tx = Transaction::deserialize(remaining);
+    for (uint64_t i = 0; i < *tx_count; ++i) {
+        if (d.remaining() == 0) {
+            // Not enough data for remaining transactions
+            return Block{};  // Return empty block on error
+        }
+
+        // Read transaction data
+        std::vector<uint8_t> remaining_data(d.remaining());
+        std::copy(data.data() + d.offset(), data.data() + data.size(), remaining_data.begin());
+
+        Transaction tx = Transaction::deserialize(remaining_data);
         block.transactions.push_back(tx);
-        offset += tx.serialize().size();
+
+        // Skip the bytes we just read
+        size_t tx_size = tx.serialize().size();
+        d.skip(tx_size);
     }
 
     return block;
