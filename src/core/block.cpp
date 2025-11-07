@@ -250,30 +250,25 @@ uint64_t Block::get_total_fees() const {
 }
 
 uint64_t Block::get_block_reward(uint32_t height) {
-    // 100-year emission schedule
+    // 221 Trillion INT emission schedule
     // Block time: 2 minutes (262,800 blocks/year)
-    // Reduction: 20% every 4 years (80% retained)
-    // Total emission period: 100 years (25 intervals of 4 years each)
-    // Initial reward: 100 INT
+    // Halving: 50% every 4 years (traditional Bitcoin-style)
+    // Halving interval: 1,051,200 blocks (~4 years)
+    // Initial reward: 105,113,636 INT
+    // Max supply: 221 Trillion INT
 
-    const uint64_t initial_reward = 100 * COIN;
-    const uint32_t reduction_interval = 1051200;  // 4 years (262,800 * 4)
+    const uint64_t initial_reward = 105113636ULL * COIN;
+    const uint32_t halving_interval = 1051200;  // 4 years (262,800 * 4)
 
-    uint32_t intervals = height / reduction_interval;
+    uint32_t halvings = height / halving_interval;
 
-    // After 25 intervals (100 years), emission ends
-    if (intervals >= 25) {
+    // After 64 halvings, reward becomes 0
+    if (halvings >= 64) {
         return 0;
     }
 
-    // Calculate reward with 20% reduction per interval
-    // reward = initial_reward * (0.80)^intervals
-    uint64_t reward = initial_reward;
-    for (uint32_t i = 0; i < intervals; ++i) {
-        reward = (reward * 800) / 1000;  // Multiply by 0.80 (80%)
-    }
-
-    return reward;
+    // Traditional Bitcoin-style halving: reward = initial_reward / (2^halvings)
+    return initial_reward >> halvings;
 }
 
 bool Block::verify_block_reward(uint32_t height) const {
