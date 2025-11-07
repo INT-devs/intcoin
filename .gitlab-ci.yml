@@ -89,8 +89,6 @@ build:ubuntu-22.04:
       - build/intcoin-miner
     reports:
       dotenv: build.env
-  tags:
-    - docker
 
 # Ubuntu 24.04 LTS
 build:ubuntu-24.04:
@@ -131,8 +129,6 @@ build:ubuntu-24.04:
       - build/intcoin-cli
       - build/intcoin-qt
       - build/intcoin-miner
-  tags:
-    - docker
 
 # Debian 12 (Bookworm)
 build:debian-12:
@@ -167,8 +163,6 @@ build:debian-12:
       - build/intcoind
       - build/intcoin-cli
       - build/intcoin-qt
-  tags:
-    - docker
 
 # Fedora Latest
 build:fedora:
@@ -202,8 +196,6 @@ build:fedora:
       - build/intcoind
       - build/intcoin-cli
       - build/intcoin-qt
-  tags:
-    - docker
 
 # Arch Linux
 build:arch:
@@ -238,8 +230,6 @@ build:arch:
       - build/intcoind
       - build/intcoin-cli
       - build/intcoin-qt
-  tags:
-    - docker
 
 # ============================================================================
 # TESTS
@@ -270,8 +260,6 @@ test:unit:
     when: always
     reports:
       junit: build/test-results/*.xml
-  tags:
-    - docker
 
 test:integration:
   stage: test
@@ -289,8 +277,6 @@ test:integration:
     - cd tests
     - python3 -m pytest -v
   allow_failure: true
-  tags:
-    - docker
 
 # ============================================================================
 # PACKAGES
@@ -319,8 +305,6 @@ package:deb:
   only:
     - main
     - tags
-  tags:
-    - docker
 
 package:rpm:
   stage: package
@@ -342,8 +326,6 @@ package:rpm:
   only:
     - main
     - tags
-  tags:
-    - docker
 
 package:tarball:
   stage: package
@@ -366,8 +348,6 @@ package:tarball:
   only:
     - main
     - tags
-  tags:
-    - docker
 
 # ============================================================================
 # SECURITY SCANNING (SOOS)
@@ -388,8 +368,6 @@ soos-sca-analysis:
   only:
     - main
     - merge_requests
-  tags:
-    - docker
 
 # ============================================================================
 # PERFORMANCE BENCHMARKS
@@ -415,8 +393,6 @@ benchmark:mining:
   only:
     - main
     - tags
-  tags:
-    - docker
 
 # ============================================================================
 # RELEASE BUILDS (tags only)
@@ -456,8 +432,6 @@ release:ubuntu:
       - build/INTcoin-*.tar.gz
   only:
     - tags
-  tags:
-    - docker
 
 # ============================================================================
 # DOCUMENTATION
@@ -481,8 +455,6 @@ pages:
   only:
     - main
   allow_failure: true
-  tags:
-    - docker
 
 # ============================================================================
 # SOOS DAST ANALYSIS
@@ -505,8 +477,6 @@ soos-dast-analysis:
   only:
     - main
     - tags
-  tags:
-    - docker
 
 # ============================================================================
 # WORKFLOW RULES
