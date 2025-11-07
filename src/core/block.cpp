@@ -250,24 +250,27 @@ uint64_t Block::get_total_fees() const {
 }
 
 uint64_t Block::get_block_reward(uint32_t height) {
+    // 100-year emission schedule
+    // Block time: 2 minutes (262,800 blocks/year)
+    // Reduction: 20% every 4 years (80% retained)
+    // Total emission period: 100 years (25 intervals of 4 years each)
     // Initial reward: 100 INT
-    // 12.5% reduction every 210,000 blocks (approximately 4 years at 2-minute blocks)
-    // Each halving: reward = reward * 0.875 (87.5% of previous)
+
     const uint64_t initial_reward = 100 * COIN;
-    const uint32_t halving_interval = 210000;
+    const uint32_t reduction_interval = 1051200;  // 4 years (262,800 * 4)
 
-    uint32_t halvings = height / halving_interval;
+    uint32_t intervals = height / reduction_interval;
 
-    // After ~53 halvings, reward becomes negligible (< 1 satoshi)
-    if (halvings >= 53) {
+    // After 25 intervals (100 years), emission ends
+    if (intervals >= 25) {
         return 0;
     }
 
-    // Calculate reward with 12.5% reduction per halving
-    // reward = initial_reward * (0.875)^halvings
+    // Calculate reward with 20% reduction per interval
+    // reward = initial_reward * (0.80)^intervals
     uint64_t reward = initial_reward;
-    for (uint32_t i = 0; i < halvings; ++i) {
-        reward = (reward * 875) / 1000;  // Multiply by 0.875 (87.5%)
+    for (uint32_t i = 0; i < intervals; ++i) {
+        reward = (reward * 800) / 1000;  // Multiply by 0.80 (80%)
     }
 
     return reward;
