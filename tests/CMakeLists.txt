@@ -18,6 +18,7 @@ set(TEST_TARGETS
     test_tor
     test_security
     test_dilithium_nist
+    test_kyber_nist
 )
 
 # Crypto tests
@@ -75,6 +76,13 @@ target_link_libraries(test_dilithium_nist PRIVATE intcoin_core)
 target_compile_definitions(test_dilithium_nist PRIVATE ${TEST_DEFINITIONS})
 target_compile_options(test_dilithium_nist PRIVATE ${TEST_COMPILE_OPTIONS})
 add_test(NAME dilithium_nist_tests COMMAND test_dilithium_nist)
+
+# Kyber NIST verification tests
+add_executable(test_kyber_nist test_kyber_nist.cpp)
+target_link_libraries(test_kyber_nist PRIVATE intcoin_core)
+target_compile_definitions(test_kyber_nist PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_kyber_nist PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME kyber_nist_tests COMMAND test_kyber_nist)
 
 # Test coverage (optional, requires gcov/lcov)
 if(ENABLE_COVERAGE)
