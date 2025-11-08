@@ -58,12 +58,25 @@ build:ubuntu-22.04:
         ccache
         libboost-all-dev
         libssl-dev
+        librocksdb-dev
+        liboqs-dev
+        libhwloc-dev
         qtbase5-dev
         qttools5-dev
         libqt5svg5-dev
         python3
         python3-pip
         ca-certificates
+        wget
+    # Install RandomX from source (not in Ubuntu repos)
+    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
+    - tar -xzf randomx.tar.gz
+    - cd RandomX-1.2.1
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make -j$(nproc)
+    - make install
+    - cd ../..
     - export PATH="/usr/lib/ccache:$PATH"
     - ccache --zero-stats
   script:
@@ -104,12 +117,25 @@ build:ubuntu-24.04:
         ccache
         libboost-all-dev
         libssl-dev
+        librocksdb-dev
+        liboqs-dev
+        libhwloc-dev
         qtbase5-dev
         qttools5-dev
         libqt5svg5-dev
         python3
         python3-pip
         ca-certificates
+        wget
+    # Install RandomX from source
+    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
+    - tar -xzf randomx.tar.gz
+    - cd RandomX-1.2.1
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make -j$(nproc)
+    - make install
+    - cd ../..
     - export PATH="/usr/lib/ccache:$PATH"
     - ccache --zero-stats
   script:
@@ -144,11 +170,24 @@ build:debian-12:
         ccache
         libboost-all-dev
         libssl-dev
+        librocksdb-dev
+        liboqs-dev
+        libhwloc-dev
         qtbase5-dev
         qttools5-dev
         libqt5svg5-dev
         python3
         python3-pip
+        wget
+    # Install RandomX from source
+    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
+    - tar -xzf randomx.tar.gz
+    - cd RandomX-1.2.1
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make -j$(nproc)
+    - make install
+    - cd ../..
     - export PATH="/usr/lib/ccache:$PATH"
   script:
     - mkdir -p build && cd build
@@ -177,11 +216,25 @@ build:fedora:
         ccache
         boost-devel
         openssl-devel
+        rocksdb-devel
+        liboqs-devel
+        hwloc-devel
         qt5-qtbase-devel
         qt5-qttools-devel
         qt5-qtsvg-devel
         python3
         python3-pip
+        wget
+        tar
+    # Install RandomX from source
+    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
+    - tar -xzf randomx.tar.gz
+    - cd RandomX-1.2.1
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make -j$(nproc)
+    - make install
+    - cd ../..
     - export PATH="/usr/lib64/ccache:$PATH"
   script:
     - mkdir -p build && cd build
@@ -211,11 +264,24 @@ build:arch:
         ccache
         boost
         openssl
+        rocksdb
+        liboqs
+        hwloc
         qt5-base
         qt5-tools
         qt5-svg
         python
         python-pip
+        wget
+    # Install RandomX from source
+    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
+    - tar -xzf randomx.tar.gz
+    - cd RandomX-1.2.1
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make -j$(nproc)
+    - make install
+    - cd ../..
     - export PATH="/usr/lib/ccache/bin:$PATH"
   script:
     - mkdir -p build && cd build
@@ -410,9 +476,22 @@ release:ubuntu:
         git
         libboost-all-dev
         libssl-dev
+        librocksdb-dev
+        liboqs-dev
+        libhwloc-dev
         qtbase5-dev
         qttools5-dev
         libqt5svg5-dev
+        wget
+    # Install RandomX from source
+    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
+    - tar -xzf randomx.tar.gz
+    - cd RandomX-1.2.1
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release
+    - make -j$(nproc)
+    - make install
+    - cd ../..
   script:
     - mkdir -p build && cd build
     - cmake ..
