@@ -265,7 +265,6 @@ build:arch:
         boost
         openssl
         rocksdb
-        liboqs
         hwloc
         qt5-base
         qt5-tools
@@ -273,6 +272,16 @@ build:arch:
         python
         python-pip
         wget
+        ninja
+    # Install liboqs from source (not in Arch repos)
+    - wget -q https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.12.0.tar.gz -O liboqs.tar.gz
+    - tar -xzf liboqs.tar.gz
+    - cd liboqs-0.12.0
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -GNinja
+    - ninja
+    - ninja install
+    - cd ../..
     # Install RandomX from source
     - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
     - tar -xzf randomx.tar.gz
