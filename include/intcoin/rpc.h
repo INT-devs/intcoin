@@ -82,7 +82,7 @@ public:
     Response execute(const Request& request);
 
 private:
-    [[maybe_unused]] uint16_t port_;
+    uint16_t port_;
     bool running_;
 
     // Core components

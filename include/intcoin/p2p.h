@@ -178,8 +178,8 @@ public:
     bool is_running() const { return running_; }
 
 private:
-    [[maybe_unused]] uint16_t port_;
-    [[maybe_unused]] bool is_testnet_;
+    uint16_t port_;
+    bool is_testnet_;
     bool running_;
 
     int listen_socket_;
