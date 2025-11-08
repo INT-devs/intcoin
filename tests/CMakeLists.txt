@@ -19,6 +19,7 @@ set(TEST_TARGETS
     test_security
     test_dilithium_nist
     test_kyber_nist
+    test_hash_nist
 )
 
 # Crypto tests
@@ -83,6 +84,13 @@ target_link_libraries(test_kyber_nist PRIVATE intcoin_core)
 target_compile_definitions(test_kyber_nist PRIVATE ${TEST_DEFINITIONS})
 target_compile_options(test_kyber_nist PRIVATE ${TEST_COMPILE_OPTIONS})
 add_test(NAME kyber_nist_tests COMMAND test_kyber_nist)
+
+# Hash function NIST verification tests
+add_executable(test_hash_nist test_hash_nist.cpp)
+target_link_libraries(test_hash_nist PRIVATE intcoin_core)
+target_compile_definitions(test_hash_nist PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_hash_nist PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME hash_nist_tests COMMAND test_hash_nist)
 
 # Test coverage (optional, requires gcov/lcov)
 if(ENABLE_COVERAGE)
