@@ -8,14 +8,14 @@ cmake_minimum_required(VERSION 3.28)
 
 # Project information
 project(INTcoin
-    VERSION 0.1.0
+    VERSION 1.0.0
     DESCRIPTION "Quantum-resistant, ASIC-resistant cryptocurrency"
     LANGUAGES CXX C
 )
 
 # Semantic versioning
-set(INTCOIN_VERSION_MAJOR 0)
-set(INTCOIN_VERSION_MINOR 1)
+set(INTCOIN_VERSION_MAJOR 1)
+set(INTCOIN_VERSION_MINOR 0)
 set(INTCOIN_VERSION_PATCH 0)
 set(INTCOIN_VERSION "${INTCOIN_VERSION_MAJOR}.${INTCOIN_VERSION_MINOR}.${INTCOIN_VERSION_PATCH}")
 
