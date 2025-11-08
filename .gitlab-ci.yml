@@ -59,7 +59,6 @@ build:ubuntu-22.04:
         libboost-all-dev
         libssl-dev
         librocksdb-dev
-        liboqs-dev
         libhwloc-dev
         qtbase5-dev
         qttools5-dev
@@ -68,6 +67,21 @@ build:ubuntu-22.04:
         python3-pip
         ca-certificates
         wget
+        ninja-build
+        astyle
+        unzip
+        doxygen
+        graphviz
+    # Install liboqs from source (not in Ubuntu repos)
+    - wget -q https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.12.0.tar.gz -O liboqs.tar.gz
+    - tar -xzf liboqs.tar.gz
+    - cd liboqs-0.12.0
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -GNinja
+    - ninja
+    - ninja install
+    - ldconfig
+    - cd ../..
     # Install RandomX from source (not in Ubuntu repos)
     - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
     - tar -xzf randomx.tar.gz
@@ -118,7 +132,6 @@ build:ubuntu-24.04:
         libboost-all-dev
         libssl-dev
         librocksdb-dev
-        liboqs-dev
         libhwloc-dev
         qtbase5-dev
         qttools5-dev
@@ -127,6 +140,21 @@ build:ubuntu-24.04:
         python3-pip
         ca-certificates
         wget
+        ninja-build
+        astyle
+        unzip
+        doxygen
+        graphviz
+    # Install liboqs from source
+    - wget -q https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.12.0.tar.gz -O liboqs.tar.gz
+    - tar -xzf liboqs.tar.gz
+    - cd liboqs-0.12.0
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -GNinja
+    - ninja
+    - ninja install
+    - ldconfig
+    - cd ../..
     # Install RandomX from source
     - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
     - tar -xzf randomx.tar.gz
@@ -171,7 +199,6 @@ build:debian-12:
         libboost-all-dev
         libssl-dev
         librocksdb-dev
-        liboqs-dev
         libhwloc-dev
         qtbase5-dev
         qttools5-dev
@@ -179,6 +206,21 @@ build:debian-12:
         python3
         python3-pip
         wget
+        ninja-build
+        astyle
+        unzip
+        doxygen
+        graphviz
+    # Install liboqs from source
+    - wget -q https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.12.0.tar.gz -O liboqs.tar.gz
+    - tar -xzf liboqs.tar.gz
+    - cd liboqs-0.12.0
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -GNinja
+    - ninja
+    - ninja install
+    - ldconfig
+    - cd ../..
     # Install RandomX from source
     - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
     - tar -xzf randomx.tar.gz
@@ -217,7 +259,6 @@ build:fedora:
         boost-devel
         openssl-devel
         rocksdb-devel
-        liboqs-devel
         hwloc-devel
         qt5-qtbase-devel
         qt5-qttools-devel
@@ -226,6 +267,21 @@ build:fedora:
         python3-pip
         wget
         tar
+        ninja-build
+        astyle
+        unzip
+        doxygen
+        graphviz
+    # Install liboqs from source
+    - wget -q https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.12.0.tar.gz -O liboqs.tar.gz
+    - tar -xzf liboqs.tar.gz
+    - cd liboqs-0.12.0
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -GNinja
+    - ninja
+    - ninja install
+    - ldconfig
+    - cd ../..
     # Install RandomX from source
     - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
     - tar -xzf randomx.tar.gz
@@ -486,12 +542,26 @@ release:ubuntu:
         libboost-all-dev
         libssl-dev
         librocksdb-dev
-        liboqs-dev
         libhwloc-dev
         qtbase5-dev
         qttools5-dev
         libqt5svg5-dev
         wget
+        ninja-build
+        astyle
+        unzip
+        doxygen
+        graphviz
+    # Install liboqs from source
+    - wget -q https://github.com/open-quantum-safe/liboqs/archive/refs/tags/0.12.0.tar.gz -O liboqs.tar.gz
+    - tar -xzf liboqs.tar.gz
+    - cd liboqs-0.12.0
+    - mkdir -p build && cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -GNinja
+    - ninja
+    - ninja install
+    - ldconfig
+    - cd ../..
     # Install RandomX from source
     - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
     - tar -xzf randomx.tar.gz
