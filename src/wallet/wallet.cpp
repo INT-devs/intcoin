@@ -307,25 +307,31 @@ bool HDWallet::sign_transaction(Transaction& tx, const Blockchain& blockchain) {
         }
 
         // Create signature hash (sign everything except signature scripts)
-        std::vector<uint8_t> sig_hash = tx.get_signature_hash(i);
+        // Create signature hash
+        auto serialized = tx.serialize();
+        auto sig_hash = crypto::SHA3_256::hash(serialized.data(), serialized.size());
+        std::vector<uint8_t> sig_hash_vec(sig_hash.begin(), sig_hash.end());
 
         // Sign the hash with Dilithium
         DilithiumSignature signature = crypto::Dilithium::sign(
-            sig_hash,
+            sig_hash_vec,
             *signing_key
         );
 
+        // Set the signature in TxInput
+        input.signature = signature;
+
         // Set the signature script (contains signature + public key for verification)
-        input.signature_script.clear();
-        input.signature_script.insert(
-            input.signature_script.end(),
+        input.script_sig.clear();
+        input.script_sig.insert(
+            input.script_sig.end(),
             signature.begin(),
             signature.end()
         );
 
         // Append public key
-        input.signature_script.insert(
-            input.signature_script.end(),
+        input.script_sig.insert(
+            input.script_sig.end(),
             signing_key->public_key.begin(),
             signing_key->public_key.end()
         );
@@ -407,7 +413,7 @@ std::vector<HDWallet::TxHistoryEntry> HDWallet::get_transaction_history(const Bl
             uint64_t total_output = 0;
 
             for (const auto& input : tx.inputs) {
-                auto utxo = blockchain.get_utxo(input.previous_output);
+                auto utxo = blockchain.get_utxo(input.previous_output.tx_hash, input.previous_output.index);
                 if (utxo) {
                     total_input += utxo->output.value;
                 }
@@ -474,7 +480,7 @@ std::vector<HDWallet::TxHistoryEntry> HDWallet::get_transaction_history(const Bl
         } else if (is_receive) {
             // For receive transactions, get the first input address
             if (!tx.inputs.empty()) {
-                auto utxo = blockchain.get_utxo(tx.inputs[0].previous_output);
+                auto utxo = blockchain.get_utxo(tx.inputs[0].previous_output.tx_hash, tx.inputs[0].previous_output.index);
                 if (utxo && utxo->output.script_pubkey.size() == DILITHIUM_PUBKEY_SIZE) {
                     DilithiumPubKey pubkey;
                     std::copy(utxo->output.script_pubkey.begin(), utxo->output.script_pubkey.end(), pubkey.begin());
@@ -519,36 +525,36 @@ bool HDWallet::backup_to_file(const std::string& filepath) const {
     // Serialize mnemonic length and data
     uint32_t mnemonic_len = static_cast<uint32_t>(mnemonic_.size());
     wallet_data.insert(wallet_data.end(),
-        reinterpret_cast<uint8_t*>(&mnemonic_len),
-        reinterpret_cast<uint8_t*>(&mnemonic_len) + sizeof(mnemonic_len));
+        reinterpret_cast<const uint8_t*>(&mnemonic_len),
+        reinterpret_cast<const uint8_t*>(&mnemonic_len) + sizeof(mnemonic_len));
     wallet_data.insert(wallet_data.end(), mnemonic_.begin(), mnemonic_.end());
 
     // Serialize key count and next index
     uint32_t key_count = static_cast<uint32_t>(keys_.size());
     wallet_data.insert(wallet_data.end(),
-        reinterpret_cast<uint8_t*>(&key_count),
-        reinterpret_cast<uint8_t*>(&key_count) + sizeof(key_count));
+        reinterpret_cast<const uint8_t*>(&key_count),
+        reinterpret_cast<const uint8_t*>(&key_count) + sizeof(key_count));
     wallet_data.insert(wallet_data.end(),
-        reinterpret_cast<uint8_t*>(&next_key_index_),
-        reinterpret_cast<uint8_t*>(&next_key_index_) + sizeof(next_key_index_));
+        reinterpret_cast<const uint8_t*>(&next_key_index_),
+        reinterpret_cast<const uint8_t*>(&next_key_index_) + sizeof(next_key_index_));
 
     // Serialize address labels
     uint32_t label_count = static_cast<uint32_t>(address_labels_.size());
     wallet_data.insert(wallet_data.end(),
-        reinterpret_cast<uint8_t*>(&label_count),
-        reinterpret_cast<uint8_t*>(&label_count) + sizeof(label_count));
+        reinterpret_cast<const uint8_t*>(&label_count),
+        reinterpret_cast<const uint8_t*>(&label_count) + sizeof(label_count));
 
     for (const auto& [address, label] : address_labels_) {
         uint32_t addr_len = static_cast<uint32_t>(address.size());
         wallet_data.insert(wallet_data.end(),
-            reinterpret_cast<uint8_t*>(&addr_len),
-            reinterpret_cast<uint8_t*>(&addr_len) + sizeof(addr_len));
+            reinterpret_cast<const uint8_t*>(&addr_len),
+            reinterpret_cast<const uint8_t*>(&addr_len) + sizeof(addr_len));
         wallet_data.insert(wallet_data.end(), address.begin(), address.end());
 
         uint32_t label_len = static_cast<uint32_t>(label.size());
         wallet_data.insert(wallet_data.end(),
-            reinterpret_cast<uint8_t*>(&label_len),
-            reinterpret_cast<uint8_t*>(&label_len) + sizeof(label_len));
+            reinterpret_cast<const uint8_t*>(&label_len),
+            reinterpret_cast<const uint8_t*>(&label_len) + sizeof(label_len));
         wallet_data.insert(wallet_data.end(), label.begin(), label.end());
     }
 

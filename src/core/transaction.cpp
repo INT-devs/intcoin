@@ -154,12 +154,12 @@ Transaction Transaction::deserialize(const std::vector<uint8_t>& data) {
 
     // Inputs
     for (uint8_t i = 0; i < input_count && offset < data.size(); i++) {
-        Transaction::Input input;
+        TxInput input;
 
         // Previous output hash (32 bytes)
         if (offset + 32 > data.size()) break;
         std::copy(data.begin() + offset, data.begin() + offset + 32,
-                 input.previous_output.hash.begin());
+                 input.previous_output.tx_hash.begin());
         offset += 32;
 
         // Previous output index (4 bytes)
@@ -180,7 +180,7 @@ Transaction Transaction::deserialize(const std::vector<uint8_t>& data) {
 
         // Signature script data
         if (offset + script_len > data.size()) break;
-        input.signature_script.assign(data.begin() + offset,
+        input.script_sig.assign(data.begin() + offset,
                                      data.begin() + offset + script_len);
         offset += script_len;
 
@@ -202,7 +202,7 @@ Transaction Transaction::deserialize(const std::vector<uint8_t>& data) {
 
     // Outputs
     for (uint8_t i = 0; i < output_count && offset < data.size(); i++) {
-        Transaction::Output output;
+        TxOutput output;
 
         // Value (8 bytes)
         if (offset + 8 > data.size()) break;
@@ -222,7 +222,7 @@ Transaction Transaction::deserialize(const std::vector<uint8_t>& data) {
 
         // Pubkey script data
         if (offset + script_len > data.size()) break;
-        output.pubkey_script.assign(data.begin() + offset,
+        output.script_pubkey.assign(data.begin() + offset,
                                    data.begin() + offset + script_len);
         offset += script_len;
 
@@ -298,7 +298,9 @@ bool Transaction::sign(const std::vector<uint8_t>& private_key, size_t input_ind
     }
 
     // Create signature hash for this input
-    std::vector<uint8_t> sig_hash = get_signature_hash(input_index);
+    auto serialized = serialize();
+    auto sig_hash = crypto::SHA3_256::hash(serialized.data(), serialized.size());
+    std::vector<uint8_t> sig_hash_vec(sig_hash.begin(), sig_hash.end());
 
     // Convert private key to Dilithium keypair structure
     if (private_key.size() != 4896) {  // Dilithium5 private key size
@@ -309,19 +311,22 @@ bool Transaction::sign(const std::vector<uint8_t>& private_key, size_t input_ind
     std::memcpy(keypair.private_key.data(), private_key.data(), private_key.size());
 
     // Sign the hash
-    crypto::DilithiumSignature signature = crypto::Dilithium::sign(sig_hash, keypair);
+    DilithiumSignature signature = crypto::Dilithium::sign(sig_hash_vec, keypair);
 
-    // Set signature script (signature + pubkey)
-    inputs[input_index].signature_script.clear();
-    inputs[input_index].signature_script.insert(
-        inputs[input_index].signature_script.end(),
+    // Set signature in TxInput
+    inputs[input_index].signature = signature;
+
+    // Set script_sig (signature + pubkey)
+    inputs[input_index].script_sig.clear();
+    inputs[input_index].script_sig.insert(
+        inputs[input_index].script_sig.end(),
         signature.begin(),
         signature.end()
     );
 
     // Append public key
-    inputs[input_index].signature_script.insert(
-        inputs[input_index].signature_script.end(),
+    inputs[input_index].script_sig.insert(
+        inputs[input_index].script_sig.end(),
         keypair.public_key.begin(),
         keypair.public_key.end()
     );
@@ -341,23 +346,25 @@ bool Transaction::verify_signature(size_t input_index) const {
     constexpr size_t DILITHIUM_PUBKEY_SIZE = 2592;
     constexpr size_t EXPECTED_SIZE = DILITHIUM_SIG_SIZE + DILITHIUM_PUBKEY_SIZE;
 
-    if (input.signature_script.size() != EXPECTED_SIZE) {
+    if (input.script_sig.size() != EXPECTED_SIZE) {
         return false;  // Invalid signature script size
     }
 
     // Extract signature
-    crypto::DilithiumSignature signature;
-    std::memcpy(signature.data(), input.signature_script.data(), DILITHIUM_SIG_SIZE);
+    DilithiumSignature signature;
+    std::memcpy(signature.data(), input.script_sig.data(), DILITHIUM_SIG_SIZE);
 
     // Extract public key
-    crypto::DilithiumPubKey pubkey;
-    std::memcpy(pubkey.data(), input.signature_script.data() + DILITHIUM_SIG_SIZE, DILITHIUM_PUBKEY_SIZE);
+    DilithiumPubKey pubkey;
+    std::memcpy(pubkey.data(), input.script_sig.data() + DILITHIUM_SIG_SIZE, DILITHIUM_PUBKEY_SIZE);
 
     // Get signature hash
-    std::vector<uint8_t> sig_hash = get_signature_hash(input_index);
+    auto serialized = serialize();
+    auto sig_hash = crypto::SHA3_256::hash(serialized.data(), serialized.size());
+    std::vector<uint8_t> sig_hash_vec(sig_hash.begin(), sig_hash.end());
 
     // Verify signature
-    return crypto::Dilithium::verify(sig_hash, signature, pubkey);
+    return crypto::Dilithium::verify(sig_hash_vec, signature, pubkey);
 }
 
 bool Transaction::verify_all_signatures() const {
@@ -405,20 +412,15 @@ Transaction Transaction::create_coinbase(
 std::vector<uint8_t> UTXO::serialize() const {
     std::vector<uint8_t> buffer;
 
-    // Serialize transaction hash (32 bytes)
-    buffer.insert(buffer.end(), tx_hash.begin(), tx_hash.end());
-
-    // Serialize output index (4 bytes)
-    buffer.push_back(static_cast<uint8_t>(output_index & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((output_index >> 8) & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((output_index >> 16) & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((output_index >> 24) & 0xFF));
+    // Serialize outpoint
+    auto outpoint_data = outpoint.serialize();
+    buffer.insert(buffer.end(), outpoint_data.begin(), outpoint_data.end());
 
     // Serialize block height (4 bytes)
-    buffer.push_back(static_cast<uint8_t>(block_height & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((block_height >> 8) & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((block_height >> 16) & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((block_height >> 24) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>(height & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((height >> 8) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((height >> 16) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((height >> 24) & 0xFF));
 
     // Serialize is_coinbase (1 byte)
     buffer.push_back(is_coinbase ? 1 : 0);
@@ -449,18 +451,18 @@ UTXO UTXO::deserialize(const std::vector<uint8_t>& data) {
     size_t offset = 0;
 
     // Deserialize transaction hash (32 bytes)
-    std::copy(data.begin() + offset, data.begin() + offset + 32, utxo.tx_hash.begin());
+    std::copy(data.begin() + offset, data.begin() + offset + 32, utxo.outpoint.tx_hash.begin());
     offset += 32;
 
     // Deserialize output index (4 bytes)
-    utxo.output_index = static_cast<uint32_t>(data[offset]) |
+    utxo.outpoint.index = static_cast<uint32_t>(data[offset]) |
                         (static_cast<uint32_t>(data[offset + 1]) << 8) |
                         (static_cast<uint32_t>(data[offset + 2]) << 16) |
                         (static_cast<uint32_t>(data[offset + 3]) << 24);
     offset += 4;
 
     // Deserialize block height (4 bytes)
-    utxo.block_height = static_cast<uint32_t>(data[offset]) |
+    utxo.height = static_cast<uint32_t>(data[offset]) |
                         (static_cast<uint32_t>(data[offset + 1]) << 8) |
                         (static_cast<uint32_t>(data[offset + 2]) << 16) |
                         (static_cast<uint32_t>(data[offset + 3]) << 24);

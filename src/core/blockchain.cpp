@@ -274,18 +274,18 @@ bool Blockchain::verify_transaction(const Transaction& tx) const {
         constexpr size_t DILITHIUM_SIG_SIZE = 4627;
         constexpr size_t DILITHIUM_PUBKEY_SIZE = 2592;
 
-        if (input.signature_script.size() != DILITHIUM_SIG_SIZE + DILITHIUM_PUBKEY_SIZE) {
+        if (input.script_sig.size() != DILITHIUM_SIG_SIZE + DILITHIUM_PUBKEY_SIZE) {
             return false;  // Invalid signature script
         }
 
         // Extract public key from signature script
         std::vector<uint8_t> pubkey_from_sig(
-            input.signature_script.begin() + DILITHIUM_SIG_SIZE,
-            input.signature_script.end()
+            input.script_sig.begin() + DILITHIUM_SIG_SIZE,
+            input.script_sig.end()
         );
 
         // Verify pubkey matches UTXO script pubkey
-        if (pubkey_from_sig != utxo->script_pubkey) {
+        if (pubkey_from_sig != utxo->output.script_pubkey) {
             return false;  // Public key doesn't match UTXO
         }
 

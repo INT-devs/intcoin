@@ -76,7 +76,7 @@ bool Mempool::add_transaction(const Transaction& tx, uint32_t current_height) {
 
         // Evict the lower-fee transactions
         for (const auto& hash : to_evict) {
-            remove(hash);
+            remove_transaction(hash);
         }
     }
 

@@ -35,22 +35,33 @@ bool MerkleProof::verify() const {
 std::vector<uint8_t> MerkleProof::serialize() const {
     std::vector<uint8_t> buffer;
 
-    // Serialize index (4 bytes)
-    buffer.push_back(static_cast<uint8_t>(index & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((index >> 8) & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((index >> 16) & 0xFF));
-    buffer.push_back(static_cast<uint8_t>((index >> 24) & 0xFF));
+    // Serialize tx_hash (32 bytes)
+    buffer.insert(buffer.end(), tx_hash.begin(), tx_hash.end());
 
-    // Serialize number of hashes (4 bytes)
-    uint32_t hash_count = static_cast<uint32_t>(hashes.size());
+    // Serialize merkle root (32 bytes)
+    buffer.insert(buffer.end(), root.begin(), root.end());
+
+    // Serialize number of proof hashes (4 bytes)
+    uint32_t hash_count = static_cast<uint32_t>(proof_hashes.size());
     buffer.push_back(static_cast<uint8_t>(hash_count & 0xFF));
     buffer.push_back(static_cast<uint8_t>((hash_count >> 8) & 0xFF));
     buffer.push_back(static_cast<uint8_t>((hash_count >> 16) & 0xFF));
     buffer.push_back(static_cast<uint8_t>((hash_count >> 24) & 0xFF));
 
-    // Serialize all hashes (32 bytes each)
-    for (const auto& hash : hashes) {
+    // Serialize all proof hashes (32 bytes each)
+    for (const auto& hash : proof_hashes) {
         buffer.insert(buffer.end(), hash.begin(), hash.end());
+    }
+
+    // Serialize flags (1 byte per flag)
+    uint32_t flag_count = static_cast<uint32_t>(proof_flags.size());
+    buffer.push_back(static_cast<uint8_t>(flag_count & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((flag_count >> 8) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((flag_count >> 16) & 0xFF));
+    buffer.push_back(static_cast<uint8_t>((flag_count >> 24) & 0xFF));
+
+    for (bool flag : proof_flags) {
+        buffer.push_back(flag ? 1 : 0);
     }
 
     return buffer;
@@ -59,16 +70,17 @@ std::vector<uint8_t> MerkleProof::serialize() const {
 MerkleProof MerkleProof::deserialize(const std::vector<uint8_t>& data) {
     MerkleProof proof;
 
-    if (data.size() < 8) return proof;  // Minimum size: 4 (index) + 4 (count)
+    if (data.size() < 68) return proof;  // Minimum size: 32 (tx_hash) + 32 (root) + 4 (count)
 
     size_t offset = 0;
 
-    // Deserialize index (4 bytes)
-    proof.index = static_cast<uint32_t>(data[offset]) |
-                  (static_cast<uint32_t>(data[offset + 1]) << 8) |
-                  (static_cast<uint32_t>(data[offset + 2]) << 16) |
-                  (static_cast<uint32_t>(data[offset + 3]) << 24);
-    offset += 4;
+    // Deserialize tx_hash (32 bytes)
+    std::copy(data.begin() + offset, data.begin() + offset + 32, proof.tx_hash.begin());
+    offset += 32;
+
+    // Deserialize root (32 bytes)
+    std::copy(data.begin() + offset, data.begin() + offset + 32, proof.root.begin());
+    offset += 32;
 
     // Deserialize hash count (4 bytes)
     uint32_t hash_count = static_cast<uint32_t>(data[offset]) |
@@ -77,14 +89,28 @@ MerkleProof MerkleProof::deserialize(const std::vector<uint8_t>& data) {
                           (static_cast<uint32_t>(data[offset + 3]) << 24);
     offset += 4;
 
-    // Deserialize hashes (32 bytes each)
+    // Deserialize proof hashes (32 bytes each)
     if (data.size() < offset + (hash_count * 32)) return proof;  // Size check
 
     for (uint32_t i = 0; i < hash_count; ++i) {
         Hash256 hash;
         std::copy(data.begin() + offset, data.begin() + offset + 32, hash.begin());
-        proof.hashes.push_back(hash);
+        proof.proof_hashes.push_back(hash);
         offset += 32;
+    }
+
+    // Deserialize flag count (4 bytes)
+    if (data.size() < offset + 4) return proof;
+    uint32_t flag_count = static_cast<uint32_t>(data[offset]) |
+                          (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                          (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                          (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    // Deserialize flags
+    if (data.size() < offset + flag_count) return proof;
+    for (uint32_t i = 0; i < flag_count; ++i) {
+        proof.proof_flags.push_back(data[offset + i] != 0);
     }
 
     return proof;
@@ -288,14 +314,13 @@ Hash256 MerkleMountainRange::get_root() const {
     return bag_peaks();
 }
 
-std::optional<MerkleProof> MerkleMountainRange::generate_proof(size_t index) const {
+std::optional<MerkleProof> MerkleMountainRange::generate_proof(size_t tx_index) const {
     // MMR proof generation
-    if (index >= size_) {
+    if (tx_index >= size_) {
         return std::nullopt;  // Index out of range
     }
 
     MerkleProof proof;
-    proof.index = static_cast<uint32_t>(index);
 
     // MMR proofs require walking up the tree and collecting sibling hashes
     // For a complete implementation, we would need to store the full MMR structure
@@ -304,7 +329,8 @@ std::optional<MerkleProof> MerkleMountainRange::generate_proof(size_t index) con
     // For now, provide the bagged peaks as the proof
     // A full implementation would traverse the MMR tree structure
     for (const auto& peak : peaks_) {
-        proof.hashes.push_back(peak);
+        proof.proof_hashes.push_back(peak);
+        proof.proof_flags.push_back(false);  // Simplified: all peaks on left
     }
 
     // The root is the bagged peaks
