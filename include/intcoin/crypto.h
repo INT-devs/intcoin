@@ -238,6 +238,51 @@ public:
 };
 
 /**
+ * Secure memory operations
+ * Provides constant-time operations and secure erasure
+ */
+class SecureMemory {
+public:
+    /**
+     * Securely zero memory (prevents compiler optimization)
+     */
+    static void secure_zero(void* ptr, size_t len);
+
+    /**
+     * Securely zero vector
+     */
+    template<typename T>
+    static void secure_zero(std::vector<T>& vec) {
+        if (!vec.empty()) {
+            secure_zero(vec.data(), vec.size() * sizeof(T));
+        }
+    }
+
+    /**
+     * Securely zero array
+     */
+    template<typename T, size_t N>
+    static void secure_zero(std::array<T, N>& arr) {
+        secure_zero(arr.data(), N * sizeof(T));
+    }
+
+    /**
+     * Constant-time memory comparison
+     */
+    static bool constant_time_compare(const void* a, const void* b, size_t len);
+
+    /**
+     * Constant-time vector comparison
+     */
+    template<typename T>
+    static bool constant_time_compare(const std::vector<T>& a, const std::vector<T>& b) {
+        if (a.size() != b.size()) return false;
+        if (a.empty()) return true;
+        return constant_time_compare(a.data(), b.data(), a.size() * sizeof(T));
+    }
+};
+
+/**
  * Random number generation
  * Cryptographically secure RNG
  */

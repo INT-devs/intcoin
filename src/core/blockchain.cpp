@@ -413,6 +413,24 @@ std::optional<Transaction> Blockchain::get_transaction(const Hash256& tx_hash) c
     return std::nullopt;
 }
 
+uint32_t Blockchain::get_transaction_block_height(const Hash256& tx_hash) const {
+    // Search through all blocks for the transaction
+    for (const auto& [block_hash, block] : blocks_) {
+        for (const auto& tx : block.transactions) {
+            if (tx.get_hash() == tx_hash) {
+                // Found transaction, now find block height by searching block_index_
+                for (const auto& [height, hash] : block_index_) {
+                    if (hash == block_hash) {
+                        return height;
+                    }
+                }
+                return 0;  // Block hash found but not in index (shouldn't happen)
+            }
+        }
+    }
+    return 0;  // Transaction not found
+}
+
 std::vector<Transaction> Blockchain::scan_for_addresses(const std::vector<std::string>& addresses) const {
     std::vector<Transaction> result;
     std::set<std::string> addr_set(addresses.begin(), addresses.end());

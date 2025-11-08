@@ -13,6 +13,7 @@ add_library(crypto OBJECT
     random.cpp
     hkdf.cpp
     mnemonic.cpp
+    secure_memory.cpp
 )
 
 target_include_directories(crypto

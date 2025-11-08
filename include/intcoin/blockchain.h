@@ -57,6 +57,9 @@ public:
     // Get transaction by hash
     std::optional<Transaction> get_transaction(const Hash256& tx_hash) const;
 
+    // Get block height containing a transaction (returns 0 if not found)
+    uint32_t get_transaction_block_height(const Hash256& tx_hash) const;
+
     // Scan blockchain for transactions involving addresses
     std::vector<Transaction> scan_for_addresses(const std::vector<std::string>& addresses) const;
 

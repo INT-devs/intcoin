@@ -187,28 +187,10 @@ uint64_t HDWallet::get_balance(const Blockchain& blockchain) const {
 }
 
 uint64_t HDWallet::get_unconfirmed_balance() const {
-    // Track unconfirmed transactions by summing pending transaction outputs
-    uint64_t unconfirmed = 0;
-
-    for (const auto& [txid, tx_info] : transactions_) {
-        if (tx_info.confirmations == 0) {
-            // Sum outputs that belong to our addresses
-            for (const auto& output : tx_info.tx.outputs) {
-                // Check if output belongs to one of our addresses
-                for (const auto& [addr, _] : addresses_) {
-                    (void)_;  // Unused
-                    if (output.pubkey_script.size() == 2592) {  // Dilithium pubkey size
-                        // Compare pubkey with our address's pubkey
-                        // For simplicity, add all outputs in unconfirmed tx
-                        unconfirmed += output.value;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    return unconfirmed;
+    // TODO: Track unconfirmed transactions
+    // This requires integration with mempool or transaction tracking
+    // For now, return 0 as we don't track unconfirmed transactions in wallet
+    return 0;
 }
 
 uint64_t HDWallet::get_address_balance(const std::string& address, const Blockchain& blockchain) const {
@@ -286,27 +268,38 @@ bool HDWallet::sign_transaction(Transaction& tx, const Blockchain& blockchain) {
         auto& input = tx.inputs[i];
 
         // Get the previous output to find which key owns it
-        std::optional<Transaction::Output> prev_output =
-            blockchain.get_output(input.previous_output);
+        std::optional<UTXO> utxo =
+            blockchain.get_utxo(input.previous_output.tx_hash, input.previous_output.index);
 
-        if (!prev_output) {
+        if (!utxo) {
             return false;  // Previous output not found
         }
 
         // Find the key that owns this output by matching public key
-        const DilithiumKeyPair* signing_key = nullptr;
+        const WalletKey* signing_key_info = nullptr;
         for (const auto& [index, wallet_key] : keys_) {
-            if (wallet_key.public_key == prev_output->pubkey_script) {
-                signing_key = &wallet_key.keypair;
+            if (wallet_key.public_key == utxo->output.pubkey) {
+                signing_key_info = &wallet_key;
                 break;
             }
         }
 
-        if (!signing_key) {
+        if (!signing_key_info) {
             return false;  // We don't own this input
         }
 
-        // Create signature hash (sign everything except signature scripts)
+        // Create keypair for signing
+        crypto::DilithiumKeyPair signing_keypair;
+        signing_keypair.public_key = signing_key_info->public_key;
+        signing_keypair.private_key.fill(0);  // Initialize
+        if (signing_key_info->private_key.size() == 4896) {
+            std::copy(signing_key_info->private_key.begin(),
+                     signing_key_info->private_key.end(),
+                     signing_keypair.private_key.begin());
+        } else {
+            return false;  // Invalid private key size
+        }
+
         // Create signature hash
         auto serialized = tx.serialize();
         auto sig_hash = crypto::SHA3_256::hash(serialized.data(), serialized.size());
@@ -315,7 +308,7 @@ bool HDWallet::sign_transaction(Transaction& tx, const Blockchain& blockchain) {
         // Sign the hash with Dilithium
         DilithiumSignature signature = crypto::Dilithium::sign(
             sig_hash_vec,
-            *signing_key
+            signing_keypair
         );
 
         // Set the signature in TxInput
@@ -332,8 +325,8 @@ bool HDWallet::sign_transaction(Transaction& tx, const Blockchain& blockchain) {
         // Append public key
         input.script_sig.insert(
             input.script_sig.end(),
-            signing_key->public_key.begin(),
-            signing_key->public_key.end()
+            signing_key_info->public_key.begin(),
+            signing_key_info->public_key.end()
         );
     }
 
@@ -431,18 +424,13 @@ std::vector<HDWallet::TxHistoryEntry> HDWallet::get_transaction_history(const Bl
         // Get timestamp from block containing this transaction
         uint32_t block_height = blockchain.get_transaction_block_height(tx_hash);
         if (block_height > 0) {
-            auto block = blockchain.get_block_by_height(block_height);
-            if (block) {
-                entry.timestamp = block->header.timestamp;
+            Block block = blockchain.get_block_by_height(block_height);
+            entry.timestamp = block.header.timestamp;
 
-                // Calculate confirmations
-                uint32_t current_height = blockchain.get_height();
-                entry.confirmations = (current_height >= block_height) ?
-                    (current_height - block_height + 1) : 0;
-            } else {
-                entry.timestamp = 0;
-                entry.confirmations = 0;
-            }
+            // Calculate confirmations
+            uint32_t current_height = blockchain.get_height();
+            entry.confirmations = (current_height >= block_height) ?
+                (current_height - block_height + 1) : 0;
         } else {
             // Transaction in mempool (unconfirmed)
             entry.timestamp = std::chrono::duration_cast<std::chrono::seconds>(
@@ -893,10 +881,9 @@ bool WalletDB::save_wallet(const HDWallet& wallet) {
 
 std::optional<HDWallet> WalletDB::load_wallet() {
     // Load and deserialize wallet using HDWallet's restore function
-    HDWallet wallet;
-    if (wallet.restore_from_file(filepath_)) {
-        return wallet;
-    }
+    // Note: This requires a password which WalletDB doesn't have
+    // TODO: Add password parameter to load_wallet() or use alternative approach
+    // For now, return nullopt to indicate wallet needs manual restore with password
     return std::nullopt;
 }
 
