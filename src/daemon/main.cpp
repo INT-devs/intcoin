@@ -148,7 +148,7 @@ void log_message(const DaemonConfig& config, const std::string& msg) {
         std::cout << "[" << std::time(nullptr) << "] " << msg << std::endl;
 
         // Also write to log file in datadir
-        std::string log_file = config.data_dir + "/debug.log";
+        std::string log_file = config.datadir + "/debug.log";
         std::ofstream log(log_file, std::ios::app);  // Append mode
         if (log.is_open()) {
             log << "[" << std::time(nullptr) << "] " << msg << std::endl;
@@ -328,22 +328,20 @@ int main(int argc, char* argv[]) {
 
             // Process any pending network messages, mempool updates, etc.
             // Event loop processing
-            if (network) {
-                // Network is already processing in background threads
-                // Check for new blocks or transactions via callbacks
-            }
+
+            // Network is already processing in background threads
+            // Check for new blocks or transactions via callbacks
+            (void)network;  // Network runs in background
 
             // Process mempool - remove expired transactions
-            if (mempool) {
-                // Mempool management is handled automatically
-                // Could add periodic cleanup or rebroadcast logic here
-            }
+            // Mempool management is handled automatically
+            // Could add periodic cleanup or rebroadcast logic here
+            (void)mempool;  // Mempool auto-managed
 
             // Check blockchain sync status
-            if (blockchain) {
-                // Blockchain height is updated as blocks arrive
-                // Could add sync progress logging here
-            }
+            // Blockchain height is updated as blocks arrive
+            // Could add sync progress logging here
+            (void)blockchain;  // Blockchain sync in progress
         }
 
         // Shutdown sequence

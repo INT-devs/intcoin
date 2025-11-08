@@ -114,7 +114,7 @@ int cmd_new_address(HDWallet& wallet, const std::string& label) {
 
 int cmd_balance(const HDWallet& wallet) {
     // Initialize blockchain - in production this would connect to node
-    Blockchain blockchain(true);  // testnet mode
+    Blockchain blockchain;  // Use default constructor
     uint64_t balance = wallet.get_balance(blockchain);
 
     std::cout << "Balance: " << (balance / static_cast<double>(COIN)) << " INT" << std::endl;
@@ -152,7 +152,7 @@ int cmd_send(HDWallet& wallet, const std::string& to_address, double amount_int)
     std::cout << "Fee: " << (fee / static_cast<double>(COIN)) << " INT" << std::endl;
 
     // Initialize blockchain - in production this would connect to node
-    Blockchain blockchain(true);  // testnet mode
+    Blockchain blockchain;  // Use default constructor
 
     auto tx = wallet.create_transaction(to_address, amount, fee, blockchain);
     if (!tx) {
@@ -169,7 +169,7 @@ int cmd_send(HDWallet& wallet, const std::string& to_address, double amount_int)
 
 int cmd_history(const HDWallet& wallet) {
     // Initialize blockchain - in production this would connect to node
-    Blockchain blockchain(true);  // testnet mode
+    Blockchain blockchain;  // Use default constructor
     auto history = wallet.get_transaction_history(blockchain);
 
     std::cout << "Transaction History (" << history.size() << " transactions):" << std::endl;
