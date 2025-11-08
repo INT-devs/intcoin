@@ -4,7 +4,7 @@
 #
 # INTcoin Core CMake Build System
 
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.20)
 
 # Project information
 project(INTcoin
@@ -101,24 +101,29 @@ include_directories(
     ${CMAKE_BINARY_DIR}/include
 )
 
+# Add cmake module path for custom find modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
 # Find required packages
 find_package(Threads REQUIRED)
-find_package(OpenSSL 3.0 REQUIRED)
+find_package(OpenSSL 1.1 REQUIRED)
 find_package(RocksDB REQUIRED)
 
 # Qt5 for wallet GUI
 if(BUILD_QT_WALLET)
-    find_package(Qt5 5.15 COMPONENTS Core Widgets Network Gui REQUIRED)
+    find_package(Qt5 5.9 COMPONENTS Core Widgets Network Gui REQUIRED)
     set(CMAKE_AUTOMOC ON)
     set(CMAKE_AUTORCC ON)
     set(CMAKE_AUTOUIC ON)
 endif()
 
 # Boost libraries (modern CMake policy)
-cmake_policy(SET CMP0167 NEW)
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.85.0 REQUIRED)
+find_package(Boost 1.65.0 REQUIRED)
 
 # External dependencies
 add_subdirectory(external/dilithium EXCLUDE_FROM_ALL)
