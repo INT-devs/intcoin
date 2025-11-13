@@ -45,6 +45,7 @@ private slots:
     void on_actionExit_triggered();
     void on_actionAbout_triggered();
     void on_actionSettings_triggered();
+    void on_actionLightning_triggered();
 
     // Wallet tab
     void on_sendButton_clicked();

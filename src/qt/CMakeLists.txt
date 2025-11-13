@@ -7,10 +7,12 @@
 set(QT_SOURCES
     main.cpp
     mainwindow.cpp
+    lightningwindow.cpp
 )
 
 set(QT_HEADERS
     mainwindow.h
+    lightningwindow.h
 )
 
 # MOC the headers (Qt5/Qt6 compatible)

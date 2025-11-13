@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "mainwindow.h"
+#include "lightningwindow.h"
 #include "intcoin/wallet_db.h"
 #include <QMenuBar>
 #include <QStatusBar>
@@ -91,6 +92,10 @@ void MainWindow::create_menu_bar() {
     fileMenu->addAction("&Encrypt Wallet", this, &MainWindow::on_actionEncrypt_Wallet_triggered);
     fileMenu->addSeparator();
     fileMenu->addAction("E&xit", this, &MainWindow::on_actionExit_triggered);
+
+    // Lightning menu
+    QMenu* lightningMenu = menuBar->addMenu("&Lightning");
+    lightningMenu->addAction("Open &Lightning Wallet", this, &MainWindow::on_actionLightning_triggered);
 
     // Settings menu
     QMenu* settingsMenu = menuBar->addMenu("&Settings");
@@ -424,6 +429,23 @@ void MainWindow::on_actionAbout_triggered() {
         "SHA-256 Proof of Work\n\n"
         "© 2025 INTcoin Core\n"
         "Lead Developer: Maddison Lane");
+}
+
+void MainWindow::on_actionLightning_triggered() {
+    if (!wallet_) {
+        QMessageBox::warning(this, "No Wallet",
+            "Please create or open a wallet first before using Lightning Network features.");
+        return;
+    }
+
+    // Create Lightning node if not exists
+    // TODO: Initialize lightning node with proper parameters
+    auto ln_node = std::make_shared<lightning::LightningNode>();
+
+    // Create and show Lightning window
+    LightningWindow* lightningWindow = new LightningWindow(ln_node, wallet_, blockchain_);
+    lightningWindow->setAttribute(Qt::WA_DeleteOnClose);
+    lightningWindow->show();
 }
 
 void MainWindow::on_actionSettings_triggered() {
