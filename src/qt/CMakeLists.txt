@@ -13,8 +13,12 @@ set(QT_HEADERS
     mainwindow.h
 )
 
-# MOC the headers
-qt5_wrap_cpp(QT_MOC_SOURCES ${QT_HEADERS})
+# MOC the headers (Qt5/Qt6 compatible)
+if(QT_VERSION_MAJOR EQUAL 6)
+    qt6_wrap_cpp(QT_MOC_SOURCES ${QT_HEADERS})
+else()
+    qt5_wrap_cpp(QT_MOC_SOURCES ${QT_HEADERS})
+endif()
 
 # Create executable
 add_executable(intcoin-qt
@@ -31,15 +35,28 @@ target_include_directories(intcoin-qt
 
 find_package(RocksDB REQUIRED)
 
-target_link_libraries(intcoin-qt
-    PRIVATE
-        intcoin_core
-        RocksDB::rocksdb
-        Qt5::Core
-        Qt5::Widgets
-        Qt5::Gui
-        Qt5::Network
-)
+# Link Qt libraries (Qt5/Qt6 compatible)
+if(QT_VERSION_MAJOR EQUAL 6)
+    target_link_libraries(intcoin-qt
+        PRIVATE
+            intcoin_core
+            RocksDB::rocksdb
+            Qt6::Core
+            Qt6::Widgets
+            Qt6::Gui
+            Qt6::Network
+    )
+else()
+    target_link_libraries(intcoin-qt
+        PRIVATE
+            intcoin_core
+            RocksDB::rocksdb
+            Qt5::Core
+            Qt5::Widgets
+            Qt5::Gui
+            Qt5::Network
+    )
+endif()
 
 # Install
 install(TARGETS intcoin-qt DESTINATION bin)

@@ -44,7 +44,7 @@ stages:
 # LINUX BUILDS
 # ============================================================================
 
-# Ubuntu 22.04 LTS
+# Ubuntu 22.04 LTS (uses Qt5 - Qt6 not available)
 build:ubuntu-22.04:
   stage: build
   image: ubuntu:22.04
@@ -60,9 +60,9 @@ build:ubuntu-22.04:
         libssl-dev
         librocksdb-dev
         libhwloc-dev
-        qt6-base-dev
-        qt6-tools-dev
-        qt6-svg-dev
+        qtbase5-dev
+        qttools5-dev
+        libqt5svg5-dev
         python3
         python3-pip
         ca-certificates
