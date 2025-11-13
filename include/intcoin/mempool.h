@@ -103,6 +103,9 @@ private:
     // Map: spent_outpoint -> tx_hash (for detecting conflicts)
     std::unordered_map<OutPoint, Hash256> spent_outputs_;
 
+    // Cached statistics (updated on add/remove to avoid O(n) recalculation)
+    mutable size_t cached_total_size_ = 0;
+
     // Configuration
     static constexpr size_t MAX_MEMPOOL_SIZE = 300 * 1024 * 1024;  // 300 MB
     static constexpr size_t MAX_TRANSACTION_SIZE = 100 * 1024;      // 100 KB

@@ -88,6 +88,9 @@ bool Mempool::add_transaction(const Transaction& tx, uint32_t current_height) {
     priority_queue_.insert(entry);
     add_spent_outputs(tx);
 
+    // Update cached size
+    cached_total_size_ += entry.size;
+
     return true;
 }
 
@@ -96,6 +99,9 @@ void Mempool::remove_transaction(const Hash256& tx_hash) {
     if (it == transactions_.end()) {
         return;
     }
+
+    // Update cached size before removal
+    cached_total_size_ -= it->second.size;
 
     // Remove from priority queue
     priority_queue_.erase(it->second);
@@ -152,11 +158,8 @@ std::vector<Transaction> Mempool::get_all_transactions() const {
 }
 
 size_t Mempool::total_size_bytes() const {
-    size_t total = 0;
-    for (const auto& [hash, entry] : transactions_) {
-        total += entry.size;
-    }
-    return total;
+    // Return cached size - O(1) instead of O(n)
+    return cached_total_size_;
 }
 
 uint64_t Mempool::total_fees() const {
@@ -187,6 +190,7 @@ void Mempool::clear() {
     transactions_.clear();
     priority_queue_.clear();
     spent_outputs_.clear();
+    cached_total_size_ = 0;  // Reset cached size
 }
 
 bool Mempool::validate_transaction(const Transaction& tx) const {

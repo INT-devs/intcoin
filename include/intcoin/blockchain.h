@@ -94,11 +94,13 @@ private:
     // In-memory storage (cache)
     std::unordered_map<Hash256, Block> blocks_;  // All blocks indexed by hash
     std::map<uint32_t, Hash256> block_index_;    // Height to hash mapping
+    std::unordered_map<Hash256, uint32_t> hash_to_height_;  // Reverse index: hash to height (O(1) lookup)
     std::unordered_map<OutPoint, UTXO> utxo_set_;  // All unspent outputs
 
     // Address indexing (in-memory for now)
     std::unordered_map<std::string, std::vector<OutPoint>> address_index_;  // Address to UTXOs
     std::unordered_map<Hash256, Transaction> transactions_;  // All transactions by hash
+    std::unordered_map<Hash256, Hash256> tx_to_block_;  // Transaction hash to block hash mapping (O(1) lookup)
 
     // Persistent storage
     BlockIndexDB block_db_;

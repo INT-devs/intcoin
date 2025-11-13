@@ -24,6 +24,7 @@ Blockchain::Blockchain()
 
     blocks_[genesis_hash] = genesis;
     block_index_[0] = genesis_hash;
+    hash_to_height_[genesis_hash] = 0;  // Initialize reverse index
     best_block_ = genesis_hash;
     chain_height_ = 0;
 }
@@ -64,6 +65,7 @@ Blockchain::Blockchain(const std::string& datadir)
 
         blocks_[genesis_hash] = genesis;
         block_index_[0] = genesis_hash;
+        hash_to_height_[genesis_hash] = 0;  // Initialize reverse index
         best_block_ = genesis_hash;
         chain_height_ = 0;
     }
@@ -114,13 +116,11 @@ bool Blockchain::add_block(const Block& block) {
         return false;
     }
 
-    // Find height of this block first (before adding)
+    // Find height of this block first (before adding) - O(1) with reverse index
     uint32_t prev_height = 0;
-    for (const auto& [height, hash] : block_index_) {
-        if (hash == block.header.previous_block_hash) {
-            prev_height = height;
-            break;
-        }
+    auto height_it = hash_to_height_.find(block.header.previous_block_hash);
+    if (height_it != hash_to_height_.end()) {
+        prev_height = height_it->second;
     }
     uint32_t new_height = prev_height + 1;
 
@@ -136,6 +136,7 @@ bool Blockchain::add_block(const Block& block) {
     if (new_height > chain_height_) {
         // Simple case: extends main chain
         block_index_[new_height] = block_hash;
+        hash_to_height_[block_hash] = new_height;  // Maintain reverse index
         best_block_ = block_hash;
         chain_height_ = new_height;
         update_utxo_set(block, true);
@@ -387,12 +388,15 @@ uint32_t Blockchain::calculate_next_difficulty(const Hash256& prev_block_hash) c
 std::vector<UTXO> Blockchain::get_utxos_for_address(const std::string& address) const {
     std::vector<UTXO> result;
 
-    // Search through all UTXOs
-    for (const auto& [outpoint, utxo] : utxo_set_) {
-        // Extract address from output
-        auto addr = extract_address(utxo.output);
-        if (addr && *addr == address) {
-            result.push_back(utxo);
+    // Use address_index for O(1) lookup instead of O(n) UTXO scan
+    auto it = address_index_.find(address);
+    if (it != address_index_.end()) {
+        // Found address in index, lookup each outpoint
+        for (const auto& outpoint : it->second) {
+            auto utxo_it = utxo_set_.find(outpoint);
+            if (utxo_it != utxo_set_.end()) {
+                result.push_back(utxo_it->second);
+            }
         }
     }
 
@@ -400,33 +404,28 @@ std::vector<UTXO> Blockchain::get_utxos_for_address(const std::string& address) 
 }
 
 std::optional<Transaction> Blockchain::get_transaction(const Hash256& tx_hash) const {
-    // Search through all blocks for the transaction
-    for (const auto& [block_hash, block] : blocks_) {
-        for (const auto& tx : block.transactions) {
-            if (tx.get_hash() == tx_hash) {
-                return tx;
-            }
-        }
+    // Use indexed transaction map for O(1) lookup instead of O(n²) scan
+    auto it = transactions_.find(tx_hash);
+    if (it != transactions_.end()) {
+        return it->second;
     }
     return std::nullopt;
 }
 
 uint32_t Blockchain::get_transaction_block_height(const Hash256& tx_hash) const {
-    // Search through all blocks for the transaction
-    for (const auto& [block_hash, block] : blocks_) {
-        for (const auto& tx : block.transactions) {
-            if (tx.get_hash() == tx_hash) {
-                // Found transaction, now find block height by searching block_index_
-                for (const auto& [height, hash] : block_index_) {
-                    if (hash == block_hash) {
-                        return height;
-                    }
-                }
-                return 0;  // Block hash found but not in index (shouldn't happen)
-            }
-        }
+    // Use tx_to_block mapping for O(1) transaction to block lookup
+    auto tx_it = tx_to_block_.find(tx_hash);
+    if (tx_it == tx_to_block_.end()) {
+        return 0;  // Transaction not found
     }
-    return 0;  // Transaction not found
+
+    // Use hash_to_height reverse index for O(1) block to height lookup
+    auto height_it = hash_to_height_.find(tx_it->second);
+    if (height_it != hash_to_height_.end()) {
+        return height_it->second;
+    }
+
+    return 0;  // Block not found (shouldn't happen)
 }
 
 std::vector<Transaction> Blockchain::scan_for_addresses(const std::vector<std::string>& addresses) const {
@@ -458,10 +457,12 @@ std::vector<Transaction> Blockchain::scan_for_addresses(const std::vector<std::s
 
 void Blockchain::update_address_index(const Block& block, bool connect) {
     if (connect) {
+        Hash256 block_hash = block.get_hash();
         // Index new transactions
         for (const auto& tx : block.transactions) {
             Hash256 tx_hash = tx.get_hash();
             transactions_[tx_hash] = tx;
+            tx_to_block_[tx_hash] = block_hash;  // Maintain transaction to block mapping
 
             // Index outputs by address
             for (uint32_t i = 0; i < tx.outputs.size(); ++i) {
