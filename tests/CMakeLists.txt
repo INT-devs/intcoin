@@ -20,6 +20,7 @@ set(TEST_TARGETS
     test_dilithium_nist
     test_kyber_nist
     test_hash_nist
+    stress_test
 )
 
 # Crypto tests
@@ -91,6 +92,13 @@ target_link_libraries(test_hash_nist PRIVATE intcoin_core)
 target_compile_definitions(test_hash_nist PRIVATE ${TEST_DEFINITIONS})
 target_compile_options(test_hash_nist PRIVATE ${TEST_COMPILE_OPTIONS})
 add_test(NAME hash_nist_tests COMMAND test_hash_nist)
+
+# Stress tests (performance validation)
+add_executable(stress_test stress_test.cpp)
+target_link_libraries(stress_test PRIVATE intcoin_core)
+target_compile_definitions(stress_test PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(stress_test PRIVATE ${TEST_COMPILE_OPTIONS})
+# Note: Stress test is not added to CTest by default as it's for manual performance testing
 
 # Test coverage (optional, requires gcov/lcov)
 if(ENABLE_COVERAGE)
