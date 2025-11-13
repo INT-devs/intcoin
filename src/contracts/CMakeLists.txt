@@ -36,7 +36,7 @@ target_link_libraries(intcoin_contracts
     PUBLIC
         intcoin_core
         intcoin_crypto
-        Boost::system
+        Boost::boost
         OpenSSL::Crypto
 )
 

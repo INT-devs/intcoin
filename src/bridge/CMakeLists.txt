@@ -37,7 +37,7 @@ target_link_libraries(intcoin_bridge
     PUBLIC
         intcoin_core
         intcoin_crypto
-        Boost::system
+        Boost::boost
         OpenSSL::Crypto
         OpenSSL::SSL
 )

@@ -164,10 +164,9 @@ Response Response::from_json(const std::string& json) {
 
 // Server implementation
 
-Server::Server(uint16_t port, Blockchain& blockchain, Mempool& mempool,
+Server::Server(uint16_t /* port */, Blockchain& blockchain, Mempool& mempool,
                HDWallet* wallet, Miner* miner, p2p::Network* network)
-    : port_(port)
-    , running_(false)
+    : running_(false)
     , blockchain_(blockchain)
     , mempool_(mempool)
     , wallet_(wallet)

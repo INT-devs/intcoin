@@ -94,7 +94,7 @@ QString hash256_to_hex(const Hash256& hash) {
     return bytes_to_hex(hash.data(), hash.size());
 }
 
-std::optional<crypto::DilithiumPubKey> hex_to_dilithium_pubkey(const QString& hex_str) {
+std::optional<DilithiumPubKey> hex_to_dilithium_pubkey(const QString& hex_str) {
     // Dilithium5 public key is 2592 bytes = 5184 hex characters
     // But we'll accept any valid hex and let the crypto module validate
     if (!is_valid_hex(hex_str)) {
@@ -106,27 +106,22 @@ std::optional<crypto::DilithiumPubKey> hex_to_dilithium_pubkey(const QString& he
         return std::nullopt;
     }
 
-    // Create DilithiumPubKey from bytes
-    crypto::DilithiumPubKey pubkey;
-
     // Check if the size matches expected Dilithium5 public key size
     const size_t DILITHIUM5_PUBKEY_SIZE = 2592;
     if (bytes.size() != DILITHIUM5_PUBKEY_SIZE) {
         return std::nullopt;
     }
 
-    // Copy bytes to public key structure
-    // Note: This assumes DilithiumPubKey has a method to set from bytes
-    // In actual implementation, you'd use the proper deserialization method
-    std::copy(bytes.begin(), bytes.end(), pubkey.data);
+    // Copy bytes to DilithiumPubKey (which is std::array<uint8_t, 2592>)
+    DilithiumPubKey pubkey;
+    std::copy(bytes.begin(), bytes.end(), pubkey.begin());
 
     return pubkey;
 }
 
-QString dilithium_pubkey_to_hex(const crypto::DilithiumPubKey& pubkey) {
-    // Convert public key bytes to hex
-    // Note: Assumes DilithiumPubKey has .data member
-    return bytes_to_hex(pubkey.data, sizeof(pubkey.data));
+QString dilithium_pubkey_to_hex(const DilithiumPubKey& pubkey) {
+    // Convert public key bytes to hex (DilithiumPubKey is std::array)
+    return bytes_to_hex(pubkey.data(), pubkey.size());
 }
 
 } // namespace lightning_utils

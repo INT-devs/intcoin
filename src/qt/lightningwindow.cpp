@@ -51,9 +51,7 @@ LightningWindow::LightningWindow(
 }
 
 LightningWindow::~LightningWindow() {
-    if (nodeRunning_ && ln_node_) {
-        ln_node_->stop();
-    }
+    // Lightning node cleanup handled by shared_ptr
 }
 
 void LightningWindow::setup_ui() {

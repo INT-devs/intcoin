@@ -132,7 +132,7 @@ if(POLICY CMP0167)
 endif()
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.85.0 REQUIRED)
+find_package(Boost 1.70.0 REQUIRED)
 
 # External dependencies
 add_subdirectory(external/dilithium EXCLUDE_FROM_ALL)

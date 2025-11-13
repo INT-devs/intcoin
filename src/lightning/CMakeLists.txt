@@ -30,8 +30,7 @@ target_link_libraries(intcoin_lightning
     PUBLIC
         intcoin_core
         intcoin_crypto
-        Boost::system
-        Boost::thread
+        Boost::boost
         OpenSSL::Crypto
         OpenSSL::SSL
 )

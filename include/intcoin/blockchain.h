@@ -115,7 +115,6 @@ private:
     // Chain state
     Hash256 best_block_;
     uint32_t chain_height_;
-    uint64_t total_work_;  // Reserved for future difficulty tracking
 
     // Fork handling
     bool handle_potential_fork(const Block& new_block, uint32_t new_height);

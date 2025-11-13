@@ -35,14 +35,14 @@ QString hash256_to_hex(const Hash256& hash);
  * @param hex_str Hexadecimal string (variable length for Dilithium5 public key)
  * @return DilithiumPubKey if valid, nullopt otherwise
  */
-std::optional<crypto::DilithiumPubKey> hex_to_dilithium_pubkey(const QString& hex_str);
+std::optional<DilithiumPubKey> hex_to_dilithium_pubkey(const QString& hex_str);
 
 /**
  * Convert DilithiumPubKey to hex string
  * @param pubkey DilithiumPubKey value
  * @return Hexadecimal string representation
  */
-QString dilithium_pubkey_to_hex(const crypto::DilithiumPubKey& pubkey);
+QString dilithium_pubkey_to_hex(const DilithiumPubKey& pubkey);
 
 /**
  * Validate hex string format

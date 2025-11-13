@@ -15,8 +15,7 @@ Blockchain::Blockchain()
       difficulty_calc_(consensus_params_),
       fork_detector_(consensus_params_),
       checkpoint_system_(consensus_params_),
-      chain_height_(0),
-      total_work_(0) {
+      chain_height_(0) {
 
     // Add genesis checkpoint
     Block genesis = create_genesis_block();
@@ -35,8 +34,7 @@ Blockchain::Blockchain(const std::string& datadir)
       difficulty_calc_(consensus_params_),
       fork_detector_(consensus_params_),
       checkpoint_system_(consensus_params_),
-      chain_height_(0),
-      total_work_(0) {
+      chain_height_(0) {
 
     // Initialize databases
     if (init_databases(datadir)) {

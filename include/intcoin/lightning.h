@@ -76,11 +76,11 @@ struct CommitmentTransaction {
 
     Transaction funding_tx;             // Original funding transaction
     Transaction commitment_tx;          // Current commitment transaction
-    crypto::DilithiumSignature local_sig;   // Local signature
-    crypto::DilithiumSignature remote_sig;  // Remote signature
+    DilithiumSignature local_sig;   // Local signature
+    DilithiumSignature remote_sig;  // Remote signature
 
     // Revocation keys for penalty mechanism
-    crypto::DilithiumPubKey revocation_pubkey;
+    DilithiumPubKey revocation_pubkey;
     Hash256 revocation_hash;
 
     CommitmentTransaction() : commitment_number(0), to_local_sat(0),
@@ -103,8 +103,8 @@ public:
     uint32_t funding_output_index;      // Output index in funding tx
 
     // Channel participants
-    crypto::DilithiumPubKey local_pubkey;
-    crypto::DilithiumPubKey remote_pubkey;
+    DilithiumPubKey local_pubkey;
+    DilithiumPubKey remote_pubkey;
 
     // Channel parameters
     uint64_t capacity_sat;              // Total channel capacity
@@ -133,7 +133,7 @@ public:
     Channel();
 
     // Channel lifecycle
-    bool open(const crypto::DilithiumPubKey& remote_key, uint64_t capacity);
+    bool open(const DilithiumPubKey& remote_key, uint64_t capacity);
     bool close_cooperative();
     bool close_unilateral();
     bool is_open() const { return state == ChannelState::OPEN; }
@@ -153,7 +153,7 @@ public:
     // Commitment operations
     bool create_new_commitment();
     bool sign_commitment(const crypto::DilithiumKeyPair& keypair);
-    bool verify_remote_signature(const crypto::DilithiumSignature& sig);
+    bool verify_remote_signature(const DilithiumSignature& sig);
     bool revoke_previous_commitment();
 
     // Serialization
@@ -170,10 +170,10 @@ public:
     LightningNode(const crypto::DilithiumKeyPair& keypair);
 
     // Node identity
-    crypto::DilithiumPubKey get_node_id() const { return keypair_.public_key; }
+    DilithiumPubKey get_node_id() const { return keypair_.public_key; }
 
     // Channel management
-    std::optional<Hash256> open_channel(const crypto::DilithiumPubKey& remote_pubkey,
+    std::optional<Hash256> open_channel(const DilithiumPubKey& remote_pubkey,
                                        uint64_t capacity_sat,
                                        uint64_t push_amount_sat = 0);
     bool close_channel(const Hash256& channel_id, bool force = false);
@@ -183,7 +183,7 @@ public:
 
     // Payment operations
     bool send_payment(uint64_t amount_sat, const Hash256& payment_hash,
-                     const std::vector<crypto::DilithiumPubKey>& route);
+                     const std::vector<DilithiumPubKey>& route);
     bool receive_payment(uint64_t amount_sat, std::string& invoice_out);
     bool forward_htlc(const Hash256& incoming_channel, const Hash256& outgoing_channel,
                      uint64_t htlc_id);
@@ -206,8 +206,8 @@ public:
     // Network graph and routing
     struct ChannelInfo {
         Hash256 channel_id;
-        crypto::DilithiumPubKey node1;
-        crypto::DilithiumPubKey node2;
+        DilithiumPubKey node1;
+        DilithiumPubKey node2;
         uint64_t capacity_sat;
         uint32_t fee_base_msat;
         uint32_t fee_rate_ppm;
@@ -217,8 +217,8 @@ public:
 
     void add_channel_to_graph(const ChannelInfo& info);
     void remove_channel_from_graph(const Hash256& channel_id);
-    std::vector<crypto::DilithiumPubKey> find_route(
-        const crypto::DilithiumPubKey& destination,
+    std::vector<DilithiumPubKey> find_route(
+        const DilithiumPubKey& destination,
         uint64_t amount_sat);
 
     // Statistics
@@ -248,9 +248,9 @@ private:
 
     // Helper functions
     Hash256 generate_channel_id(const Hash256& funding_txid, uint32_t output_index);
-    bool validate_route(const std::vector<crypto::DilithiumPubKey>& route,
+    bool validate_route(const std::vector<DilithiumPubKey>& route,
                        uint64_t amount_sat);
-    uint64_t calculate_route_fees(const std::vector<crypto::DilithiumPubKey>& route,
+    uint64_t calculate_route_fees(const std::vector<DilithiumPubKey>& route,
                                   uint64_t amount_sat);
 };
 
@@ -312,12 +312,12 @@ struct OpenChannel {
     uint32_t feerate_per_kw;
     uint16_t to_self_delay;
     uint16_t max_accepted_htlcs;
-    crypto::DilithiumPubKey funding_pubkey;
-    crypto::DilithiumPubKey revocation_basepoint;
-    crypto::DilithiumPubKey payment_basepoint;
-    crypto::DilithiumPubKey delayed_payment_basepoint;
-    crypto::DilithiumPubKey htlc_basepoint;
-    crypto::DilithiumPubKey first_per_commitment_point;
+    DilithiumPubKey funding_pubkey;
+    DilithiumPubKey revocation_basepoint;
+    DilithiumPubKey payment_basepoint;
+    DilithiumPubKey delayed_payment_basepoint;
+    DilithiumPubKey htlc_basepoint;
+    DilithiumPubKey first_per_commitment_point;
 
     Message to_message() const;
     static OpenChannel from_message(const Message& msg);
@@ -332,12 +332,12 @@ struct AcceptChannel {
     uint32_t minimum_depth;
     uint16_t to_self_delay;
     uint16_t max_accepted_htlcs;
-    crypto::DilithiumPubKey funding_pubkey;
-    crypto::DilithiumPubKey revocation_basepoint;
-    crypto::DilithiumPubKey payment_basepoint;
-    crypto::DilithiumPubKey delayed_payment_basepoint;
-    crypto::DilithiumPubKey htlc_basepoint;
-    crypto::DilithiumPubKey first_per_commitment_point;
+    DilithiumPubKey funding_pubkey;
+    DilithiumPubKey revocation_basepoint;
+    DilithiumPubKey payment_basepoint;
+    DilithiumPubKey delayed_payment_basepoint;
+    DilithiumPubKey htlc_basepoint;
+    DilithiumPubKey first_per_commitment_point;
 
     Message to_message() const;
     static AcceptChannel from_message(const Message& msg);
