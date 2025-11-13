@@ -14,7 +14,7 @@ The INTcoin mainnet genesis block represents the foundation of the quantum-resis
 
 ```
 Version:           1
-Timestamp:         1735689600 (January 1, 2025 00:00:00 UTC)
+Timestamp:         1730851200 (November 6, 2025 00:00:00 UTC)
 Previous Hash:     0000000000000000000000000000000000000000000000000000000000000000
 Difficulty (bits): 0x1d00ffff
 Nonce:             [MINING IN PROGRESS]
@@ -22,19 +22,19 @@ Nonce:             [MINING IN PROGRESS]
 
 ### Coinbase Transaction
 
-**Message**: `"The Times 01/Jan/2025 Quantum-Resistant Cryptocurrency Era Begins"`
+**Message**: `"BBC News 06/Nov/2025 Will quantum be bigger than AI?"`
 
-This message commemorates the beginning of the post-quantum cryptography era in cryptocurrency, marking January 1, 2025 as the symbolic start of quantum-resistant blockchain technology.
+This message references the BBC News headline questioning whether quantum computing will have a greater impact than artificial intelligence, marking November 6, 2025 as the genesis of INTcoin's quantum-resistant blockchain.
 
 **Initial Reward**: 50 INT
 
 ### Merkle Root
 
 ```
-b35d55ec6717339d4d8c8a8b4c44f1b67ea87595c005a8f773c1091861a4c33c
+f98a5c8bc3eeadaee865ecbdf5ac955fef4614ca2551a250a962b42a000d36f5
 ```
 
-The merkle root is derived from the hash of the single coinbase transaction in the genesis block.
+The merkle root is derived from the hash of the single coinbase transaction in the genesis block (updated for new message).
 
 ## Mining Process
 
@@ -85,8 +85,8 @@ Once mining is complete, the genesis block will be verified using:
 
 ```cpp
 Block GenesisBlock::create_mainnet() {
-    const std::string message = "The Times 01/Jan/2025 Quantum-Resistant Cryptocurrency Era Begins";
-    const uint64_t timestamp = 1735689600;  // January 1, 2025 00:00:00 UTC
+    const std::string message = "BBC News 06/Nov/2025 Will quantum be bigger than AI?";
+    const uint64_t timestamp = 1730851200;  // November 6, 2025 00:00:00 UTC
     const uint64_t nonce = 0;  // Will be updated with mined nonce
     const uint32_t bits = 0x1d00ffff;  // Initial difficulty
 
@@ -100,8 +100,8 @@ Once a valid nonce is found, the code will be updated to:
 
 ```cpp
 Block GenesisBlock::create_mainnet() {
-    const std::string message = "The Times 01/Jan/2025 Quantum-Resistant Cryptocurrency Era Begins";
-    const uint64_t timestamp = 1735689600;  // January 1, 2025 00:00:00 UTC
+    const std::string message = "BBC News 06/Nov/2025 Will quantum be bigger than AI?";
+    const uint64_t timestamp = 1730851200;  // November 6, 2025 00:00:00 UTC
     const uint64_t nonce = [MINED_NONCE]ULL;  // Mined nonce
     const uint32_t bits = 0x1d00ffff;  // Initial difficulty
 
@@ -156,7 +156,7 @@ Starting from the genesis block, INTcoin follows a halving-based emission schedu
 
 ## Historical Context
 
-The genesis block message references the beginning of the quantum-resistant cryptocurrency era, symbolically dated January 1, 2025. This mirrors Bitcoin's tradition of embedding a newspaper headline, but marks a new chapter in blockchain technology—one that addresses the quantum computing threat.
+The genesis block message references a BBC News headline from November 6, 2025, questioning whether quantum computing will surpass artificial intelligence in impact. This mirrors Bitcoin's tradition of embedding a newspaper headline, while marking INTcoin's mission: creating a cryptocurrency that addresses the quantum computing threat before it materializes.
 
 ## Next Steps
 

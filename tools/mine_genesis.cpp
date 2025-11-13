@@ -48,12 +48,18 @@ void print_genesis_info(const Block& genesis) {
     std::cout << CYAN << "\nGenesis Block Configuration:" << RESET << std::endl;
     std::cout << "  Version:           " << genesis.header.version << std::endl;
     std::cout << "  Timestamp:         " << genesis.header.timestamp
-              << " (Jan 1, 2025 00:00:00 UTC)" << std::endl;
+              << " (Nov 6, 2025 00:00:00 UTC)" << std::endl;
     std::cout << "  Difficulty (bits): 0x" << std::hex << genesis.header.bits << std::dec << std::endl;
     std::cout << "  Merkle Root:       ";
     print_hash(genesis.header.merkle_root);
     std::cout << std::endl;
-    std::cout << "  Message:           \"The Times 01/Jan/2025 Quantum-Resistant Cryptocurrency Era Begins\"" << std::endl;
+
+    // Extract message from coinbase transaction
+    if (!genesis.transactions.empty() && !genesis.transactions[0].inputs.empty()) {
+        const auto& coinbase_script = genesis.transactions[0].inputs[0].script_sig;
+        std::string message(coinbase_script.begin(), coinbase_script.end());
+        std::cout << "  Message:           \"" << message << "\"" << std::endl;
+    }
     std::cout << std::endl;
 }
 
@@ -163,9 +169,16 @@ void print_c_code(const Block& genesis) {
     std::cout << CYAN << "\nC++ Code for block.cpp:" << RESET << std::endl;
     std::cout << BLUE << "========================================" << RESET << std::endl;
 
+    // Extract message from coinbase
+    std::string message = "BBC News 06/Nov/2025 Will quantum be bigger than AI?";
+    if (!genesis.transactions.empty() && !genesis.transactions[0].inputs.empty()) {
+        const auto& coinbase_script = genesis.transactions[0].inputs[0].script_sig;
+        message = std::string(coinbase_script.begin(), coinbase_script.end());
+    }
+
     std::cout << "Block GenesisBlock::create_mainnet() {\n";
-    std::cout << "    const std::string message = \"The Times 01/Jan/2025 Quantum-Resistant Cryptocurrency Era Begins\";\n";
-    std::cout << "    const uint64_t timestamp = " << genesis.header.timestamp << ";  // January 1, 2025 00:00:00 UTC\n";
+    std::cout << "    const std::string message = \"" << message << "\";\n";
+    std::cout << "    const uint64_t timestamp = " << genesis.header.timestamp << ";  // November 6, 2025 00:00:00 UTC\n";
     std::cout << "    const uint64_t nonce = " << genesis.header.nonce << "ULL;  // Mined nonce\n";
     std::cout << "    const uint32_t bits = 0x" << std::hex << genesis.header.bits << ";  // Initial difficulty\n" << std::dec;
     std::cout << "\n";
