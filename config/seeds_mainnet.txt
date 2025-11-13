@@ -1,0 +1,27 @@
+# INTcoin Mainnet Seed Nodes
+# Format: hostname:port or IP:port
+# Updated: 2025-11-13
+#
+# These seed nodes help bootstrap new nodes joining the network.
+# Geographic distribution ensures global availability.
+
+# North America
+seed1.intcoin.org:8333          # US East (Virginia)
+seed2.intcoin.org:8333          # US West (California)
+
+# Europe
+seed-eu1.intcoin.org:8333       # London, UK
+seed-eu2.intcoin.org:8333       # Frankfurt, Germany
+
+# Asia
+seed-asia1.intcoin.org:8333     # Singapore
+seed-asia2.intcoin.org:8333     # Tokyo, Japan
+
+# Australia
+seed-au.intcoin.org:8333        # Sydney, Australia
+
+# South America
+seed-sa.intcoin.org:8333        # São Paulo, Brazil
+
+# Tor Hidden Services (for privacy)
+# [To be added after Tor deployment]

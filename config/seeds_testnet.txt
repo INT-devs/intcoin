@@ -1,0 +1,12 @@
+# INTcoin Testnet Seed Nodes
+# Format: hostname:port or IP:port
+# Updated: 2025-11-13
+#
+# Testnet seed nodes for testing and development
+
+# Primary testnet seeds
+testnet-seed1.intcoin.org:18333
+testnet-seed2.intcoin.org:18333
+
+# Development seeds
+testnet-dev.intcoin.org:18333
