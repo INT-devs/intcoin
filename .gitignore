@@ -206,6 +206,9 @@ core.*
 # Wiki (tracked separately)
 wiki/
 
+# Website files (symlink to Desktop)
+website
+
 # Qt MOC parameter files
 src/qt/moc_*_parameters
 src/qt/*_parameters
