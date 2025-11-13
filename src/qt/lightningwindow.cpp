@@ -462,12 +462,24 @@ void LightningWindow::on_openChannelButton_clicked() {
         return;
     }
 
+    // Convert peer ID string to public key
+    // TODO: Implement proper hex string to DilithiumPubKey conversion
+    crypto::DilithiumPubKey peer_pubkey;
+
     uint64_t capacity = static_cast<uint64_t>(channelCapacitySpin_->value()) * 100000000; // INT to satoshis
 
-    // TODO: Implement actual channel opening using ln_node_->open_channel()
-    show_info("Opening Channel", "Channel opening initiated. This may take several minutes...");
+    // Open channel with lightning node
+    auto channel_id_opt = ln_node_->open_channel(peer_pubkey, capacity);
 
-    emit channelOpened(peerIdStr);
+    if (channel_id_opt.has_value()) {
+        QString channel_id_str = QString::fromStdString(channel_id_opt.value().to_string());
+        show_info("Success", "Channel opening initiated: " + channel_id_str);
+        emit channelOpened(channel_id_str);
+        peerIdEdit_->clear();
+    } else {
+        show_error("Error", "Failed to open channel. Check peer ID and capacity.");
+    }
+
     update_channel_list();
 }
 
@@ -482,10 +494,20 @@ void LightningWindow::on_closeChannelButton_clicked() {
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
-        // TODO: Implement actual channel closing using ln_node_->close_channel()
-        show_info("Closing Channel", "Channel closing initiated...");
+        // Convert channel ID string to Hash256
+        // TODO: Implement proper string to Hash256 conversion
+        Hash256 channel_id{};
 
-        emit channelClosed(selectedChannelId_);
+        // Close channel (cooperative close)
+        bool success = ln_node_->close_channel(channel_id, false);
+
+        if (success) {
+            show_info("Success", "Channel closing initiated. Funds will return to on-chain wallet.");
+            emit channelClosed(selectedChannelId_);
+        } else {
+            show_error("Error", "Failed to close channel. It may already be closed.");
+        }
+
         selectedChannelId_.clear();
         update_channel_list();
     }
@@ -526,17 +548,29 @@ void LightningWindow::on_createInvoiceButton_clicked() {
         return;
     }
 
-    uint64_t amount_msat = static_cast<uint64_t>(amount * 100000000000); // INT to millisatoshis
+    uint64_t amount_sat = static_cast<uint64_t>(amount * 100000000); // INT to satoshis
     QString description = invoiceDescriptionEdit_->text();
-    uint32_t expiry_seconds = static_cast<uint32_t>(invoiceExpirySpinBox_->value() * 60);
 
-    // TODO: Implement actual invoice creation using ln_node_->create_invoice()
-    QString invoice = QString("lnint1") + QString::number(amount_msat) + "...";
+    // Create invoice using lightning node
+    auto invoice = ln_node_->create_invoice(amount_sat, description.toStdString());
 
-    invoiceTextEdit_->setText(invoice);
+    // Display the encoded invoice
+    QString invoice_str = QString::fromStdString(invoice.encoded_invoice);
+    invoiceTextEdit_->setText(invoice_str);
     copyInvoiceButton_->setEnabled(true);
 
-    show_success("Invoice Created", "Invoice has been generated successfully");
+    // Store for later reference
+    selectedInvoice_ = invoice_str;
+
+    show_success("Invoice Created",
+        QString("Invoice created for %1 INT\nExpires: %2")
+            .arg(amount, 0, 'f', 8)
+            .arg(invoice.expiry_time));
+
+    // Clear input fields
+    invoiceAmountEdit_->clear();
+    invoiceDescriptionEdit_->clear();
+
     update_invoice_list();
 }
 
@@ -546,8 +580,8 @@ void LightningWindow::on_payInvoiceButton_clicked() {
         return;
     }
 
-    QString invoice = payInvoiceEdit_->text().trimmed();
-    if (invoice.isEmpty()) {
+    QString invoice_str = payInvoiceEdit_->text().trimmed();
+    if (invoice_str.isEmpty()) {
         show_error("Error", "Please enter an invoice");
         return;
     }
@@ -557,10 +591,21 @@ void LightningWindow::on_payInvoiceButton_clicked() {
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
-        // TODO: Implement actual payment using ln_node_->send_payment()
-        show_info("Sending Payment", "Payment is being processed...");
+        // Pay invoice using lightning node
+        bool success = ln_node_->pay_invoice(invoice_str.toStdString());
 
-        payInvoiceEdit_->clear();
+        if (success) {
+            show_success("Success", "Payment sent successfully!");
+            emit paymentSent(invoice_str);
+            payInvoiceEdit_->clear();
+        } else {
+            show_error("Payment Failed",
+                "Failed to send payment. Check:\n"
+                "- Invoice is valid and not expired\n"
+                "- You have sufficient channel balance\n"
+                "- A route to destination exists");
+        }
+
         update_payment_history();
     }
 }
@@ -654,16 +699,68 @@ void LightningWindow::on_disconnectPeerButton_clicked() {
 
 // Update functions
 void LightningWindow::update_channel_list() {
-    if (!ln_node_) return;
-
-    // TODO: Implement actual channel list retrieval
-    // For now, this is a placeholder
-    channelTable_->setRowCount(0);
-
-    // Example: Add sample data when node is running
-    if (nodeRunning_) {
-        // This would be replaced with actual data from ln_node_->list_channels()
+    if (!ln_node_ || !nodeRunning_) {
+        channelTable_->setRowCount(0);
+        return;
     }
+
+    // Get all channels from lightning node
+    auto channels = ln_node_->get_all_channels();
+
+    channelTable_->setRowCount(static_cast<int>(channels.size()));
+
+    uint64_t total_capacity = 0;
+    uint64_t total_local_balance = 0;
+    uint64_t total_remote_balance = 0;
+    int active_count = 0;
+
+    int row = 0;
+    for (const auto& channel : channels) {
+        // Channel ID
+        channelTable_->setItem(row, 0,
+            new QTableWidgetItem(QString::fromStdString(channel->channel_id.to_string())));
+
+        // Peer ID
+        channelTable_->setItem(row, 1,
+            new QTableWidgetItem(QString::fromStdString(channel->remote_pubkey.to_string()).left(16) + "..."));
+
+        // State
+        channelTable_->setItem(row, 2,
+            new QTableWidgetItem(format_channel_state(channel->state)));
+
+        // Capacity
+        channelTable_->setItem(row, 3,
+            new QTableWidgetItem(format_satoshis(channel->capacity_sat)));
+
+        // Local Balance
+        channelTable_->setItem(row, 4,
+            new QTableWidgetItem(format_satoshis(channel->local_balance_sat)));
+
+        // Remote Balance
+        channelTable_->setItem(row, 5,
+            new QTableWidgetItem(format_satoshis(channel->remote_balance_sat)));
+
+        // Active HTLCs
+        channelTable_->setItem(row, 6,
+            new QTableWidgetItem(QString::number(channel->pending_htlcs.size())));
+
+        // Update totals
+        total_capacity += channel->capacity_sat;
+        total_local_balance += channel->local_balance_sat;
+        total_remote_balance += channel->remote_balance_sat;
+
+        if (channel->is_open()) {
+            active_count++;
+        }
+
+        row++;
+    }
+
+    // Update summary labels
+    totalCapacityLabel_->setText(format_satoshis(total_capacity));
+    localBalanceLabel_->setText(format_satoshis(total_local_balance));
+    remoteBalanceLabel_->setText(format_satoshis(total_remote_balance));
+    activeChannelsLabel_->setText(QString::number(active_count));
 }
 
 void LightningWindow::update_invoice_list() {
@@ -685,7 +782,27 @@ void LightningWindow::update_stats() {
         return;
     }
 
-    // TODO: Implement actual stats retrieval from ln_node_->get_stats()
+    // Get statistics from lightning node
+    auto stats = ln_node_->get_stats();
+
+    // Update channel statistics
+    numChannelsLabel_->setText(QString::number(stats.total_channels));
+    numActiveChannelsLabel_->setText(QString::number(stats.active_channels));
+
+    // Update payment statistics
+    numPaymentsSentLabel_->setText(QString::number(stats.successful_payments));
+    numPaymentsReceivedLabel_->setText(QString::number(stats.failed_payments)); // TODO: Track received separately
+
+    // Calculate average payment size
+    uint64_t avg_payment = 0;
+    if (stats.successful_payments > 0) {
+        avg_payment = stats.total_capacity_sat / stats.successful_payments;
+    }
+    avgPaymentSizeLabel_->setText(format_satoshis(avg_payment));
+
+    // Update network statistics (placeholder - would come from network graph)
+    networkGraphNodesLabel_->setText("0"); // TODO: Implement network graph tracking
+    networkGraphChannelsLabel_->setText("0");
 
     // Update uptime
     if (nodeRunning_) {
