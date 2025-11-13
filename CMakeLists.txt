@@ -111,8 +111,8 @@ find_package(RocksDB REQUIRED)
 
 # Qt (Qt6 preferred, Qt5 fallback) for wallet GUI
 if(BUILD_QT_WALLET)
-    # Try Qt6 first (6.5+), fall back to Qt5 (5.9+)
-    find_package(Qt6 6.5 COMPONENTS Core Widgets Network Gui QUIET)
+    # Try Qt6 first (6.2+), fall back to Qt5 (5.9+)
+    find_package(Qt6 6.2 COMPONENTS Core Widgets Network Gui QUIET)
     if(Qt6_FOUND)
         message(STATUS "Using Qt6 ${Qt6_VERSION}")
         set(QT_VERSION_MAJOR 6)
