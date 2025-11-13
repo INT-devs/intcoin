@@ -8,11 +8,13 @@ set(QT_SOURCES
     main.cpp
     mainwindow.cpp
     lightningwindow.cpp
+    lightning_utils.cpp
 )
 
 set(QT_HEADERS
     mainwindow.h
     lightningwindow.h
+    lightning_utils.h
 )
 
 # MOC the headers (Qt5/Qt6 compatible)

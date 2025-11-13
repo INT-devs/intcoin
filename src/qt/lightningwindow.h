@@ -161,6 +161,17 @@ private:
     // Node state
     bool nodeRunning_;
     std::chrono::steady_clock::time_point nodeStartTime_;
+
+    // Payment history tracking
+    struct PaymentRecord {
+        QString payment_hash;
+        QString direction; // "sent" or "received"
+        uint64_t amount_sat;
+        uint64_t fees_sat;
+        QString status; // "success", "pending", "failed"
+        qint64 timestamp;
+    };
+    std::vector<PaymentRecord> payment_history_;
 };
 
 } // namespace qt

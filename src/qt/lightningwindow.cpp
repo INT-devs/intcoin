@@ -5,6 +5,7 @@
 // Lightning Network GUI Window Implementation
 
 #include "lightningwindow.h"
+#include "lightning_utils.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -462,22 +463,27 @@ void LightningWindow::on_openChannelButton_clicked() {
         return;
     }
 
-    // Convert peer ID string to public key
-    // TODO: Implement proper hex string to DilithiumPubKey conversion
-    crypto::DilithiumPubKey peer_pubkey;
+    // Convert peer ID hex string to DilithiumPubKey
+    auto peer_pubkey_opt = lightning_utils::hex_to_dilithium_pubkey(peerIdStr);
+    if (!peer_pubkey_opt.has_value()) {
+        show_error("Invalid Peer ID",
+            "The peer node ID must be a valid hexadecimal string.\n"
+            "Expected: 5184 hex characters (2592 bytes for Dilithium5 public key)");
+        return;
+    }
 
     uint64_t capacity = static_cast<uint64_t>(channelCapacitySpin_->value()) * 100000000; // INT to satoshis
 
     // Open channel with lightning node
-    auto channel_id_opt = ln_node_->open_channel(peer_pubkey, capacity);
+    auto channel_id_opt = ln_node_->open_channel(peer_pubkey_opt.value(), capacity);
 
     if (channel_id_opt.has_value()) {
-        QString channel_id_str = QString::fromStdString(channel_id_opt.value().to_string());
-        show_info("Success", "Channel opening initiated: " + channel_id_str);
+        QString channel_id_str = lightning_utils::hash256_to_hex(channel_id_opt.value());
+        show_info("Success", "Channel opening initiated\nChannel ID: " + channel_id_str);
         emit channelOpened(channel_id_str);
         peerIdEdit_->clear();
     } else {
-        show_error("Error", "Failed to open channel. Check peer ID and capacity.");
+        show_error("Error", "Failed to open channel. Peer may not be reachable or capacity insufficient.");
     }
 
     update_channel_list();
@@ -494,18 +500,21 @@ void LightningWindow::on_closeChannelButton_clicked() {
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
-        // Convert channel ID string to Hash256
-        // TODO: Implement proper string to Hash256 conversion
-        Hash256 channel_id{};
+        // Convert channel ID hex string to Hash256
+        auto channel_id_opt = lightning_utils::hex_to_hash256(selectedChannelId_);
+        if (!channel_id_opt.has_value()) {
+            show_error("Error", "Invalid channel ID format");
+            return;
+        }
 
         // Close channel (cooperative close)
-        bool success = ln_node_->close_channel(channel_id, false);
+        bool success = ln_node_->close_channel(channel_id_opt.value(), false);
 
         if (success) {
             show_info("Success", "Channel closing initiated. Funds will return to on-chain wallet.");
             emit channelClosed(selectedChannelId_);
         } else {
-            show_error("Error", "Failed to close channel. It may already be closed.");
+            show_error("Error", "Failed to close channel. It may already be closed or not in a valid state.");
         }
 
         selectedChannelId_.clear();
@@ -593,6 +602,16 @@ void LightningWindow::on_payInvoiceButton_clicked() {
     if (reply == QMessageBox::Yes) {
         // Pay invoice using lightning node
         bool success = ln_node_->pay_invoice(invoice_str.toStdString());
+
+        // Record payment in history
+        PaymentRecord record;
+        record.payment_hash = invoice_str.left(32); // First 32 chars as identifier
+        record.direction = "sent";
+        record.amount_sat = 0; // TODO: Parse from invoice
+        record.fees_sat = 0; // TODO: Get actual fees from result
+        record.status = success ? "success" : "failed";
+        record.timestamp = QDateTime::currentSecsSinceEpoch();
+        payment_history_.push_back(record);
 
         if (success) {
             show_success("Success", "Payment sent successfully!");
@@ -716,13 +735,15 @@ void LightningWindow::update_channel_list() {
 
     int row = 0;
     for (const auto& channel : channels) {
-        // Channel ID
+        // Channel ID (first 16 chars of hex)
+        QString channel_id_hex = lightning_utils::hash256_to_hex(channel->channel_id);
         channelTable_->setItem(row, 0,
-            new QTableWidgetItem(QString::fromStdString(channel->channel_id.to_string())));
+            new QTableWidgetItem(channel_id_hex.left(16) + "..."));
 
-        // Peer ID
+        // Peer ID (first 16 chars of hex)
+        QString peer_id_hex = lightning_utils::dilithium_pubkey_to_hex(channel->remote_pubkey);
         channelTable_->setItem(row, 1,
-            new QTableWidgetItem(QString::fromStdString(channel->remote_pubkey.to_string()).left(16) + "..."));
+            new QTableWidgetItem(peer_id_hex.left(16) + "..."));
 
         // State
         channelTable_->setItem(row, 2,
@@ -815,8 +836,58 @@ void LightningWindow::update_stats() {
 void LightningWindow::update_payment_history() {
     if (!ln_node_) return;
 
-    // TODO: Implement actual payment history retrieval
-    paymentHistoryTable_->setRowCount(0);
+    // Display payment history from local tracking
+    paymentHistoryTable_->setRowCount(static_cast<int>(payment_history_.size()));
+
+    uint64_t total_sent = 0;
+    uint64_t total_received = 0;
+    uint64_t total_fees = 0;
+
+    int row = 0;
+    // Show most recent first
+    for (auto it = payment_history_.rbegin(); it != payment_history_.rend(); ++it) {
+        const auto& payment = *it;
+
+        // Payment Hash (truncated)
+        paymentHistoryTable_->setItem(row, 0,
+            new QTableWidgetItem(payment.payment_hash.left(16) + "..."));
+
+        // Direction
+        paymentHistoryTable_->setItem(row, 1,
+            new QTableWidgetItem(payment.direction));
+
+        // Amount
+        paymentHistoryTable_->setItem(row, 2,
+            new QTableWidgetItem(format_satoshis(payment.amount_sat)));
+
+        // Fees
+        paymentHistoryTable_->setItem(row, 3,
+            new QTableWidgetItem(QString::number(payment.fees_sat) + " sats"));
+
+        // Status
+        paymentHistoryTable_->setItem(row, 4,
+            new QTableWidgetItem(payment.status));
+
+        // Time
+        QDateTime time = QDateTime::fromSecsSinceEpoch(payment.timestamp);
+        paymentHistoryTable_->setItem(row, 5,
+            new QTableWidgetItem(time.toString("yyyy-MM-dd hh:mm:ss")));
+
+        // Update totals
+        if (payment.direction == "sent" && payment.status == "success") {
+            total_sent += payment.amount_sat;
+            total_fees += payment.fees_sat;
+        } else if (payment.direction == "received" && payment.status == "success") {
+            total_received += payment.amount_sat;
+        }
+
+        row++;
+    }
+
+    // Update summary labels
+    totalSentLabel_->setText(format_satoshis(total_sent));
+    totalReceivedLabel_->setText(format_satoshis(total_received));
+    totalFeesLabel_->setText(QString::number(total_fees) + " sats");
 }
 
 // Helper functions
