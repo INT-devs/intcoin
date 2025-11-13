@@ -4,18 +4,18 @@
 #
 # INTcoin Core CMake Build System
 
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 # Project information
 project(INTcoin
-    VERSION 1.0.0
-    DESCRIPTION "Quantum-resistant, ASIC-resistant cryptocurrency"
+    VERSION 1.1.0
+    DESCRIPTION "Quantum-resistant cryptocurrency with SHA256 PoW"
     LANGUAGES CXX C
 )
 
 # Semantic versioning
 set(INTCOIN_VERSION_MAJOR 1)
-set(INTCOIN_VERSION_MINOR 0)
+set(INTCOIN_VERSION_MINOR 1)
 set(INTCOIN_VERSION_PATCH 0)
 set(INTCOIN_VERSION "${INTCOIN_VERSION_MAJOR}.${INTCOIN_VERSION_MINOR}.${INTCOIN_VERSION_PATCH}")
 
@@ -106,12 +106,12 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # Find required packages
 find_package(Threads REQUIRED)
-find_package(OpenSSL 1.1 REQUIRED)
+find_package(OpenSSL 3.0 REQUIRED)
 find_package(RocksDB REQUIRED)
 
-# Qt5 for wallet GUI
+# Qt6 for wallet GUI
 if(BUILD_QT_WALLET)
-    find_package(Qt5 5.9 COMPONENTS Core Widgets Network Gui REQUIRED)
+    find_package(Qt6 6.5 COMPONENTS Core Widgets Network Gui REQUIRED)
     set(CMAKE_AUTOMOC ON)
     set(CMAKE_AUTORCC ON)
     set(CMAKE_AUTOUIC ON)
@@ -123,7 +123,7 @@ if(POLICY CMP0167)
 endif()
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
-find_package(Boost 1.65.0 REQUIRED)
+find_package(Boost 1.85.0 REQUIRED)
 
 # External dependencies
 add_subdirectory(external/dilithium EXCLUDE_FROM_ALL)

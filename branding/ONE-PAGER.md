@@ -41,10 +41,10 @@ Quantum computers pose an existential threat to traditional cryptocurrencies:
 
 ### 🌐 True Decentralization
 
-- **ASIC-resistant mining** (SHA-256 PoW in quantum era)
+- **SHA-256 Proof of Work** (battle-tested Bitcoin algorithm)
 - No pre-mine, no ICO, no founder allocation
 - No staking or governance (pure Proof of Work)
-- Anyone can mine with consumer hardware
+- Fair launch for all participants
 
 ### 🔒 Privacy & Security
 
@@ -66,13 +66,17 @@ Quantum computers pose an existential threat to traditional cryptocurrencies:
 
 | Feature | Specification |
 |---------|---------------|
-| **Consensus** | Proof of Work (SHA-256) |
-| **Block Time** | 10 minutes |
+| **Consensus** | Proof of Work (SHA-256 double hash) |
+| **Block Time** | 2 minutes (120 seconds) |
 | **Block Size** | 4 MB |
-| **Supply** | 21 million INT (halving every 210,000 blocks) |
-| **Signatures** | CRYSTALS-Dilithium5 (4595 bytes) |
-| **Encryption** | CRYSTALS-Kyber1024 (1568 bytes) |
-| **Hash Function** | SHA3-256 (Keccak) |
+| **Supply** | 221 trillion INT (halving every 2,016 blocks) |
+| **Initial Reward** | 50 INT per block |
+| **Difficulty Adjustment** | Every 2,016 blocks (~4.67 days) |
+| **Signatures** | CRYSTALS-Dilithium5 (ML-DSA-87, 4595 bytes) |
+| **Encryption** | CRYSTALS-Kyber1024 (ML-KEM-1024, 3168 bytes) |
+| **Hash Function** | SHA3-256 (FIPS 202) |
+| **P2P Port** | 9333 (mainnet), 18333 (testnet) |
+| **RPC Port** | 9332 (mainnet), 18332 (testnet) |
 | **Lightning** | Quantum-resistant payment channels |
 
 ---
@@ -114,7 +118,7 @@ The only crypto proven safe for 50+ year time horizons.
 |  | INTcoin | Bitcoin | Ethereum |
 |--|---------|---------|----------|
 | **Quantum-Resistant** | ✅ Yes (Dilithium5) | ❌ No (ECDSA) | ❌ No (ECDSA) |
-| **ASIC-Resistant** | ✅ Yes | ❌ No | ⚠️ Partial |
+| **Block Time** | ✅ 2 min | ⚠️ 10 min | ⚠️ 12 sec |
 | **Lightning Network** | ✅ Yes | ✅ Yes | ❌ No |
 | **NIST Standardized** | ✅ Yes (2024) | ❌ No | ❌ No |
 | **True PoW** | ✅ Yes | ✅ Yes | ❌ No (PoS) |
@@ -229,7 +233,7 @@ A: Yes. INTcoin uses CRYSTALS-Dilithium5 and Kyber1024, both NIST-standardized p
 A: Estimates range from 2030-2035. INTcoin protects you today.
 
 **Q: Can I mine INTcoin?**
-A: Yes! INTcoin uses ASIC-resistant SHA-256 mining in the quantum era, allowing anyone with a CPU/GPU to participate.
+A: Yes! INTcoin uses standard SHA-256 Proof of Work, the same algorithm as Bitcoin, allowing anyone to participate with mining hardware.
 
 **Q: Is INTcoin compatible with existing crypto tools?**
 A: INTcoin uses new post-quantum algorithms, so it requires its own tools and wallets. However, we support standard features like HD wallets and Lightning Network.
@@ -248,4 +252,4 @@ Distributed under the MIT software license.
 
 **INTcoin** • Quantum-Resistant • Decentralized • The Future is Secure
 
-*Version 1.0 - January 2025*
+*Version 1.1 - November 2025*

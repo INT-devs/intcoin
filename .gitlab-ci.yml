@@ -60,9 +60,9 @@ build:ubuntu-22.04:
         libssl-dev
         librocksdb-dev
         libhwloc-dev
-        qtbase5-dev
-        qttools5-dev
-        libqt5svg5-dev
+        qt6-base-dev
+        qt6-tools-dev
+        qt6-svg-dev
         python3
         python3-pip
         ca-certificates
@@ -81,15 +81,6 @@ build:ubuntu-22.04:
     - ninja
     - ninja install
     - ldconfig
-    - cd ../..
-    # Install RandomX from source (not in Ubuntu repos)
-    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
-    - tar -xzf randomx.tar.gz
-    - cd RandomX-1.2.1
-    - mkdir -p build && cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make -j$(nproc)
-    - make install
     - cd ../..
     - export PATH="/usr/lib/ccache:$PATH"
     - ccache --zero-stats
@@ -133,9 +124,9 @@ build:ubuntu-24.04:
         libssl-dev
         librocksdb-dev
         libhwloc-dev
-        qtbase5-dev
-        qttools5-dev
-        libqt5svg5-dev
+        qt6-base-dev
+        qt6-tools-dev
+        qt6-svg-dev
         python3
         python3-pip
         ca-certificates
@@ -154,15 +145,6 @@ build:ubuntu-24.04:
     - ninja
     - ninja install
     - ldconfig
-    - cd ../..
-    # Install RandomX from source
-    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
-    - tar -xzf randomx.tar.gz
-    - cd RandomX-1.2.1
-    - mkdir -p build && cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make -j$(nproc)
-    - make install
     - cd ../..
     - export PATH="/usr/lib/ccache:$PATH"
     - ccache --zero-stats
@@ -200,9 +182,9 @@ build:debian-12:
         libssl-dev
         librocksdb-dev
         libhwloc-dev
-        qtbase5-dev
-        qttools5-dev
-        libqt5svg5-dev
+        qt6-base-dev
+        qt6-tools-dev
+        qt6-svg-dev
         python3
         python3-pip
         wget
@@ -220,15 +202,6 @@ build:debian-12:
     - ninja
     - ninja install
     - ldconfig
-    - cd ../..
-    # Install RandomX from source
-    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
-    - tar -xzf randomx.tar.gz
-    - cd RandomX-1.2.1
-    - mkdir -p build && cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make -j$(nproc)
-    - make install
     - cd ../..
     - export PATH="/usr/lib/ccache:$PATH"
   script:
@@ -260,9 +233,9 @@ build:fedora:
         openssl-devel
         rocksdb-devel
         hwloc-devel
-        qt5-qtbase-devel
-        qt5-qttools-devel
-        qt5-qtsvg-devel
+        qt6-qtbase-devel
+        qt6-qttools-devel
+        qt6-qtsvg-devel
         python3
         python3-pip
         wget
@@ -281,15 +254,6 @@ build:fedora:
     - ninja
     - ninja install
     - ldconfig
-    - cd ../..
-    # Install RandomX from source
-    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
-    - tar -xzf randomx.tar.gz
-    - cd RandomX-1.2.1
-    - mkdir -p build && cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make -j$(nproc)
-    - make install
     - cd ../..
     - export PATH="/usr/lib64/ccache:$PATH"
   script:
@@ -322,9 +286,9 @@ build:arch:
         openssl
         rocksdb
         hwloc
-        qt5-base
-        qt5-tools
-        qt5-svg
+        qt6-base
+        qt6-tools
+        qt6-svg
         python
         python-pip
         wget
@@ -337,15 +301,6 @@ build:arch:
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -GNinja
     - ninja
     - ninja install
-    - cd ../..
-    # Install RandomX from source
-    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
-    - tar -xzf randomx.tar.gz
-    - cd RandomX-1.2.1
-    - mkdir -p build && cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make -j$(nproc)
-    - make install
     - cd ../..
     - export PATH="/usr/lib/ccache/bin:$PATH"
   script:
@@ -543,9 +498,9 @@ release:ubuntu:
         libssl-dev
         librocksdb-dev
         libhwloc-dev
-        qtbase5-dev
-        qttools5-dev
-        libqt5svg5-dev
+        qt6-base-dev
+        qt6-tools-dev
+        qt6-svg-dev
         wget
         ninja-build
         astyle
@@ -561,15 +516,6 @@ release:ubuntu:
     - ninja
     - ninja install
     - ldconfig
-    - cd ../..
-    # Install RandomX from source
-    - wget -q https://github.com/tevador/RandomX/archive/refs/tags/v1.2.1.tar.gz -O randomx.tar.gz
-    - tar -xzf randomx.tar.gz
-    - cd RandomX-1.2.1
-    - mkdir -p build && cd build
-    - cmake .. -DCMAKE_BUILD_TYPE=Release
-    - make -j$(nproc)
-    - make install
     - cd ../..
   script:
     - mkdir -p build && cd build
