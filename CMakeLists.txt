@@ -288,6 +288,9 @@ if(BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# Tools
+add_subdirectory(tools)
+
 # Installation
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY config/ DESTINATION share/intcoin/config)
