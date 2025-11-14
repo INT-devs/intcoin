@@ -304,31 +304,10 @@ QWidget* MainWindow::create_console_tab() {
         QString command = consoleInput_->text();
         if (!command.isEmpty()) {
             consoleOutput_->append("> " + command);
-            // Execute RPC command
-            if (rpc_client_) {
-                try {
-                    // Parse command - simple space-separated parsing
-                    QStringList parts = command.split(' ', Qt::SkipEmptyParts);
-                    if (parts.isEmpty()) return;
 
-                    std::string method = parts[0].toStdString();
-                    std::vector<std::string> params;
-                    for (int i = 1; i < parts.size(); ++i) {
-                        params.push_back(parts[i].toStdString());
-                    }
-
-                    rpc::Response response = rpc_client_->call(method, params);
-                    if (response.error) {
-                        consoleOutput_->append("Error: " + QString::fromStdString(response.error_message));
-                    } else {
-                        consoleOutput_->append(QString::fromStdString(response.result));
-                    }
-                } catch (const std::exception& e) {
-                    consoleOutput_->append("Exception: " + QString(e.what()));
-                }
-            } else {
-                consoleOutput_->append("Error: RPC client not connected");
-            }
+            // TODO: Implement RPC client integration
+            consoleOutput_->append("RPC console is currently under development.");
+            consoleOutput_->append("Please use intcoin-cli for RPC commands.");
             consoleOutput_->append("");  // Empty line
             consoleInput_->clear();
         }
@@ -349,21 +328,16 @@ void MainWindow::on_actionNew_Wallet_triggered() {
                                             "Enter password for new wallet:",
                                             QLineEdit::Password, "", &ok);
     if (ok && !password.isEmpty()) {
-        // Create new HD wallet
-        wallet_ = std::make_unique<HDWallet>();
-        *wallet_ = HDWallet::create_new();
+        // Create new HD wallet with password
+        try {
+            HDWallet new_wallet = HDWallet::create_new(password.toStdString());
+            wallet_ = std::make_unique<HDWallet>(std::move(new_wallet));
 
-        // Encrypt with password
-        if (wallet_->encrypt(password.toStdString())) {
-            // Save wallet
-            if (wallet_->save_to_disk()) {
-                show_success("Wallet Created", "New wallet has been created successfully");
-                update_balance_display();
-            } else {
-                show_error("Save Failed", "Failed to save new wallet to disk");
-            }
-        } else {
-            show_error("Encryption Failed", "Failed to encrypt wallet");
+            // Wallet is created with encryption and saved automatically
+            show_success("Wallet Created", "New wallet has been created successfully");
+            update_balance();
+        } catch (const std::exception& e) {
+            show_error("Wallet Creation Failed", QString("Failed to create wallet:\n%1").arg(e.what()));
         }
     }
 }
@@ -409,11 +383,8 @@ void MainWindow::on_actionEncrypt_Wallet_triggered() {
                                             QLineEdit::Password, "", &ok);
     if (ok && !password.isEmpty()) {
         if (wallet_->encrypt(password.toStdString())) {
-            if (wallet_->save_to_disk()) {
-                show_success("Encryption Complete", "Wallet encrypted successfully");
-            } else {
-                show_error("Save Failed", "Wallet encrypted but failed to save");
-            }
+            show_success("Encryption Complete", "Wallet encrypted successfully");
+            // TODO: Auto-save encrypted wallet
         } else {
             show_error("Encryption Failed", "Failed to encrypt wallet");
         }
@@ -721,15 +692,21 @@ void MainWindow::on_disconnectPeerButton_clicked() {
         return;
     }
 
-    // Get selected peer from list
-    QListWidgetItem* selected = peerListWidget_->currentItem();
-    if (!selected) {
+    // Get selected peer from table
+    int row = peerTable_->currentRow();
+    if (row < 0) {
         show_error("No Selection", "Please select a peer to disconnect");
         return;
     }
 
-    // Parse peer address from list item text
-    QString peer_text = selected->text();
+    // Get peer address from first column of selected row
+    QTableWidgetItem* addressItem = peerTable_->item(row, 0);
+    if (!addressItem) {
+        show_error("Error", "Could not retrieve peer address");
+        return;
+    }
+
+    QString peer_text = addressItem->text();
     QStringList parts = peer_text.split(" - ")[0].split(":");
     if (parts.size() == 2) {
         std::string ip = parts[0].toStdString();
@@ -797,9 +774,9 @@ void MainWindow::update_transaction_history() {
 
                 // Check if any outputs belong to our wallet
                 for (const auto& output : tx.outputs) {
-                    // Check if pubkey script matches any of our addresses
+                    // Check if pubkey matches any of our keys
                     for (const auto& key : keys) {
-                        if (output.pubkey_script == key.public_key) {
+                        if (output.pubkey == key.public_key) {
                             is_wallet_tx = true;
                             is_receive = true;
                             break;
@@ -809,14 +786,12 @@ void MainWindow::update_transaction_history() {
 
                 // Check if any inputs are from our wallet
                 for (const auto& input : tx.inputs) {
-                    // Extract pubkey from signature script (last 2592 bytes)
-                    if (input.signature_script.size() >= 2592) {
-                        std::vector<uint8_t> input_pubkey(
-                            input.signature_script.end() - 2592,
-                            input.signature_script.end()
-                        );
+                    // Extract pubkey from script_sig (last 2592 bytes)
+                    if (input.script_sig.size() >= 2592) {
                         for (const auto& key : keys) {
-                            if (input_pubkey == key.public_key) {
+                            // Compare the last 2592 bytes with the public key
+                            if (std::equal(input.script_sig.end() - 2592, input.script_sig.end(),
+                                          key.public_key.begin(), key.public_key.end())) {
                                 is_wallet_tx = true;
                                 is_send = true;
                                 break;

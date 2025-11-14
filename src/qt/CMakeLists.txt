@@ -7,14 +7,16 @@
 set(QT_SOURCES
     main.cpp
     mainwindow.cpp
-    lightningwindow.cpp
-    lightning_utils.cpp
+    # Lightning window disabled until backend implementation is complete
+    # lightningwindow.cpp
+    # lightning_utils.cpp
 )
 
 set(QT_HEADERS
     mainwindow.h
-    lightningwindow.h
-    lightning_utils.h
+    # Lightning window disabled until backend implementation is complete
+    # lightningwindow.h
+    # lightning_utils.h
 )
 
 set(QT_RESOURCES
