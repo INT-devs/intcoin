@@ -124,6 +124,74 @@ QString dilithium_pubkey_to_hex(const DilithiumPubKey& pubkey) {
     return bytes_to_hex(pubkey.data(), pubkey.size());
 }
 
+std::optional<lightning::invoice::Invoice> decode_invoice(const QString& invoice_str) {
+    // Decode the BOLT #11 invoice using the invoice module
+    return lightning::invoice::Invoice::decode(invoice_str.toStdString());
+}
+
+QString format_invoice_details(const lightning::invoice::Invoice& invoice) {
+    QString details;
+
+    // Amount
+    if (invoice.amount_msat.has_value()) {
+        double amount_int = static_cast<double>(*invoice.amount_msat) / 100000000000.0;
+        details += QString("Amount: %1 INT (%2 msat)\n")
+            .arg(amount_int, 0, 'f', 11)
+            .arg(*invoice.amount_msat);
+    } else {
+        details += "Amount: Any amount\n";
+    }
+
+    // Description
+    if (!invoice.description.empty()) {
+        details += QString("Description: %1\n")
+            .arg(QString::fromStdString(invoice.description));
+    }
+
+    // Payment hash
+    details += QString("Payment Hash: %1\n")
+        .arg(bytes_to_hex(invoice.payment_hash.data(), invoice.payment_hash.size()));
+
+    // Node ID
+    details += QString("Payee Node ID: %1...\n")
+        .arg(bytes_to_hex(invoice.node_id.data(), 32));
+
+    // Expiry
+    uint64_t expiry_timestamp = invoice.get_expiry_timestamp();
+    details += QString("Expires: %1 (%2 seconds)\n")
+        .arg(expiry_timestamp)
+        .arg(invoice.expiry_seconds);
+
+    // Min CLTV expiry
+    details += QString("Min Final CLTV: %1 blocks\n")
+        .arg(invoice.min_final_cltv_expiry);
+
+    // Payment secret
+    if (invoice.payment_secret.has_value()) {
+        details += QString("Payment Secret: %1\n")
+            .arg(bytes_to_hex(invoice.payment_secret->data(), invoice.payment_secret->size()));
+    }
+
+    // Route hints
+    if (!invoice.route_hints.empty()) {
+        details += QString("Route Hints: %1\n").arg(invoice.route_hints.size());
+    }
+
+    // Features
+    if (!invoice.features.empty()) {
+        details += QString("Feature Bits: %1 bytes\n").arg(invoice.features.size());
+    }
+
+    // Status
+    if (invoice.is_expired()) {
+        details += "\nStatus: EXPIRED\n";
+    } else {
+        details += "\nStatus: Valid\n";
+    }
+
+    return details;
+}
+
 } // namespace lightning_utils
 } // namespace qt
 } // namespace intcoin

@@ -346,7 +346,7 @@ b2eb08a - Implement TODO fixes: unconfirmed balance and WalletDB
 ```
 
 ### Repository URLs
-- **GitHub:** https://github.com/intcoin/intcoin
+- **GitHub:** https://gitlab.com/intcoin/crypto
 - **GitLab:** https://gitlab.com/intcoin/intcoin (CI/CD configured)
 
 ---
@@ -388,7 +388,7 @@ b2eb08a - Implement TODO fixes: unconfirmed balance and WalletDB
 **Lead Developer:** Maddison Lane
 **Website:** https://international-coin.org
 **Email:** team@international-coin.org
-**GitHub:** https://github.com/intcoin/intcoin
+**GitHub:** https://gitlab.com/intcoin/crypto
 **GitLab:** https://gitlab.com/intcoin/intcoin
 
 **Community:**

@@ -173,10 +173,10 @@ CommitmentTransaction CommitmentTransaction::deserialize(const std::vector<uint8
     offset += 8;
 
     // HTLC count (4 bytes)
-    uint32_t htlc_count = static_cast<uint32_t>(data[offset]) |
-                          (static_cast<uint32_t>(data[offset + 1]) << 8) |
-                          (static_cast<uint32_t>(data[offset + 2]) << 16) |
-                          (static_cast<uint32_t>(data[offset + 3]) << 24);
+    // uint32_t htlc_count = static_cast<uint32_t>(data[offset]) |
+    //                       (static_cast<uint32_t>(data[offset + 1]) << 8) |
+    //                       (static_cast<uint32_t>(data[offset + 2]) << 16) |
+    //                       (static_cast<uint32_t>(data[offset + 3]) << 24);
     offset += 4;
 
     // HTLCs (simplified - would need proper length tracking)
@@ -205,7 +205,7 @@ Channel::Channel()
 {
 }
 
-bool Channel::open(const crypto::DilithiumPubKey& remote_key, uint64_t capacity) {
+bool Channel::open(const DilithiumPubKey& remote_key, uint64_t capacity) {
     if (state != ChannelState::OPENING) {
         return false;
     }
@@ -366,13 +366,13 @@ bool Channel::sign_commitment(const crypto::DilithiumKeyPair& keypair) {
     return true;
 }
 
-bool Channel::verify_remote_signature(const crypto::DilithiumSignature& sig) {
+bool Channel::verify_remote_signature(const DilithiumSignature& sig) {
     if (!latest_commitment) {
         return false;
     }
 
     Hash256 commitment_hash = latest_commitment->get_hash();
-    crypto::DilithiumPubKey remote_key = remote_pubkey;
+    DilithiumPubKey remote_key = remote_pubkey;
 
     return crypto::Dilithium::verify(
         std::vector<uint8_t>(commitment_hash.begin(), commitment_hash.end()),
@@ -493,7 +493,7 @@ LightningNode::LightningNode(const crypto::DilithiumKeyPair& keypair)
 }
 
 std::optional<Hash256> LightningNode::open_channel(
-    const crypto::DilithiumPubKey& remote_pubkey,
+    const DilithiumPubKey& remote_pubkey,
     uint64_t capacity_sat,
     uint64_t push_amount_sat)
 {
@@ -638,18 +638,20 @@ void LightningNode::remove_channel_from_graph(const Hash256& channel_id) {
     network_graph_.erase(channel_id);
 }
 
-std::vector<crypto::DilithiumPubKey> LightningNode::find_route(
-    const crypto::DilithiumPubKey& destination,
+std::vector<DilithiumPubKey> LightningNode::find_route(
+    const DilithiumPubKey& destination,
     uint64_t amount_sat)
 {
     // Dijkstra's shortest path algorithm for Lightning routing
 
     // Distance map: node -> (distance, previous_node)
-    std::map<crypto::DilithiumPubKey, std::pair<uint64_t, crypto::DilithiumPubKey>> distances;
-    std::set<crypto::DilithiumPubKey> visited;
+    std::map<DilithiumPubKey, std::pair<uint64_t, DilithiumPubKey>> distances;
+
+    // Visited nodes tracked in the distances map (if finalized, distance is set)
+    std::vector<DilithiumPubKey> visited_nodes;
 
     // Priority queue: (distance, node)
-    std::vector<std::pair<uint64_t, crypto::DilithiumPubKey>> queue;
+    std::vector<std::pair<uint64_t, DilithiumPubKey>> queue;
 
     // Initialize: start from our node
     distances[keypair_.public_key] = {0, keypair_.public_key};
@@ -664,10 +666,15 @@ std::vector<crypto::DilithiumPubKey> LightningNode::find_route(
         queue.erase(min_it);
 
         // Skip if already visited
-        if (visited.count(current_node)) {
+        auto is_visited = std::find_if(visited_nodes.begin(), visited_nodes.end(),
+            [&current_node](const DilithiumPubKey& n) {
+                return std::equal(n.begin(), n.end(), current_node.begin());
+            }) != visited_nodes.end();
+
+        if (is_visited) {
             continue;
         }
-        visited.insert(current_node);
+        visited_nodes.push_back(current_node);
 
         // Found destination
         if (current_node == destination) {
@@ -681,7 +688,7 @@ std::vector<crypto::DilithiumPubKey> LightningNode::find_route(
             }
 
             // Check if this channel connects to current node
-            crypto::DilithiumPubKey neighbor;
+            DilithiumPubKey neighbor;
             bool is_neighbor = false;
 
             if (channel_info.node1 == current_node) {
@@ -692,7 +699,13 @@ std::vector<crypto::DilithiumPubKey> LightningNode::find_route(
                 is_neighbor = true;
             }
 
-            if (!is_neighbor || visited.count(neighbor)) {
+            // Check if neighbor is visited
+            auto neighbor_visited = std::find_if(visited_nodes.begin(), visited_nodes.end(),
+                [&neighbor](const DilithiumPubKey& n) {
+                    return std::equal(n.begin(), n.end(), neighbor.begin());
+                }) != visited_nodes.end();
+
+            if (!is_neighbor || neighbor_visited) {
                 continue;
             }
 
@@ -715,14 +728,14 @@ std::vector<crypto::DilithiumPubKey> LightningNode::find_route(
     }
 
     // Reconstruct path
-    std::vector<crypto::DilithiumPubKey> route;
+    std::vector<DilithiumPubKey> route;
 
     if (!distances.count(destination)) {
         // No route found
         return route;
     }
 
-    crypto::DilithiumPubKey current = destination;
+    DilithiumPubKey current = destination;
     while (current != keypair_.public_key) {
         route.push_back(current);
         current = distances[current].second;
@@ -736,7 +749,7 @@ std::vector<crypto::DilithiumPubKey> LightningNode::find_route(
 }
 
 bool LightningNode::send_payment(uint64_t amount_sat, const Hash256& payment_hash,
-                                const std::vector<crypto::DilithiumPubKey>& route)
+                                const std::vector<DilithiumPubKey>& route)
 {
     if (route.empty() || route[0] != keypair_.public_key) {
         failed_payments_++;
@@ -796,7 +809,7 @@ bool LightningNode::pay_invoice(const std::string& encoded_invoice) {
         return false;
     }
 
-    uint64_t amount_sat = std::stoull(encoded_invoice.substr(6));
+    // uint64_t amount_sat = std::stoull(encoded_invoice.substr(6));  // Placeholder parsing
 
     // In full implementation, would:
     // 1. Extract payment hash from invoice
@@ -843,7 +856,7 @@ bool LightningNode::forward_htlc(const Hash256& incoming_channel,
     return true;
 }
 
-bool LightningNode::validate_route(const std::vector<crypto::DilithiumPubKey>& route,
+bool LightningNode::validate_route(const std::vector<DilithiumPubKey>& route,
                                    uint64_t amount_sat)
 {
     if (route.size() < 2) {
@@ -886,7 +899,7 @@ bool LightningNode::validate_route(const std::vector<crypto::DilithiumPubKey>& r
     return true;
 }
 
-uint64_t LightningNode::calculate_route_fees(const std::vector<crypto::DilithiumPubKey>& route,
+uint64_t LightningNode::calculate_route_fees(const std::vector<DilithiumPubKey>& route,
                                              uint64_t amount_sat)
 {
     uint64_t total_fees = 0;
@@ -1536,7 +1549,7 @@ CommitmentSigned CommitmentSigned::from_message(const Message& msg) {
     offset += 2;
 
     for (uint16_t i = 0; i < htlc_count && (offset + 4595) <= data.size(); i++) {
-        crypto::DilithiumSignature sig;
+        DilithiumSignature sig;
         std::copy(data.begin() + offset, data.begin() + offset + 4595, sig.begin());
         cs.htlc_signatures.push_back(sig);
         offset += 4595;

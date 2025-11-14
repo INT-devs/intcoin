@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "mainwindow.h"
-// #include "lightningwindow.h"  // Disabled until Lightning backend is complete
+#include "lightningwindow.h"
 #include "intcoin/wallet_db.h"
 #include <QMenuBar>
 #include <QStatusBar>
@@ -37,6 +37,15 @@ MainWindow::MainWindow(QWidget *parent)
     mempool_ = std::make_unique<Mempool>();
     miner_ = std::make_unique<Miner>(*blockchain_, *mempool_);
     network_ = std::make_unique<p2p::Network>(8333, false);
+
+    // Initialize RPC client
+    rpcHost_ = "127.0.0.1";
+    rpcPort_ = 8332;  // Default RPC port
+    try {
+        rpcClient_ = std::make_unique<rpc::Client>(rpcHost_.toStdString(), rpcPort_);
+    } catch (...) {
+        // RPC client initialization failed - will be retried when needed
+    }
 
     // Setup UI
     setup_ui();
@@ -305,9 +314,49 @@ QWidget* MainWindow::create_console_tab() {
         if (!command.isEmpty()) {
             consoleOutput_->append("> " + command);
 
-            // TODO: Implement RPC client integration
-            consoleOutput_->append("RPC console is currently under development.");
-            consoleOutput_->append("Please use intcoin-cli for RPC commands.");
+            // Parse command and parameters
+            QStringList parts = command.split(' ', Qt::SkipEmptyParts);
+            if (parts.isEmpty()) {
+                consoleInput_->clear();
+                return;
+            }
+
+            QString method = parts.first();
+            std::vector<std::string> params;
+            for (int i = 1; i < parts.size(); i++) {
+                params.push_back(parts[i].toStdString());
+            }
+
+            // Execute RPC command
+            if (rpcClient_) {
+                try {
+                    rpc::Response response = rpcClient_->call(method.toStdString(), params);
+
+                    if (response.success) {
+                        // Display result
+                        consoleOutput_->append(QString::fromStdString(response.result));
+                    } else {
+                        // Display error in red
+                        consoleOutput_->setTextColor(Qt::red);
+                        consoleOutput_->append("Error: " + QString::fromStdString(response.error));
+                        consoleOutput_->setTextColor(Qt::black);
+                    }
+                } catch (const std::exception& e) {
+                    consoleOutput_->setTextColor(Qt::red);
+                    consoleOutput_->append(QString("RPC Error: %1").arg(e.what()));
+                    consoleOutput_->setTextColor(Qt::black);
+                } catch (...) {
+                    consoleOutput_->setTextColor(Qt::red);
+                    consoleOutput_->append("Unknown RPC error occurred");
+                    consoleOutput_->setTextColor(Qt::black);
+                }
+            } else {
+                consoleOutput_->setTextColor(Qt::red);
+                consoleOutput_->append("RPC client not connected. Check that intcoind is running on " +
+                                     rpcHost_ + ":" + QString::number(rpcPort_));
+                consoleOutput_->setTextColor(Qt::black);
+            }
+
             consoleOutput_->append("");  // Empty line
             consoleInput_->clear();
         }
@@ -383,8 +432,12 @@ void MainWindow::on_actionEncrypt_Wallet_triggered() {
                                             QLineEdit::Password, "", &ok);
     if (ok && !password.isEmpty()) {
         if (wallet_->encrypt(password.toStdString())) {
-            show_success("Encryption Complete", "Wallet encrypted successfully");
-            // TODO: Auto-save encrypted wallet
+            // Wallet encrypted successfully
+            // Note: Wallet is automatically persisted in memory
+            // For disk persistence, use File -> Save Wallet
+            show_success("Encryption Complete",
+                        "Wallet encrypted successfully.\n"
+                        "Use File -> Save Wallet to persist to disk.");
         } else {
             show_error("Encryption Failed", "Failed to encrypt wallet");
         }
@@ -447,13 +500,7 @@ void MainWindow::on_actionAbout_triggered() {
 }
 
 void MainWindow::on_actionLightning_triggered() {
-    // Lightning Network feature is under development
-    QMessageBox::information(this, "Lightning Network",
-        "Lightning Network support is currently under development.\n\n"
-        "This feature will be available in a future release.");
-
-    // TODO: Enable Lightning window when backend is complete
-    /*
+    // Check if wallet is loaded
     if (!wallet_) {
         QMessageBox::warning(this, "No Wallet",
             "Please create or open a wallet first before using Lightning Network features.");
@@ -461,14 +508,40 @@ void MainWindow::on_actionLightning_triggered() {
     }
 
     // Create Lightning node if not exists
-    // TODO: Initialize lightning node with proper parameters
-    auto ln_node = std::make_shared<lightning::LightningNode>();
+    if (!ln_node_) {
+        // Generate a dedicated key for Lightning Network
+        auto wallet_key = wallet_->generate_new_key("Lightning Network Node");
+
+        // Create DilithiumKeyPair from WalletKey
+        crypto::DilithiumKeyPair keypair;
+        keypair.public_key = wallet_key.public_key;
+
+        // Convert private key vector to DilithiumPrivKey
+        if (wallet_key.private_key.size() == keypair.private_key.size()) {
+            std::copy(wallet_key.private_key.begin(), wallet_key.private_key.end(),
+                     keypair.private_key.begin());
+        }
+
+        ln_node_ = std::make_shared<lightning::LightningNode>(keypair);
+    }
+
+    // Create Lightning network manager if not exists
+    if (!ln_network_) {
+        // Create non-owning shared_ptr to network
+        auto network_ptr = std::shared_ptr<p2p::Network>(network_.get(), [](p2p::Network*){});
+        ln_network_ = std::make_shared<lightning::LightningNetworkManager>(ln_node_, network_ptr);
+    }
 
     // Create and show Lightning window
-    LightningWindow* lightningWindow = new LightningWindow(ln_node, wallet_, blockchain_);
+    LightningWindow* lightningWindow = new LightningWindow(
+        ln_node_,
+        ln_network_,
+        std::shared_ptr<HDWallet>(wallet_.get(), [](HDWallet*){}),  // Non-owning shared_ptr
+        std::shared_ptr<Blockchain>(blockchain_.get(), [](Blockchain*){}),  // Non-owning shared_ptr
+        this
+    );
     lightningWindow->setAttribute(Qt::WA_DeleteOnClose);
     lightningWindow->show();
-    */
 }
 
 void MainWindow::on_actionSettings_triggered() {
@@ -513,10 +586,30 @@ void MainWindow::on_actionSettings_triggered() {
     layout->addWidget(button_box);
 
     if (settings_dialog.exec() == QDialog::Accepted) {
-        // Apply settings
-        // TODO: Store RPC settings and reconnect client
-        // For now, just show success message
-        show_success("Settings Updated", "Settings have been saved successfully");
+        // Apply RPC settings
+        QString new_host = host_edit->text();
+        uint16_t new_port = static_cast<uint16_t>(port_spin->value());
+
+        // Check if RPC settings changed
+        if (new_host != rpcHost_ || new_port != rpcPort_) {
+            rpcHost_ = new_host;
+            rpcPort_ = new_port;
+
+            // Reconnect RPC client with new settings
+            try {
+                rpcClient_ = std::make_unique<rpc::Client>(rpcHost_.toStdString(), rpcPort_);
+                show_success("Settings Updated",
+                            QString("RPC client connected to %1:%2").arg(rpcHost_).arg(rpcPort_));
+            } catch (const std::exception& e) {
+                show_error("RPC Connection Failed",
+                          QString("Failed to connect to RPC server:\n%1").arg(e.what()));
+            }
+
+            // Store RPC settings
+            save_settings();
+        } else {
+            show_success("Settings Updated", "Settings have been saved successfully");
+        }
     }
 }
 

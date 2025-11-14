@@ -9,6 +9,7 @@
 
 #include "intcoin/primitives.h"
 #include "intcoin/crypto.h"
+#include "intcoin/lightning_invoice.h"
 #include <QString>
 #include <optional>
 
@@ -66,6 +67,20 @@ QString bytes_to_hex(const uint8_t* data, size_t length);
  * @return Byte vector if valid, empty vector otherwise
  */
 std::vector<uint8_t> hex_to_bytes(const QString& hex_str);
+
+/**
+ * Decode and validate Lightning invoice (BOLT #11)
+ * @param invoice_str Encoded invoice string
+ * @return Decoded invoice if valid, nullopt otherwise
+ */
+std::optional<lightning::invoice::Invoice> decode_invoice(const QString& invoice_str);
+
+/**
+ * Format invoice for display
+ * @param invoice Decoded invoice
+ * @return Human-readable formatted string
+ */
+QString format_invoice_details(const lightning::invoice::Invoice& invoice);
 
 } // namespace lightning_utils
 } // namespace qt

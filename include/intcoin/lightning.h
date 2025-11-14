@@ -230,10 +230,17 @@ public:
         uint64_t total_remote_balance_sat;
         size_t successful_payments;
         size_t failed_payments;
+        size_t payments_received;
         uint64_t total_fees_earned_sat;
     };
 
     NodeStats get_stats() const;
+
+    // Invoice management
+    const std::map<Hash256, Invoice>& get_invoices() const { return invoices_; }
+
+    // Network graph access
+    const std::map<Hash256, ChannelInfo>& get_network_graph() const { return network_graph_; }
 
 private:
     crypto::DilithiumKeyPair keypair_;

@@ -7,11 +7,17 @@
 # Source files
 set(LIGHTNING_SOURCES
     lightning.cpp
+    lightning_network.cpp
+    lightning_onion.cpp
+    lightning_invoice.cpp
 )
 
 # Header files
 set(LIGHTNING_HEADERS
     ${CMAKE_SOURCE_DIR}/include/intcoin/lightning.h
+    ${CMAKE_SOURCE_DIR}/include/intcoin/lightning_network.h
+    ${CMAKE_SOURCE_DIR}/include/intcoin/lightning_onion.h
+    ${CMAKE_SOURCE_DIR}/include/intcoin/lightning_invoice.h
 )
 
 # Create library
@@ -29,7 +35,7 @@ target_include_directories(intcoin_lightning
 target_link_libraries(intcoin_lightning
     PUBLIC
         intcoin_core
-        intcoin_crypto
+        crypto
         Boost::boost
         OpenSSL::Crypto
         OpenSSL::SSL

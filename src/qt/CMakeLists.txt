@@ -7,16 +7,14 @@
 set(QT_SOURCES
     main.cpp
     mainwindow.cpp
-    # Lightning window disabled until backend implementation is complete
-    # lightningwindow.cpp
-    # lightning_utils.cpp
+    lightningwindow.cpp
+    lightning_utils.cpp
 )
 
 set(QT_HEADERS
     mainwindow.h
-    # Lightning window disabled until backend implementation is complete
-    # lightningwindow.h
-    # lightning_utils.h
+    lightningwindow.h
+    lightning_utils.h
 )
 
 set(QT_RESOURCES
@@ -53,6 +51,7 @@ if(QT_VERSION_MAJOR EQUAL 6)
     target_link_libraries(intcoin-qt
         PRIVATE
             intcoin_core
+            intcoin_lightning
             RocksDB::rocksdb
             Qt6::Core
             Qt6::Widgets
@@ -63,6 +62,7 @@ else()
     target_link_libraries(intcoin-qt
         PRIVATE
             intcoin_core
+            intcoin_lightning
             RocksDB::rocksdb
             Qt5::Core
             Qt5::Widgets

@@ -8,6 +8,9 @@
 #define INTCOIN_QT_LIGHTNINGWINDOW_H
 
 #include "intcoin/lightning.h"
+#include "intcoin/lightning_network.h"
+#include "intcoin/lightning_invoice.h"
+#include "intcoin/lightning_onion.h"
 #include "intcoin/wallet.h"
 #include "intcoin/blockchain.h"
 
@@ -20,6 +23,8 @@
 #include <QTextEdit>
 #include <QTimer>
 #include <QTabWidget>
+#include <QGraphicsView>
+#include <QGraphicsScene>
 #include <memory>
 
 namespace intcoin {
@@ -34,6 +39,7 @@ class LightningWindow : public QWidget {
 public:
     explicit LightningWindow(
         std::shared_ptr<lightning::LightningNode> ln_node,
+        std::shared_ptr<lightning::LightningNetworkManager> ln_network,
         std::shared_ptr<HDWallet> wallet,
         std::shared_ptr<Blockchain> blockchain,
         QWidget *parent = nullptr
@@ -58,6 +64,7 @@ private slots:
     void on_payInvoiceButton_clicked();
     void on_copyInvoiceButton_clicked();
     void on_refreshInvoicesButton_clicked();
+    void on_decodeInvoiceButton_clicked();
 
     // Node management slots
     void on_startNodeButton_clicked();
@@ -65,12 +72,18 @@ private slots:
     void on_connectPeerButton_clicked();
     void on_disconnectPeerButton_clicked();
 
+    // Network graph slots
+    void on_refreshNetworkButton_clicked();
+    void on_findRouteButton_clicked();
+    void on_visualizeOnionButton_clicked();
+
     // Update functions
     void update_channel_list();
     void update_invoice_list();
     void update_peer_list();
     void update_stats();
     void update_payment_history();
+    void update_network_graph();
 
 private:
     // UI setup
@@ -80,9 +93,11 @@ private:
     void create_payment_tab();
     void create_node_tab();
     void create_stats_tab();
+    void create_network_tab();
 
     // Core components
     std::shared_ptr<lightning::LightningNode> ln_node_;
+    std::shared_ptr<lightning::LightningNetworkManager> ln_network_;
     std::shared_ptr<HDWallet> wallet_;
     std::shared_ptr<Blockchain> blockchain_;
 
@@ -111,7 +126,10 @@ private:
     QPushButton* createInvoiceButton_;
     QPushButton* copyInvoiceButton_;
     QPushButton* refreshInvoicesButton_;
+    QPushButton* decodeInvoiceButton_;
     QTextEdit* invoiceTextEdit_;
+    QLineEdit* decodeInvoiceEdit_;
+    QTextEdit* decodedInvoiceDisplay_;
     QLabel* generatedInvoiceLabel_;
 
     // UI components - Payment tab
@@ -144,6 +162,18 @@ private:
     QLabel* networkGraphNodesLabel_;
     QLabel* networkGraphChannelsLabel_;
     QLabel* uptimeLabel_;
+
+    // UI components - Network tab
+    QGraphicsView* networkGraphView_;
+    QGraphicsScene* networkGraphScene_;
+    QTableWidget* networkNodesTable_;
+    QTableWidget* networkChannelsTable_;
+    QLineEdit* routeDestinationEdit_;
+    QSpinBox* routeAmountSpin_;
+    QPushButton* findRouteButton_;
+    QPushButton* refreshNetworkButton_;
+    QTextEdit* routeDisplayText_;
+    QLabel* routeStatusLabel_;
 
     // Helper functions
     void show_error(const QString& title, const QString& message);

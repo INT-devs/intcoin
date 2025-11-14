@@ -437,7 +437,7 @@ if __name__ == '__main__':
 ### Community
 
 - **Discord**: #seed-nodes channel
-- **GitHub**: github.com/intcoin/seed-infrastructure
+- **GitHub**: gitlab.com/intcoin/seed-infrastructure
 - **Forum**: forum.intcoin.org/category/infrastructure
 
 ## References

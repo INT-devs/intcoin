@@ -12,6 +12,9 @@
 #include "intcoin/mempool.h"
 #include "intcoin/miner.h"
 #include "intcoin/p2p.h"
+#include "intcoin/lightning.h"
+#include "intcoin/lightning_network.h"
+#include "intcoin/rpc.h"
 
 #include <QMainWindow>
 #include <QLabel>
@@ -84,6 +87,8 @@ private:
     std::unique_ptr<HDWallet> wallet_;
     std::unique_ptr<Miner> miner_;
     std::unique_ptr<p2p::Network> network_;
+    std::shared_ptr<lightning::LightningNode> ln_node_;
+    std::shared_ptr<lightning::LightningNetworkManager> ln_network_;
 
     // UI components - Status bar
     QLabel* statusLabel_;
@@ -123,6 +128,14 @@ private:
     // UI components - Console tab
     QTextEdit* consoleOutput_;
     QLineEdit* consoleInput_;
+
+    // RPC client
+    std::unique_ptr<rpc::Client> rpcClient_;
+    QString rpcHost_;
+    uint16_t rpcPort_;
+
+    // Wallet state
+    QString currentWalletPath_;
 
     // Update timer
     QTimer* updateTimer_;
