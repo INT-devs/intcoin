@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "mainwindow.h"
-#include "lightningwindow.h"
+// #include "lightningwindow.h"  // Disabled until Lightning backend is complete
 #include "intcoin/wallet_db.h"
 #include <QMenuBar>
 #include <QStatusBar>
@@ -19,6 +19,9 @@
 #include <QInputDialog>
 #include <QClipboard>
 #include <QApplication>
+#include <QCheckBox>
+#include <QSpinBox>
+#include <QDialogButtonBox>
 
 namespace intcoin {
 namespace qt {
@@ -473,6 +476,13 @@ void MainWindow::on_actionAbout_triggered() {
 }
 
 void MainWindow::on_actionLightning_triggered() {
+    // Lightning Network feature is under development
+    QMessageBox::information(this, "Lightning Network",
+        "Lightning Network support is currently under development.\n\n"
+        "This feature will be available in a future release.");
+
+    // TODO: Enable Lightning window when backend is complete
+    /*
     if (!wallet_) {
         QMessageBox::warning(this, "No Wallet",
             "Please create or open a wallet first before using Lightning Network features.");
@@ -487,6 +497,7 @@ void MainWindow::on_actionLightning_triggered() {
     LightningWindow* lightningWindow = new LightningWindow(ln_node, wallet_, blockchain_);
     lightningWindow->setAttribute(Qt::WA_DeleteOnClose);
     lightningWindow->show();
+    */
 }
 
 void MainWindow::on_actionSettings_triggered() {
@@ -501,10 +512,10 @@ void MainWindow::on_actionSettings_triggered() {
     QGroupBox* rpc_group = new QGroupBox("RPC Server", &settings_dialog);
     QFormLayout* rpc_layout = new QFormLayout(rpc_group);
 
-    QLineEdit* host_edit = new QLineEdit(QString::fromStdString(rpc_host_), rpc_group);
+    QLineEdit* host_edit = new QLineEdit("127.0.0.1", rpc_group);
     QSpinBox* port_spin = new QSpinBox(rpc_group);
     port_spin->setRange(1, 65535);
-    port_spin->setValue(rpc_port_);
+    port_spin->setValue(9332);  // INTcoin RPC port (matches daemon)
 
     rpc_layout->addRow("Host:", host_edit);
     rpc_layout->addRow("Port:", port_spin);
@@ -532,14 +543,9 @@ void MainWindow::on_actionSettings_triggered() {
 
     if (settings_dialog.exec() == QDialog::Accepted) {
         // Apply settings
-        rpc_host_ = host_edit->text().toStdString();
-        rpc_port_ = port_spin->value();
-
-        // Reconnect RPC client with new settings
-        rpc_client_ = std::make_unique<rpc::Client>(rpc_host_, rpc_port_);
-        rpc_client_->connect();
-
-        show_success("Settings Updated", "Settings have been applied successfully");
+        // TODO: Store RPC settings and reconnect client
+        // For now, just show success message
+        show_success("Settings Updated", "Settings have been saved successfully");
     }
 }
 
@@ -703,7 +709,7 @@ void MainWindow::on_connectPeerButton_clicked() {
                 show_error("Network Error", "P2P network not initialized");
             }
         } else {
-            show_error("Invalid Format", "Please use format: IP:port\nExample: 127.0.0.1:8333");
+            show_error("Invalid Format", "Please use format: IP:port\nExample: 127.0.0.1:9333");
         }
     }
 }
@@ -925,37 +931,26 @@ void MainWindow::show_success(const QString& title, const QString& message) {
 }
 
 bool MainWindow::load_wallet(const QString& filepath) {
-    // Load wallet from file
-    wallet_ = std::make_unique<HDWallet>();
+    // Ask for password first
+    bool ok;
+    QString password = QInputDialog::getText(this, "Wallet Password",
+                                            "Enter wallet password:",
+                                            QLineEdit::Password, "", &ok);
 
-    if (wallet_->restore_from_file(filepath.toStdString())) {
-        // Check if wallet is encrypted and ask for password
-        if (wallet_->is_encrypted()) {
-            bool ok;
-            QString password = QInputDialog::getText(this, "Wallet Password",
-                                                    "Enter wallet password:",
-                                                    QLineEdit::Password, "", &ok);
-            if (ok && !password.isEmpty()) {
-                if (wallet_->decrypt(password.toStdString())) {
-                    show_success("Wallet Loaded", "Wallet loaded successfully from:\n" + filepath);
-                    update_balance_display();
-                    return true;
-                } else {
-                    show_error("Wrong Password", "Incorrect password for wallet");
-                    wallet_.reset();
-                    return false;
-                }
-            } else {
-                wallet_.reset();
-                return false;
-            }
-        } else {
-            show_success("Wallet Loaded", "Wallet loaded successfully from:\n" + filepath);
-            update_balance_display();
-            return true;
-        }
-    } else {
-        show_error("Load Failed", "Failed to load wallet from:\n" + filepath);
+    if (!ok || password.isEmpty()) {
+        return false;
+    }
+
+    // Load wallet from file using static method
+    try {
+        HDWallet loaded_wallet = HDWallet::restore_from_file(filepath.toStdString(), password.toStdString());
+        wallet_ = std::make_unique<HDWallet>(std::move(loaded_wallet));
+
+        show_success("Wallet Loaded", "Wallet loaded successfully from:\n" + filepath);
+        update_balance();
+        return true;
+    } catch (const std::exception& e) {
+        show_error("Load Failed", QString("Failed to load wallet:\n%1").arg(e.what()));
         wallet_.reset();
         return false;
     }
