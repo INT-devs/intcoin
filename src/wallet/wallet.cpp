@@ -186,10 +186,49 @@ uint64_t HDWallet::get_balance(const Blockchain& blockchain) const {
     return total;
 }
 
-uint64_t HDWallet::get_unconfirmed_balance() const {
-    // TODO: Track unconfirmed transactions
-    // This requires integration with mempool or transaction tracking
-    // For now, return 0 as we don't track unconfirmed transactions in wallet
+uint64_t HDWallet::get_unconfirmed_balance(const Mempool& mempool, const Blockchain& blockchain) const {
+    // Get all wallet public keys for efficient filtering
+    std::set<DilithiumPubKey> wallet_pubkeys = get_all_pubkeys();
+
+    uint64_t unconfirmed_received = 0;
+    uint64_t unconfirmed_spent = 0;
+
+    // Get all transactions from mempool
+    std::vector<Transaction> mempool_txs = mempool.get_all_transactions();
+
+    for (const auto& tx : mempool_txs) {
+
+        // Check outputs - are we receiving unconfirmed coins?
+        for (const auto& output : tx.outputs) {
+            if (output.script_pubkey.size() == DILITHIUM_PUBKEY_SIZE) {
+                DilithiumPubKey pubkey;
+                std::copy(output.script_pubkey.begin(), output.script_pubkey.end(), pubkey.begin());
+                if (wallet_pubkeys.count(pubkey)) {
+                    unconfirmed_received += output.value;
+                }
+            }
+        }
+
+        // Check inputs - are we spending coins?
+        if (!tx.is_coinbase()) {
+            for (const auto& input : tx.inputs) {
+                auto utxo = blockchain.get_utxo(input.previous_output.tx_hash, input.previous_output.index);
+                if (utxo && utxo->output.script_pubkey.size() == DILITHIUM_PUBKEY_SIZE) {
+                    DilithiumPubKey pubkey;
+                    std::copy(utxo->output.script_pubkey.begin(), utxo->output.script_pubkey.end(), pubkey.begin());
+                    if (wallet_pubkeys.count(pubkey)) {
+                        unconfirmed_spent += utxo->output.value;
+                    }
+                }
+            }
+        }
+    }
+
+    // Net unconfirmed balance = received - spent
+    // This can be negative if we've spent more than received in unconfirmed transactions
+    if (unconfirmed_received > unconfirmed_spent) {
+        return unconfirmed_received - unconfirmed_spent;
+    }
     return 0;
 }
 
@@ -1193,12 +1232,15 @@ bool WalletDB::save_wallet(const HDWallet& wallet) {
     return wallet.backup_to_file(filepath_);
 }
 
-std::optional<HDWallet> WalletDB::load_wallet() {
+std::optional<HDWallet> WalletDB::load_wallet(const std::string& password) {
     // Load and deserialize wallet using HDWallet's restore function
-    // Note: This requires a password which WalletDB doesn't have
-    // TODO: Add password parameter to load_wallet() or use alternative approach
-    // For now, return nullopt to indicate wallet needs manual restore with password
-    return std::nullopt;
+    try {
+        HDWallet wallet = HDWallet::restore_from_file(filepath_, password);
+        return wallet;
+    } catch (...) {
+        // Failed to load - could be wrong password, corrupted file, or file doesn't exist
+        return std::nullopt;
+    }
 }
 
 bool WalletDB::save_transaction(const Transaction& tx) {

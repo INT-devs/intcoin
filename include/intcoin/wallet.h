@@ -11,6 +11,7 @@
 #include "transaction.h"
 #include "blockchain.h"
 #include "crypto.h"
+#include "mempool.h"
 #include <string>
 #include <vector>
 #include <map>
@@ -62,7 +63,7 @@ public:
 
     // Balance
     uint64_t get_balance(const Blockchain& blockchain) const;
-    uint64_t get_unconfirmed_balance() const;
+    uint64_t get_unconfirmed_balance(const Mempool& mempool, const Blockchain& blockchain) const;
     uint64_t get_address_balance(const std::string& address, const Blockchain& blockchain) const;
 
     // Transaction creation
@@ -204,7 +205,7 @@ public:
     explicit WalletDB(const std::string& filepath);
 
     bool save_wallet(const HDWallet& wallet);
-    std::optional<HDWallet> load_wallet();
+    std::optional<HDWallet> load_wallet(const std::string& password);
 
     bool save_transaction(const Transaction& tx);
     std::vector<Transaction> load_transactions();
