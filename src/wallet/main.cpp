@@ -113,14 +113,15 @@ int cmd_new_address(HDWallet& wallet, const std::string& label) {
 }
 
 int cmd_balance(const HDWallet& wallet) {
-    // Initialize blockchain - in production this would connect to node
+    // Initialize blockchain and mempool - in production this would connect to node
     Blockchain blockchain;  // Use default constructor
+    Mempool mempool;        // Use default constructor
     uint64_t balance = wallet.get_balance(blockchain);
 
     std::cout << "Balance: " << (balance / static_cast<double>(COIN)) << " INT" << std::endl;
     std::cout << "         " << balance << " satoshis" << std::endl;
 
-    uint64_t unconfirmed = wallet.get_unconfirmed_balance();
+    uint64_t unconfirmed = wallet.get_unconfirmed_balance(mempool, blockchain);
     if (unconfirmed > 0) {
         std::cout << "Unconfirmed: " << (unconfirmed / static_cast<double>(COIN)) << " INT" << std::endl;
     }

@@ -214,6 +214,52 @@ if(LIBOQS_LIBRARY)
     target_link_libraries(intcoin_core PUBLIC ${LIBOQS_LIBRARY})
 endif()
 
+# Find and link libusb and hidapi for hardware wallet support
+find_library(LIBUSB_LIBRARY NAMES usb-1.0 libusb-1.0
+    HINTS
+        /usr/local/lib
+        /opt/homebrew/lib
+        /usr/lib
+)
+find_library(HIDAPI_LIBRARY NAMES hidapi hidapi-libusb
+    HINTS
+        /usr/local/lib
+        /opt/homebrew/lib
+        /usr/lib
+)
+
+# Find include directories for libusb and hidapi
+find_path(LIBUSB_INCLUDE_DIR
+    NAMES libusb.h
+    HINTS
+        /usr/local/include/libusb-1.0
+        /opt/homebrew/include/libusb-1.0
+        /usr/include/libusb-1.0
+)
+find_path(HIDAPI_INCLUDE_DIR
+    NAMES hidapi.h
+    HINTS
+        /usr/local/include/hidapi
+        /opt/homebrew/include/hidapi
+        /usr/include/hidapi
+)
+
+if(LIBUSB_LIBRARY AND LIBUSB_INCLUDE_DIR)
+    message(STATUS "Found libusb: ${LIBUSB_LIBRARY}")
+    target_include_directories(intcoin_core PUBLIC ${LIBUSB_INCLUDE_DIR})
+    target_link_libraries(intcoin_core PUBLIC ${LIBUSB_LIBRARY})
+else()
+    message(WARNING "libusb not found - hardware wallet support will be limited")
+endif()
+
+if(HIDAPI_LIBRARY AND HIDAPI_INCLUDE_DIR)
+    message(STATUS "Found hidapi: ${HIDAPI_LIBRARY}")
+    target_include_directories(intcoin_core PUBLIC ${HIDAPI_INCLUDE_DIR})
+    target_link_libraries(intcoin_core PUBLIC ${HIDAPI_LIBRARY})
+else()
+    message(WARNING "hidapi not found - hardware wallet support will be limited")
+endif()
+
 # Daemon
 if(BUILD_DAEMON)
     add_executable(intcoind
