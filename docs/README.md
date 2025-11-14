@@ -8,8 +8,10 @@ Welcome to the INTcoin documentation. This directory contains comprehensive guid
 
 ### Getting Started
 
-- [Quick Start Guide](../QUICK-START.md) - Get up and running quickly
+- [**Quick Start Guide**](QUICK-START.md) - **Get started in minutes** ⚡
+- [Genesis Block](GENESIS_BLOCK.md) - Official mainnet genesis block details
 - [README](../README.md) - Project overview and features
+- [Project Status](../PROJECT-STATUS.md) - Current development status
 
 ### Building & Installation
 
@@ -24,12 +26,17 @@ Welcome to the INTcoin documentation. This directory contains comprehensive guid
 - [RPC API Reference](RPC-API.md) - Complete JSON-RPC API documentation
 - [Design Decisions](../DESIGN-DECISIONS.md) - Architectural design decisions
 - [Roadmap](../ROADMAP.md) - Five-year development roadmap
+- [Testing Guide](TESTING.md) - Comprehensive testing documentation
+- [Fuzz Testing](FUZZ-TESTING.md) - Fuzzing infrastructure and tests
+- [Python Tests](PYTHON-TESTS.md) - Python-based integration tests
 
 ### Project Information
 
 - [Implementation Summary](../IMPLEMENTATION-SUMMARY.md) - Current implementation status
 - [Development Status](../DEVELOPMENT-STATUS.md) - Development progress
 - [Project Summary](../PROJECT-SUMMARY.md) - High-level project overview
+- [Q4 2025 Completion Report](Q4_2025_COMPLETION_REPORT.md) - Recent achievements
+- [Production Readiness](PRODUCTION-READINESS.md) - Launch preparation status
 
 ---
 
@@ -102,10 +109,12 @@ cd crypto
 
 ### For Users
 
-- **Getting Started**: [Quick Start](../QUICK-START.md)
+- **Getting Started**: [Quick Start](QUICK-START.md)
 - **Installation**: [BUILD.md](../BUILD.md)
 - **RPC API**: [RPC-API.md](RPC-API.md)
 - **Project Overview**: [README](../README.md)
+- **Network Info**: [Seed Nodes](SEED_NODES.md), [Tor Guide](TOR-GUIDE.md)
+- **Security**: [Security Audit](SECURITY-AUDIT.md), [GPG Signing](GPG-SIGNING.md)
 
 ### For Developers
 
@@ -121,6 +130,8 @@ cd crypto
 - **FreeBSD Installation**: [INSTALL-FREEBSD.md](INSTALL-FREEBSD.md)
 - **Windows Installation**: [BUILD-WINDOWS.md](BUILD-WINDOWS.md)
 - **RPC API**: [RPC-API.md](RPC-API.md)
+- **Network Setup**: [Seed Nodes](SEED_NODES.md)
+- **Privacy**: [Tor Guide](TOR-GUIDE.md), [Tor Quick Start](TOR-QUICKSTART.md)
 
 ---
 
@@ -202,4 +213,4 @@ INTcoin is released under the terms of the MIT license. See [COPYING](../COPYING
 
 ---
 
-**Last Updated**: January 2025
+**Last Updated**: November 14, 2025
