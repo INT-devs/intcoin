@@ -17,17 +17,24 @@ set(QT_HEADERS
     lightning_utils.h
 )
 
+set(QT_RESOURCES
+    intcoin.qrc
+)
+
 # MOC the headers (Qt5/Qt6 compatible)
 if(QT_VERSION_MAJOR EQUAL 6)
     qt6_wrap_cpp(QT_MOC_SOURCES ${QT_HEADERS})
+    qt6_add_resources(QT_RESOURCE_SOURCES ${QT_RESOURCES})
 else()
     qt5_wrap_cpp(QT_MOC_SOURCES ${QT_HEADERS})
+    qt5_add_resources(QT_RESOURCE_SOURCES ${QT_RESOURCES})
 endif()
 
 # Create executable
 add_executable(intcoin-qt
     ${QT_SOURCES}
     ${QT_MOC_SOURCES}
+    ${QT_RESOURCE_SOURCES}
 )
 
 target_include_directories(intcoin-qt

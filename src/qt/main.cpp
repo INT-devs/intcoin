@@ -5,6 +5,7 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include <QMessageBox>
+#include <QFile>
 #include <iostream>
 
 using namespace intcoin::qt;
@@ -15,9 +16,17 @@ int main(int argc, char *argv[]) {
 
         // Set application metadata
         QCoreApplication::setOrganizationName("INTcoin");
-        QCoreApplication::setOrganizationDomain("intcoin.org");
+        QCoreApplication::setOrganizationDomain("international-coin.org");
         QCoreApplication::setApplicationName("INTcoin-Qt");
-        QCoreApplication::setApplicationVersion("0.1.0-alpha");
+        QCoreApplication::setApplicationVersion("1.1.0");
+
+        // Load and apply INTcoin stylesheet
+        QFile styleFile(":/styles/res/intcoin.qss");
+        if (styleFile.open(QFile::ReadOnly)) {
+            QString styleSheet = QLatin1String(styleFile.readAll());
+            app.setStyleSheet(styleSheet);
+            styleFile.close();
+        }
 
         // Create and show main window
         MainWindow window;

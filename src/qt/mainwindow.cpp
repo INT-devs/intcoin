@@ -62,8 +62,8 @@ MainWindow::~MainWindow() {
 }
 
 void MainWindow::setup_ui() {
-    setWindowTitle("INTcoin Wallet v0.1.0-alpha");
-    resize(1000, 700);
+    setWindowTitle("INTcoin Wallet v1.1.0 - Quantum-Resistant Cryptocurrency");
+    resize(1200, 800);
 
     create_menu_bar();
     create_status_bar();
@@ -422,13 +422,54 @@ void MainWindow::on_actionExit_triggered() {
 }
 
 void MainWindow::on_actionAbout_triggered() {
-    QMessageBox::about(this, "About INTcoin",
-        "INTcoin Wallet v0.1.0-alpha\n\n"
-        "Quantum-Resistant Cryptocurrency\n\n"
-        "Built with CRYSTALS-Dilithium5 and Kyber1024\n"
-        "SHA-256 Proof of Work\n\n"
-        "© 2025 INTcoin Core\n"
-        "Lead Developer: Maddison Lane");
+    QMessageBox aboutBox(this);
+    aboutBox.setWindowTitle("About INTcoin");
+    aboutBox.setTextFormat(Qt::RichText);
+
+    QString aboutText =
+        "<div style='text-align: center;'>"
+        "<h2 style='color: #4A90E2;'>INTcoin Wallet</h2>"
+        "<p style='font-size: 14px; color: #00D9FF;'><b>Version 1.1.0</b></p>"
+        "</div>"
+
+        "<p style='color: #E8E9ED;'><b>Quantum-Resistant Cryptocurrency</b></p>"
+
+        "<p style='color: #A0A5B8;'>"
+        "INTcoin is the world's first production-ready quantum-resistant "
+        "cryptocurrency, built from the ground up with NIST-approved "
+        "post-quantum cryptographic algorithms."
+        "</p>"
+
+        "<p style='color: #E8E9ED;'><b>Cryptographic Algorithms:</b></p>"
+        "<ul style='color: #A0A5B8;'>"
+        "<li>CRYSTALS-Dilithium5 (ML-DSA-87) - Digital Signatures</li>"
+        "<li>CRYSTALS-Kyber1024 (ML-KEM-1024) - Key Exchange</li>"
+        "<li>SHA3-256 (FIPS 202) - Hashing</li>"
+        "<li>SHA-256 - Proof of Work</li>"
+        "</ul>"
+
+        "<p style='color: #E8E9ED;'><b>Genesis Block:</b></p>"
+        "<p style='color: #A0A5B8; font-family: monospace; font-size: 10px;'>"
+        "000000001f132c42a82a1e4316aab226a1c0663d1a40d2423901914417a69da9<br>"
+        "\"BBC News 06/Nov/2025 Will quantum be bigger than AI?\""
+        "</p>"
+
+        "<p style='color: #E8E9ED;'><b>Network Launch:</b> January 1, 2026</p>"
+        "<p style='color: #E8E9ED;'><b>Max Supply:</b> 221,000,000,000,000 INT</p>"
+        "<p style='color: #E8E9ED;'><b>Block Time:</b> ~5 minutes</p>"
+
+        "<hr style='border: 1px solid #4A90E2;'>"
+
+        "<p style='color: #A0A5B8; font-size: 11px;'>"
+        "© 2025 INTcoin Core<br>"
+        "Lead Developer: Maddison Lane<br>"
+        "Website: <a href='https://international-coin.org' style='color: #00D9FF;'>international-coin.org</a><br>"
+        "Released under the MIT License"
+        "</p>";
+
+    aboutBox.setText(aboutText);
+    aboutBox.setStandardButtons(QMessageBox::Ok);
+    aboutBox.exec();
 }
 
 void MainWindow::on_actionLightning_triggered() {
