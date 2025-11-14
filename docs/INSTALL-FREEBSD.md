@@ -547,11 +547,11 @@ Edit `/etc/pf.conf`:
 
 ```conf
 # Allow INTcoin P2P
-pass in on $ext_if proto tcp from any to any port 8333
+pass in on $ext_if proto tcp from any to any port 9333
 
 # Allow RPC only from localhost
-pass in on lo0 proto tcp from 127.0.0.1 to any port 8332
-block in on $ext_if proto tcp from any to any port 8332
+pass in on lo0 proto tcp from 127.0.0.1 to any port 9332
+block in on $ext_if proto tcp from any to any port 9332
 ```
 
 Reload:

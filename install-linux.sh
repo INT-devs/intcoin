@@ -385,7 +385,7 @@ server=1
 rpcuser=intcoinrpc
 rpcpassword=$(openssl rand -hex 32)
 rpcallowip=127.0.0.1
-rpcport=8332
+rpcport=9332
 
 # Mining (disabled by default)
 gen=0

@@ -44,21 +44,21 @@ seed-au.intcoin.org
 ```cpp
 // Mainnet seed nodes (to be deployed)
 static const char* pszMainnetSeeds[] = {
-    "seed1.intcoin.org:8333",
-    "seed2.intcoin.org:8333",
-    "seed-eu1.intcoin.org:8333",
-    "seed-eu2.intcoin.org:8333",
-    "seed-asia1.intcoin.org:8333",
-    "seed-asia2.intcoin.org:8333",
-    "seed-au.intcoin.org:8333",
-    "seed-sa.intcoin.org:8333",
+    "seed1.intcoin.org:9333",
+    "seed2.intcoin.org:9333",
+    "seed-eu1.intcoin.org:9333",
+    "seed-eu2.intcoin.org:9333",
+    "seed-asia1.intcoin.org:9333",
+    "seed-asia2.intcoin.org:9333",
+    "seed-au.intcoin.org:9333",
+    "seed-sa.intcoin.org:9333",
 };
 ```
 
 ### Tor Seeds (Planned)
 
 ```
-intcoin[random].onion:8333
+intcoin[random].onion:9333
 ```
 
 ## Testnet Seed Nodes
@@ -103,7 +103,7 @@ static const char* pszTestnetSeeds[] = {
 - **OS**: Ubuntu 24.04 LTS, Debian 12, or FreeBSD 14+
 - **intcoind**: Latest stable version (v1.1.0+)
 - **Dependencies**: liboqs 0.14+, Boost 1.85+, RocksDB 9.7+
-- **Firewall**: UFW or iptables with port 8333/18333 open
+- **Firewall**: UFW or iptables with port 9333/18333 open
 - **Monitoring**: Prometheus + Grafana (optional)
 
 ## Deployment Process
@@ -320,7 +320,7 @@ class INTcoinSeedResolver(BaseResolver):
 # Run DNS server
 if __name__ == '__main__':
     resolver = INTcoinSeedResolver(
-        'http://localhost:8332',
+        'http://localhost:9332',
         'intcoin_rpc',
         'strong_password'
     )

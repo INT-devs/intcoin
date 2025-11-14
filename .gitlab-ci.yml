@@ -576,7 +576,7 @@ soos-dast-analysis:
       --apiKey=NTYxZjUwODMtOGQ4MS00YTg4LTlmMDgtZjhjZDJmYmRjZGY3
       --integrationName="GitLab"
       --projectName="${CI_PROJECT_TITLE}"
-      --targetURL="http://localhost:8332"
+      --targetURL="http://localhost:9332"
   allow_failure: true
   only:
     - main

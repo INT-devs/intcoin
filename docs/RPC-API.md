@@ -30,7 +30,7 @@ The INTcoin RPC API allows you to interact with the INTcoin daemon programmatica
 
 ```bash
 # Using curl
-curl --user username:password --data-binary '{"jsonrpc":"2.0","method":"getblockcount","params":[],"id":"1"}' -H 'content-type: text/plain;' http://127.0.0.1:8332/
+curl --user username:password --data-binary '{"jsonrpc":"2.0","method":"getblockcount","params":[],"id":"1"}' -H 'content-type: text/plain;' http://127.0.0.1:9332/
 ```
 
 ### Using the CLI
@@ -430,7 +430,7 @@ intcoin-cli getpeerinfo
 {
   "result": [
     {
-      "addr": "192.168.1.100:8333",
+      "addr": "192.168.1.100:9333",
       "services": 1
     }
   ]
@@ -476,7 +476,7 @@ Adds a node to connect to.
 
 **Example**:
 ```bash
-intcoin-cli addnode "192.168.1.100:8333"
+intcoin-cli addnode "192.168.1.100:9333"
 ```
 
 **Response**:
@@ -610,7 +610,7 @@ import requests
 import json
 
 def rpc_call(method, params=[]):
-    url = "http://127.0.0.1:8332/"
+    url = "http://127.0.0.1:9332/"
     headers = {'content-type': 'application/json'}
     payload = {
         "jsonrpc": "2.0",
@@ -640,7 +640,7 @@ address = rpc_call('getnewaddress', ['My Address'])
 const axios = require('axios');
 
 async function rpcCall(method, params = []) {
-    const response = await axios.post('http://127.0.0.1:8332/', {
+    const response = await axios.post('http://127.0.0.1:9332/', {
         jsonrpc: '2.0',
         method: method,
         params: params,

@@ -349,14 +349,14 @@ seed-au.intcoin.org
 
 Mainnet: [config/seeds_mainnet.txt](../config/seeds_mainnet.txt)
 ```
-seed1.intcoin.org:8333          # US East
-seed2.intcoin.org:8333          # US West
-seed-eu1.intcoin.org:8333       # London
-seed-eu2.intcoin.org:8333       # Frankfurt
-seed-asia1.intcoin.org:8333     # Singapore
-seed-asia2.intcoin.org:8333     # Tokyo
-seed-au.intcoin.org:8333        # Sydney
-seed-sa.intcoin.org:8333        # São Paulo
+seed1.intcoin.org:9333          # US East
+seed2.intcoin.org:9333          # US West
+seed-eu1.intcoin.org:9333       # London
+seed-eu2.intcoin.org:9333       # Frankfurt
+seed-asia1.intcoin.org:9333     # Singapore
+seed-asia2.intcoin.org:9333     # Tokyo
+seed-au.intcoin.org:9333        # Sydney
+seed-sa.intcoin.org:9333        # São Paulo
 ```
 
 Testnet: [config/seeds_testnet.txt](../config/seeds_testnet.txt)

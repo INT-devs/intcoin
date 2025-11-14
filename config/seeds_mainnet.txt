@@ -1,27 +1,33 @@
 # INTcoin Mainnet Seed Nodes
 # Format: hostname:port or IP:port
-# Updated: 2025-11-13
+# Updated: 2025-11-14
 #
 # These seed nodes help bootstrap new nodes joining the network.
 # Geographic distribution ensures global availability.
+#
+# IMPORTANT: INTcoin uses port 9333 for P2P (NOT 8333 like Bitcoin)
+
+# Primary Seed Nodes (Active)
+74.208.112.43:9333              # Primary Seed 1
+51.155.97.192:9333              # Primary Seed 2
 
 # North America
-seed1.intcoin.org:8333          # US East (Virginia)
-seed2.intcoin.org:8333          # US West (California)
+seed1.intcoin.org:9333          # US East (Virginia)
+seed2.intcoin.org:9333          # US West (California)
 
 # Europe
-seed-eu1.intcoin.org:8333       # London, UK
-seed-eu2.intcoin.org:8333       # Frankfurt, Germany
+seed-eu1.intcoin.org:9333       # London, UK
+seed-eu2.intcoin.org:9333       # Frankfurt, Germany
 
 # Asia
-seed-asia1.intcoin.org:8333     # Singapore
-seed-asia2.intcoin.org:8333     # Tokyo, Japan
+seed-asia1.intcoin.org:9333     # Singapore
+seed-asia2.intcoin.org:9333     # Tokyo, Japan
 
 # Australia
-seed-au.intcoin.org:8333        # Sydney, Australia
+seed-au.intcoin.org:9333        # Sydney, Australia
 
 # South America
-seed-sa.intcoin.org:8333        # São Paulo, Brazil
+seed-sa.intcoin.org:9333        # São Paulo, Brazil
 
 # Tor Hidden Services (for privacy)
 # [To be added after Tor deployment]

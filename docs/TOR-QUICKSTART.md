@@ -47,7 +47,7 @@ torproxy=127.0.0.1:9050
 # Enable hidden service
 hiddenservice=1
 hiddensrvdir=/var/lib/intcoin/onion_service
-hiddensrvport=8333:8333
+hiddensrvport=8333:9333
 ```
 
 ## Step 4: Start INTcoin
@@ -112,7 +112,7 @@ netstat -an | grep 9050
 **No onion peers:**
 ```bash
 # Add seed nodes manually
-./intcoin-cli addnode "seed.intcoin.onion:8333" add
+./intcoin-cli addnode "seed.intcoin.onion:9333" add
 ```
 
 **Hidden service not working:**

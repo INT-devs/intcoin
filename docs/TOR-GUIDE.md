@@ -120,7 +120,7 @@ hiddenservice=1
 hiddensrvdir=/var/lib/intcoin/onion_service
 
 # Port mappings (virtual_port:local_port)
-hiddensrvport=8333:8333
+hiddensrvport=8333:9333
 
 # Auto-publish hidden service address to peers
 discoverhiddenservice=1
@@ -183,7 +183,7 @@ preferonion=1
 #### Manual Connection
 ```bash
 # Connect to specific .onion address
-./intcoin-cli addnode "abc...xyz.onion:8333" add
+./intcoin-cli addnode "abc...xyz.onion:9333" add
 
 # Get info about onion peers
 ./intcoin-cli getpeerinfo | grep onion
@@ -211,7 +211,7 @@ INTcoin will automatically discover and connect to .onion addresses advertised b
 ./intcoin-cli gethiddenserviceaddress
 
 # Example output:
-# "abcdef1234567890abcdef1234567890abcdef1234567890abcdef.onion:8333"
+# "abcdef1234567890abcdef1234567890abcdef1234567890abcdef.onion:9333"
 ```
 
 ## TOR Configuration File (torrc)
@@ -230,7 +230,7 @@ CookieAuthentication 1
 
 # Hidden service for INTcoin
 HiddenServiceDir /var/lib/tor/intcoin/
-HiddenServicePort 8333 127.0.0.1:8333
+HiddenServicePort 8333 127.0.0.1:9333
 
 # Optional: Circuit isolation
 IsolateDestAddr 1
@@ -299,8 +299,8 @@ sudo tail -f /var/log/tor/log
 
 ```bash
 # Manually add onion seed nodes
-./intcoin-cli addnode "seed1.intcoin.onion:8333" add
-./intcoin-cli addnode "seed2.intcoin.onion:8333" add
+./intcoin-cli addnode "seed1.intcoin.onion:9333" add
+./intcoin-cli addnode "seed2.intcoin.onion:9333" add
 
 # Check if TOR is properly configured
 ./intcoin-cli getnetworkinfo
@@ -390,7 +390,7 @@ watch "echo -e 'AUTHENTICATE \"\"\r\nGETINFO circuit-status\r\n' | nc 127.0.0.1 
   "clearnet_peers": 0,
   "connections_through_tor": 8,
   "hidden_service_active": true,
-  "our_onion_address": "abc...xyz.onion:8333"
+  "our_onion_address": "abc...xyz.onion:9333"
 }
 ```
 
@@ -412,7 +412,7 @@ You can run multiple hidden services on different ports:
 ```ini
 # Primary hidden service
 hiddensrvdir=/var/lib/intcoin/onion1
-hiddensrvport=8333:8333
+hiddensrvport=8333:9333
 
 # Secondary hidden service (testnet)
 hiddensrvdir2=/var/lib/intcoin/onion2

@@ -572,7 +572,7 @@ sudo pacman -R intcoin
 sudo ufw allow 8333/tcp
 
 # Allow RPC port (only from localhost)
-sudo ufw allow from 127.0.0.1 to any port 8332
+sudo ufw allow from 127.0.0.1 to any port 9332
 ```
 
 ### Wallet Security
