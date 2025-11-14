@@ -59,9 +59,11 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 | Ticker | INT |
 | Change Unit | INTS |
 | Max Supply | 221 Trillion INT |
-| Block Time | 2 minutes (120 seconds) |
+| Block Time | ~5 minutes (300 seconds) |
 | Consensus | Proof of Work (PoW) |
 | Mining Algorithm | SHA-256 (quantum-era ASIC-resistant) |
+| P2P Port | 9333 (mainnet), 18333 (testnet) |
+| RPC Port | 9332 (mainnet), 18332 (testnet) |
 
 </td>
 <td>
@@ -400,10 +402,22 @@ Testing network with test coins (no real value).
 ## Documentation
 
 See the [docs](docs/) directory for detailed documentation:
-- [Architecture](docs/architecture.md)
-- [API Reference](docs/api.md)
-- [Mining Guide](docs/mining.md)
-- [Wallet Guide](docs/wallet.md)
+
+**Getting Started:**
+- [Quick Start Guide](docs/QUICK-START.md) - Get started in minutes
+- [Genesis Block](docs/GENESIS_BLOCK.md) - Official mainnet genesis block details
+- [Project Status](PROJECT-STATUS.md) - Current development status
+
+**Building & Installation:**
+- [BUILD.md](BUILD.md) - Comprehensive build guide for all platforms
+- [Windows Build](docs/BUILD-WINDOWS.md) - Detailed Windows build instructions
+- [Linux Installation](docs/INSTALL-LINUX.md) - Linux build and install instructions
+- [FreeBSD Installation](docs/INSTALL-FREEBSD.md) - FreeBSD build and install instructions
+
+**Technical Documentation:**
+- [Cryptography Design](docs/CRYPTOGRAPHY-DESIGN.md) - Quantum-resistant cryptography design
+- [RPC API Reference](docs/RPC-API.md) - Complete JSON-RPC API documentation
+- [Design Decisions](DESIGN-DECISIONS.md) - Architectural design decisions
 - [Lightning Network](src/lightning/README.md) - Layer 2 payment channels
 - [Smart Contracts](src/contracts/README.md) - Secure VM and contract development
 - [Cross-Chain Bridges](src/bridge/README.md) - Atomic swaps with other chains
