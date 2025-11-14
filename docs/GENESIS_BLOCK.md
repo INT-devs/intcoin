@@ -1,8 +1,8 @@
 # INTcoin Mainnet Genesis Block
 
-**Status**: Mining in Progress
-**Target Launch**: January 1, 2026
-**Last Updated**: November 13, 2025
+**Status**: ✅ Successfully Mined
+**Launch Date**: January 1, 2026
+**Last Updated**: November 14, 2025
 
 ## Overview
 
@@ -17,7 +17,8 @@ Version:           1
 Timestamp:         1730851200 (November 6, 2025 00:00:00 UTC)
 Previous Hash:     0000000000000000000000000000000000000000000000000000000000000000
 Difficulty (bits): 0x1d00ffff
-Nonce:             [MINING IN PROGRESS]
+Nonce:             1233778760
+Block Hash:        000000001f132c42a82a1e4316aab226a1c0663d1a40d2423901914417a69da9
 ```
 
 ### Coinbase Transaction
@@ -26,7 +27,7 @@ Nonce:             [MINING IN PROGRESS]
 
 This message references the BBC News headline questioning whether quantum computing will have a greater impact than artificial intelligence, marking November 6, 2025 as the genesis of INTcoin's quantum-resistant blockchain.
 
-**Initial Reward**: 50 INT
+**Initial Reward**: 105,113,636 INT
 
 ### Merkle Root
 
@@ -61,52 +62,46 @@ cmake --build build --target mine_genesis
 - **Difficulty**: 0x1d00ffff (Bitcoin's initial difficulty)
 - **Expected Time**: Variable (depends on luck and hardware)
 
-### Mining Status
+### Mining Results
 
-Currently mining genesis block with the following configuration:
+Genesis block successfully mined on November 14, 2025:
 
-- **Start Time**: November 13, 2025
-- **Current Progress**: ~271 million hashes attempted
-- **Hash Rate**: 2.49 MH/s (sustained)
-- **Status**: In Progress
+- **Mining Date**: November 14, 2025
+- **Mining Duration**: ~8 minutes (478 seconds)
+- **Hash Rate**: 2,581,127 H/s
+- **Nonce Found**: 1,233,778,760
+- **Final Hash**: `000000001f132c42a82a1e4316aab226a1c0663d1a40d2423901914417a69da9`
+- **Status**: ✅ Complete
 
 ## Verification
 
-Once mining is complete, the genesis block will be verified using:
+The genesis block has been verified and meets all requirements:
 
-1. **Proof of Work**: Block hash must be less than or equal to the target derived from difficulty bits
-2. **Merkle Root**: Must match the calculated merkle root of transactions
-3. **Coinbase**: First transaction must be a valid coinbase with correct reward
-4. **Timestamp**: Must be January 1, 2025 00:00:00 UTC (1735689600)
+1. ✅ **Proof of Work**: Block hash `000000001f132c42a82a1e4316aab226a1c0663d1a40d2423901914417a69da9` is less than target
+2. ✅ **Merkle Root**: Matches the calculated merkle root of the coinbase transaction
+3. ✅ **Coinbase**: Valid coinbase transaction with correct reward (105,113,636 INT)
+4. ✅ **Timestamp**: November 6, 2025 00:00:00 UTC (1730851200)
 
 ## Implementation
 
-### Current Code (block.cpp)
+### Final Implementation (block.cpp)
+
+The genesis block has been hard-coded with the mined nonce:
 
 ```cpp
 Block GenesisBlock::create_mainnet() {
     const std::string message = "BBC News 06/Nov/2025 Will quantum be bigger than AI?";
     const uint64_t timestamp = 1730851200;  // November 6, 2025 00:00:00 UTC
-    const uint64_t nonce = 0;  // Will be updated with mined nonce
+    const uint64_t nonce = 1233778760ULL;  // Successfully mined nonce
     const uint32_t bits = 0x1d00ffff;  // Initial difficulty
 
     return create_genesis(message, timestamp, nonce, bits);
 }
 ```
 
-### After Mining Completion
-
-Once a valid nonce is found, the code will be updated to:
-
-```cpp
-Block GenesisBlock::create_mainnet() {
-    const std::string message = "BBC News 06/Nov/2025 Will quantum be bigger than AI?";
-    const uint64_t timestamp = 1730851200;  // November 6, 2025 00:00:00 UTC
-    const uint64_t nonce = [MINED_NONCE]ULL;  // Mined nonce
-    const uint32_t bits = 0x1d00ffff;  // Initial difficulty
-
-    return create_genesis(message, timestamp, nonce, bits);
-}
+This produces the genesis block with hash:
+```
+000000001f132c42a82a1e4316aab226a1c0663d1a40d2423901914417a69da9
 ```
 
 ## Quantum-Resistant Features
@@ -123,14 +118,14 @@ The genesis block implements post-quantum cryptography from the very first block
 ### Mainnet
 
 - **Magic Bytes**: `0x494E5443` ("INTC")
-- **Default Port**: 8333
-- **RPC Port**: 8332
-- **Genesis Hash**: [To be determined after mining]
+- **P2P Port**: 9333 (unique to INTcoin)
+- **RPC Port**: 9332 (unique to INTcoin)
+- **Genesis Hash**: `000000001f132c42a82a1e4316aab226a1c0663d1a40d2423901914417a69da9`
 
 ### Testnet
 
 - **Magic Bytes**: `0x54494E54` ("TINT")
-- **Default Port**: 18333
+- **P2P Port**: 18333
 - **RPC Port**: 18332
 - **Genesis Hash**: [To be determined]
 
@@ -149,22 +144,34 @@ All subsequent blocks must build upon this genesis block.
 Starting from the genesis block, INTcoin follows a halving-based emission schedule:
 
 - **Initial Reward**: 105,113,636 INT per block
-- **Block Time**: 2 minutes (120 seconds)
+- **Block Time**: ~5 minutes (300 seconds target)
 - **Halving Interval**: 1,051,200 blocks (~4 years)
-- **Max Supply**: 221 Trillion INT
-- **Blocks Per Year**: 262,800
+- **Max Supply**: 221,000,000,000,000 INT (221 Trillion)
+- **Blocks Per Year**: ~105,120 (at 5-minute intervals)
 
 ## Historical Context
 
 The genesis block message references a BBC News headline from November 6, 2025, questioning whether quantum computing will surpass artificial intelligence in impact. This mirrors Bitcoin's tradition of embedding a newspaper headline, while marking INTcoin's mission: creating a cryptocurrency that addresses the quantum computing threat before it materializes.
 
-## Next Steps
+## Completed Milestones
 
-1. **Complete Mining**: Finish mining the mainnet genesis block
-2. **Update Code**: Hard-code the mined nonce in `src/core/block.cpp`
-3. **Verify Block**: Run comprehensive validation tests
-4. **Document Hash**: Record the final genesis block hash
-5. **Prepare Launch**: Set up seed nodes and prepare for mainnet launch
+1. ✅ **Complete Mining**: Genesis block successfully mined (November 14, 2025)
+2. ✅ **Update Code**: Nonce 1233778760 hard-coded in `src/core/block.cpp`
+3. ✅ **Verify Block**: All validation tests passed
+4. ✅ **Document Hash**: Genesis hash recorded and verified
+5. ✅ **Network Seeds**: Primary seed nodes configured (74.208.112.43:9333, 51.155.97.192:9333)
+
+## Pre-Launch Checklist
+
+- [x] Genesis block mined and verified
+- [x] Network ports configured (9333 P2P, 9332 RPC)
+- [x] Primary seed nodes added
+- [x] Qt wallet built successfully
+- [x] Hardware wallet USB support integrated
+- [x] Documentation complete
+- [ ] Final security audit
+- [ ] Network stress testing
+- [ ] Mainnet launch (January 1, 2026)
 
 ## References
 
@@ -176,5 +183,6 @@ The genesis block message references a BBC News headline from November 6, 2025, 
 ---
 
 **Lead Developer**: Maddison Lane
-**Documentation**: Claude AI (Anthropic)
-**Date**: November 13, 2025
+**Genesis Mined**: November 14, 2025
+**Network Launch**: January 1, 2026
+**Documentation**: Updated November 14, 2025
