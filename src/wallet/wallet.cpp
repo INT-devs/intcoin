@@ -800,6 +800,320 @@ std::vector<UTXO> HDWallet::select_coins(uint64_t target_amount, const Blockchai
     return {};
 }
 
+bool HDWallet::owns_pubkey(const DilithiumPubKey& pubkey) const {
+    for (const auto& [index, key] : keys_) {
+        if (key.public_key == pubkey) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::set<DilithiumPubKey> HDWallet::get_all_pubkeys() const {
+    std::set<DilithiumPubKey> pubkeys;
+    for (const auto& [index, key] : keys_) {
+        pubkeys.insert(key.public_key);
+    }
+    return pubkeys;
+}
+
+// Enhanced transaction filtering by pubkey matching
+std::vector<Transaction> HDWallet::get_wallet_transactions(const Blockchain& blockchain) const {
+    std::vector<Transaction> result;
+    std::set<DilithiumPubKey> wallet_pubkeys = get_all_pubkeys();
+
+    // Scan all blocks more efficiently by checking pubkeys directly
+    for (uint32_t height = 0; height <= blockchain.get_height(); ++height) {
+        Block block = blockchain.get_block_by_height(height);
+
+        for (const auto& tx : block.transactions) {
+            if (is_wallet_transaction(tx, blockchain)) {
+                result.push_back(tx);
+            }
+        }
+    }
+
+    return result;
+}
+
+bool HDWallet::is_wallet_transaction(const Transaction& tx, const Blockchain& blockchain) const {
+    std::set<DilithiumPubKey> wallet_pubkeys = get_all_pubkeys();
+
+    // Check outputs - do we receive coins?
+    for (const auto& output : tx.outputs) {
+        if (output.script_pubkey.size() == DILITHIUM_PUBKEY_SIZE) {
+            DilithiumPubKey pubkey;
+            std::copy(output.script_pubkey.begin(), output.script_pubkey.end(), pubkey.begin());
+            if (wallet_pubkeys.count(pubkey)) {
+                return true;
+            }
+        }
+    }
+
+    // Check inputs - do we spend coins?
+    if (!tx.is_coinbase()) {
+        for (const auto& input : tx.inputs) {
+            auto utxo = blockchain.get_utxo(input.previous_output.tx_hash, input.previous_output.index);
+            if (utxo && utxo->output.script_pubkey.size() == DILITHIUM_PUBKEY_SIZE) {
+                DilithiumPubKey pubkey;
+                std::copy(utxo->output.script_pubkey.begin(), utxo->output.script_pubkey.end(), pubkey.begin());
+                if (wallet_pubkeys.count(pubkey)) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+// Dynamic fee estimation
+uint64_t HDWallet::estimate_fee(uint64_t tx_size_bytes, const Blockchain& blockchain, uint32_t target_blocks) const {
+    // Get recent blocks to analyze fee rates
+    uint32_t current_height = blockchain.get_height();
+    if (current_height < target_blocks) {
+        target_blocks = current_height;
+    }
+
+    std::vector<uint64_t> fee_rates;  // INT per byte
+
+    // Analyze last N blocks
+    for (uint32_t i = 0; i < target_blocks && i < 100; ++i) {
+        if (current_height < i) break;
+
+        Block block = blockchain.get_block_by_height(current_height - i);
+
+        for (const auto& tx : block.transactions) {
+            if (tx.is_coinbase()) continue;
+
+            // Calculate transaction fee
+            uint64_t total_input = 0;
+            uint64_t total_output = 0;
+
+            for (const auto& input : tx.inputs) {
+                auto utxo = blockchain.get_utxo(input.previous_output.tx_hash, input.previous_output.index);
+                if (utxo) {
+                    total_input += utxo->output.value;
+                }
+            }
+
+            for (const auto& output : tx.outputs) {
+                total_output += output.value;
+            }
+
+            if (total_input > total_output) {
+                uint64_t fee = total_input - total_output;
+                uint64_t size = tx.serialize().size();
+                if (size > 0) {
+                    fee_rates.push_back(fee / size);  // INT per byte
+                }
+            }
+        }
+    }
+
+    if (fee_rates.empty()) {
+        // Default: 1000 INT per byte minimum
+        return tx_size_bytes * 1000;
+    }
+
+    // Sort and use median fee rate
+    std::sort(fee_rates.begin(), fee_rates.end());
+    uint64_t median_rate = fee_rates[fee_rates.size() / 2];
+
+    // Apply multiplier based on target confirmation time
+    double multiplier = 1.0;
+    if (target_blocks <= 2) {
+        multiplier = 2.0;  // High priority
+    } else if (target_blocks <= 6) {
+        multiplier = 1.5;  // Medium priority
+    }
+
+    uint64_t estimated_fee = static_cast<uint64_t>(tx_size_bytes * median_rate * multiplier);
+
+    // Minimum fee: 1000 INT per transaction
+    const uint64_t MIN_FEE = 1000;
+    return std::max(estimated_fee, MIN_FEE);
+}
+
+uint64_t HDWallet::estimate_transaction_size(size_t num_inputs, size_t num_outputs) const {
+    // Transaction size estimation for Dilithium signatures
+    const size_t VERSION_SIZE = 4;
+    const size_t INPUT_COUNT_SIZE = 1;
+    const size_t OUTPUT_COUNT_SIZE = 1;
+    const size_t LOCKTIME_SIZE = 4;
+
+    // Per input: outpoint (36 bytes) + script_sig length (1 byte) + Dilithium signature (~4627 bytes) + pubkey (2592 bytes)
+    const size_t INPUT_SIZE = 36 + 1 + DILITHIUM_SIGNATURE_SIZE + DILITHIUM_PUBKEY_SIZE;
+
+    // Per output: value (8 bytes) + script_pubkey length (1 byte) + pubkey (2592 bytes)
+    const size_t OUTPUT_SIZE = 8 + 1 + DILITHIUM_PUBKEY_SIZE;
+
+    return VERSION_SIZE + INPUT_COUNT_SIZE + (num_inputs * INPUT_SIZE) +
+           OUTPUT_COUNT_SIZE + (num_outputs * OUTPUT_SIZE) + LOCKTIME_SIZE;
+}
+
+// Address book functionality
+void HDWallet::add_address_book_entry(const AddressBookEntry& entry) {
+    address_book_[entry.address] = entry;
+    save_to_disk();
+}
+
+void HDWallet::remove_address_book_entry(const std::string& address) {
+    address_book_.erase(address);
+    save_to_disk();
+}
+
+void HDWallet::update_address_book_entry(const std::string& address, const AddressBookEntry& entry) {
+    if (address_book_.count(address)) {
+        address_book_[address] = entry;
+        save_to_disk();
+    }
+}
+
+std::optional<HDWallet::AddressBookEntry> HDWallet::get_address_book_entry(const std::string& address) const {
+    auto it = address_book_.find(address);
+    if (it != address_book_.end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+std::vector<HDWallet::AddressBookEntry> HDWallet::get_address_book() const {
+    std::vector<AddressBookEntry> result;
+    for (const auto& [addr, entry] : address_book_) {
+        result.push_back(entry);
+    }
+    return result;
+}
+
+std::vector<HDWallet::AddressBookEntry> HDWallet::search_address_book(const std::string& query) const {
+    std::vector<AddressBookEntry> result;
+    std::string lower_query = query;
+    std::transform(lower_query.begin(), lower_query.end(), lower_query.begin(), ::tolower);
+
+    for (const auto& [addr, entry] : address_book_) {
+        std::string lower_label = entry.label;
+        std::string lower_address = entry.address;
+        std::string lower_category = entry.category;
+        std::string lower_notes = entry.notes;
+
+        std::transform(lower_label.begin(), lower_label.end(), lower_label.begin(), ::tolower);
+        std::transform(lower_address.begin(), lower_address.end(), lower_address.begin(), ::tolower);
+        std::transform(lower_category.begin(), lower_category.end(), lower_category.begin(), ::tolower);
+        std::transform(lower_notes.begin(), lower_notes.end(), lower_notes.begin(), ::tolower);
+
+        if (lower_label.find(lower_query) != std::string::npos ||
+            lower_address.find(lower_query) != std::string::npos ||
+            lower_category.find(lower_query) != std::string::npos ||
+            lower_notes.find(lower_query) != std::string::npos) {
+            result.push_back(entry);
+        }
+    }
+
+    return result;
+}
+
+// QR code support
+std::string HDWallet::generate_payment_uri(uint64_t amount, const std::string& label, const std::string& message) const {
+    // Use the first address if available, otherwise return empty URI
+    std::string address;
+    if (!keys_.empty()) {
+        address = keys_.begin()->second.address;
+    } else {
+        return "";  // No addresses available
+    }
+
+    std::string uri = "intcoin:" + address;
+
+    bool first_param = true;
+    if (amount > 0) {
+        uri += "?amount=" + std::to_string(amount);
+        first_param = false;
+    }
+
+    if (!label.empty()) {
+        uri += (first_param ? "?" : "&") + std::string("label=") + label;
+        first_param = false;
+    }
+
+    if (!message.empty()) {
+        uri += (first_param ? "?" : "&") + std::string("message=") + message;
+    }
+
+    return uri;
+}
+
+bool HDWallet::parse_payment_uri(const std::string& uri, std::string& address, uint64_t& amount,
+                                   std::string& label, std::string& message) const {
+    // Parse URI format: intcoin:address?amount=123&label=foo&message=bar
+    if (uri.substr(0, 8) != "intcoin:") {
+        return false;
+    }
+
+    size_t query_pos = uri.find('?');
+    if (query_pos == std::string::npos) {
+        // No parameters, just address
+        address = uri.substr(8);
+        amount = 0;
+        label = "";
+        message = "";
+        return true;
+    }
+
+    address = uri.substr(8, query_pos - 8);
+    std::string params = uri.substr(query_pos + 1);
+
+    // Parse parameters
+    size_t pos = 0;
+    while (pos < params.length()) {
+        size_t eq_pos = params.find('=', pos);
+        if (eq_pos == std::string::npos) break;
+
+        size_t amp_pos = params.find('&', eq_pos);
+        if (amp_pos == std::string::npos) amp_pos = params.length();
+
+        std::string key = params.substr(pos, eq_pos - pos);
+        std::string value = params.substr(eq_pos + 1, amp_pos - eq_pos - 1);
+
+        if (key == "amount") {
+            amount = std::stoull(value);
+        } else if (key == "label") {
+            label = value;
+        } else if (key == "message") {
+            message = value;
+        }
+
+        pos = amp_pos + 1;
+    }
+
+    return true;
+}
+
+// Hardware wallet support (placeholder implementations)
+std::optional<HDWallet::HardwareWalletInfo> HDWallet::detect_hardware_wallet() const {
+    // TODO: Implement actual hardware wallet detection via USB/HID
+    // This would require platform-specific USB enumeration code
+    // For now, return nullopt (no hardware wallet detected)
+    return std::nullopt;
+}
+
+bool HDWallet::sign_with_hardware_wallet(Transaction& tx, const HardwareWalletInfo& hw_info) {
+    // TODO: Implement hardware wallet signing protocol
+    // This would communicate with the device via USB to sign transactions
+    // Requires implementing device-specific protocols (Ledger, Trezor, etc.)
+    (void)tx;
+    (void)hw_info;
+    return false;  // Not implemented yet
+}
+
+std::string HDWallet::get_hardware_wallet_address(const HardwareWalletInfo& hw_info, uint32_t index) {
+    // TODO: Implement address derivation from hardware wallet
+    // Would query the device for the public key at the given index
+    (void)hw_info;
+    (void)index;
+    return "";  // Not implemented yet
+}
+
 // SimpleWallet implementation
 
 SimpleWallet::SimpleWallet() {

@@ -88,8 +88,16 @@ public:
     };
     std::vector<TxHistoryEntry> get_transaction_history(const Blockchain& blockchain) const;
 
+    // Enhanced transaction filtering by pubkey matching
+    std::vector<Transaction> get_wallet_transactions(const Blockchain& blockchain) const;
+    bool is_wallet_transaction(const Transaction& tx, const Blockchain& blockchain) const;
+
     // UTXO management
     std::vector<UTXO> get_utxos(const Blockchain& blockchain) const;
+
+    // Dynamic fee estimation
+    uint64_t estimate_fee(uint64_t tx_size_bytes, const Blockchain& blockchain, uint32_t target_blocks = 6) const;
+    uint64_t estimate_transaction_size(size_t num_inputs, size_t num_outputs) const;
 
     // Backup & Recovery
     std::string get_mnemonic() const;
@@ -97,9 +105,41 @@ public:
     bool backup_to_file(const std::string& filepath) const;
     static HDWallet restore_from_file(const std::string& filepath, const std::string& password);
 
-    // Labels
+    // Labels and Address Book
     void set_address_label(const std::string& address, const std::string& label);
     std::string get_address_label(const std::string& address) const;
+
+    // Address book functionality
+    struct AddressBookEntry {
+        std::string address;
+        std::string label;
+        std::string category;  // "send", "receive", "exchange", "friend", etc.
+        uint64_t last_used;
+        std::string notes;
+    };
+    void add_address_book_entry(const AddressBookEntry& entry);
+    void remove_address_book_entry(const std::string& address);
+    void update_address_book_entry(const std::string& address, const AddressBookEntry& entry);
+    std::optional<AddressBookEntry> get_address_book_entry(const std::string& address) const;
+    std::vector<AddressBookEntry> get_address_book() const;
+    std::vector<AddressBookEntry> search_address_book(const std::string& query) const;
+
+    // QR code support
+    std::string generate_payment_uri(uint64_t amount = 0, const std::string& label = "",
+                                      const std::string& message = "") const;
+    bool parse_payment_uri(const std::string& uri, std::string& address, uint64_t& amount,
+                          std::string& label, std::string& message) const;
+
+    // Hardware wallet support
+    struct HardwareWalletInfo {
+        std::string device_type;  // "ledger", "trezor", etc.
+        std::string device_id;
+        std::string firmware_version;
+        bool connected;
+    };
+    std::optional<HardwareWalletInfo> detect_hardware_wallet() const;
+    bool sign_with_hardware_wallet(Transaction& tx, const HardwareWalletInfo& hw_info);
+    std::string get_hardware_wallet_address(const HardwareWalletInfo& hw_info, uint32_t index);
 
 private:
     bool encrypted_;
@@ -110,6 +150,7 @@ private:
 
     // Address book
     std::map<std::string, std::string> address_labels_;
+    std::map<std::string, AddressBookEntry> address_book_;
 
     // Encryption
     std::vector<uint8_t> encryption_key_;
@@ -124,6 +165,8 @@ private:
 
     // Internal helpers
     std::vector<UTXO> select_coins(uint64_t target_amount, const Blockchain& blockchain) const;
+    bool owns_pubkey(const DilithiumPubKey& pubkey) const;
+    std::set<DilithiumPubKey> get_all_pubkeys() const;
 };
 
 /**
