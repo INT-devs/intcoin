@@ -324,7 +324,7 @@ bool Block::verify_block_reward(uint32_t height) const {
 Block GenesisBlock::create_mainnet() {
     const std::string message = "BBC News 06/Nov/2025 Will quantum be bigger than AI?";
     const uint64_t timestamp = 1730851200;  // November 6, 2025 00:00:00 UTC
-    const uint64_t nonce = 0;  // Will need to be mined
+    const uint64_t nonce = 1233778760ULL;  // Mined nonce
     const uint32_t bits = 0x1d00ffff;  // Initial difficulty
 
     return create_genesis(message, timestamp, nonce, bits);
