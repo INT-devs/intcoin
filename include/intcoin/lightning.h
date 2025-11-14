@@ -343,6 +343,93 @@ struct AcceptChannel {
     static AcceptChannel from_message(const Message& msg);
 };
 
+// Funding messages
+struct FundingCreated {
+    Hash256 temporary_channel_id;
+    Hash256 funding_txid;
+    uint16_t funding_output_index;
+    DilithiumSignature signature;
+
+    Message to_message() const;
+    static FundingCreated from_message(const Message& msg);
+};
+
+struct FundingSigned {
+    Hash256 channel_id;
+    DilithiumSignature signature;
+
+    Message to_message() const;
+    static FundingSigned from_message(const Message& msg);
+};
+
+// HTLC operation messages
+struct UpdateAddHTLC {
+    Hash256 channel_id;
+    uint64_t htlc_id;
+    uint64_t amount_msat;
+    Hash256 payment_hash;
+    uint32_t cltv_expiry;
+    std::vector<uint8_t> onion_routing_packet;  // 1366 bytes fixed size
+
+    Message to_message() const;
+    static UpdateAddHTLC from_message(const Message& msg);
+};
+
+struct UpdateFulfillHTLC {
+    Hash256 channel_id;
+    uint64_t htlc_id;
+    std::vector<uint8_t> payment_preimage;  // 32 bytes
+
+    Message to_message() const;
+    static UpdateFulfillHTLC from_message(const Message& msg);
+};
+
+struct UpdateFailHTLC {
+    Hash256 channel_id;
+    uint64_t htlc_id;
+    std::vector<uint8_t> reason;  // Encrypted failure reason
+
+    Message to_message() const;
+    static UpdateFailHTLC from_message(const Message& msg);
+};
+
+// Commitment messages
+struct CommitmentSigned {
+    Hash256 channel_id;
+    DilithiumSignature signature;
+    std::vector<DilithiumSignature> htlc_signatures;
+
+    Message to_message() const;
+    static CommitmentSigned from_message(const Message& msg);
+};
+
+struct RevokeAndAck {
+    Hash256 channel_id;
+    std::vector<uint8_t> per_commitment_secret;  // 32 bytes
+    DilithiumPubKey next_per_commitment_point;
+
+    Message to_message() const;
+    static RevokeAndAck from_message(const Message& msg);
+};
+
+// Closing messages
+struct Shutdown {
+    Hash256 channel_id;
+    std::vector<uint8_t> scriptpubkey;
+
+    Message to_message() const;
+    static Shutdown from_message(const Message& msg);
+};
+
+struct ClosingSigned {
+    Hash256 channel_id;
+    uint64_t fee_satoshis;
+    DilithiumSignature signature;
+
+    Message to_message() const;
+    static ClosingSigned from_message(const Message& msg);
+};
+
 } // namespace messages
 
 } // namespace lightning

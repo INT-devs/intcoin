@@ -956,6 +956,718 @@ Message Message::deserialize(const std::vector<uint8_t>& data) {
     return msg;
 }
 
+// OpenChannel message implementation
+Message OpenChannel::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Chain hash (32 bytes)
+    payload.insert(payload.end(), chain_hash.begin(), chain_hash.end());
+
+    // Temporary channel ID (32 bytes)
+    payload.insert(payload.end(), temporary_channel_id.begin(), temporary_channel_id.end());
+
+    // Funding satoshis (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((funding_satoshis >> (i * 8)) & 0xFF));
+    }
+
+    // Push msat (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((push_msat >> (i * 8)) & 0xFF));
+    }
+
+    // Dust limit satoshis (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((dust_limit_satoshis >> (i * 8)) & 0xFF));
+    }
+
+    // Max HTLC value in flight msat (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((max_htlc_value_in_flight_msat >> (i * 8)) & 0xFF));
+    }
+
+    // Channel reserve satoshis (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((channel_reserve_satoshis >> (i * 8)) & 0xFF));
+    }
+
+    // HTLC minimum msat (4 bytes)
+    payload.push_back(static_cast<uint8_t>(htlc_minimum_msat & 0xFF));
+    payload.push_back(static_cast<uint8_t>((htlc_minimum_msat >> 8) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((htlc_minimum_msat >> 16) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((htlc_minimum_msat >> 24) & 0xFF));
+
+    // Feerate per kw (4 bytes)
+    payload.push_back(static_cast<uint8_t>(feerate_per_kw & 0xFF));
+    payload.push_back(static_cast<uint8_t>((feerate_per_kw >> 8) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((feerate_per_kw >> 16) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((feerate_per_kw >> 24) & 0xFF));
+
+    // To self delay (2 bytes)
+    payload.push_back(static_cast<uint8_t>(to_self_delay & 0xFF));
+    payload.push_back(static_cast<uint8_t>((to_self_delay >> 8) & 0xFF));
+
+    // Max accepted HTLCs (2 bytes)
+    payload.push_back(static_cast<uint8_t>(max_accepted_htlcs & 0xFF));
+    payload.push_back(static_cast<uint8_t>((max_accepted_htlcs >> 8) & 0xFF));
+
+    // Public keys (each 2592 bytes for Dilithium5)
+    payload.insert(payload.end(), funding_pubkey.begin(), funding_pubkey.end());
+    payload.insert(payload.end(), revocation_basepoint.begin(), revocation_basepoint.end());
+    payload.insert(payload.end(), payment_basepoint.begin(), payment_basepoint.end());
+    payload.insert(payload.end(), delayed_payment_basepoint.begin(), delayed_payment_basepoint.end());
+    payload.insert(payload.end(), htlc_basepoint.begin(), htlc_basepoint.end());
+    payload.insert(payload.end(), first_per_commitment_point.begin(), first_per_commitment_point.end());
+
+    return Message(MessageType::OPEN_CHANNEL, payload);
+}
+
+OpenChannel OpenChannel::from_message(const Message& msg) {
+    OpenChannel oc;
+    if (msg.type != MessageType::OPEN_CHANNEL) {
+        return oc;
+    }
+
+    const auto& data = msg.payload;
+    if (data.size() < 15648) return oc;  // Minimum size with 6 Dilithium keys
+
+    size_t offset = 0;
+
+    // Chain hash (32 bytes)
+    std::copy(data.begin() + offset, data.begin() + offset + 32, oc.chain_hash.begin());
+    offset += 32;
+
+    // Temporary channel ID (32 bytes)
+    std::copy(data.begin() + offset, data.begin() + offset + 32, oc.temporary_channel_id.begin());
+    offset += 32;
+
+    // Funding satoshis (8 bytes)
+    oc.funding_satoshis = 0;
+    for (int i = 0; i < 8; i++) {
+        oc.funding_satoshis |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    // Push msat (8 bytes)
+    oc.push_msat = 0;
+    for (int i = 0; i < 8; i++) {
+        oc.push_msat |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    // Dust limit satoshis (8 bytes)
+    oc.dust_limit_satoshis = 0;
+    for (int i = 0; i < 8; i++) {
+        oc.dust_limit_satoshis |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    // Max HTLC value in flight msat (8 bytes)
+    oc.max_htlc_value_in_flight_msat = 0;
+    for (int i = 0; i < 8; i++) {
+        oc.max_htlc_value_in_flight_msat |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    // Channel reserve satoshis (8 bytes)
+    oc.channel_reserve_satoshis = 0;
+    for (int i = 0; i < 8; i++) {
+        oc.channel_reserve_satoshis |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    // HTLC minimum msat (4 bytes)
+    oc.htlc_minimum_msat = static_cast<uint32_t>(data[offset]) |
+                           (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                           (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                           (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    // Feerate per kw (4 bytes)
+    oc.feerate_per_kw = static_cast<uint32_t>(data[offset]) |
+                        (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                        (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                        (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    // To self delay (2 bytes)
+    oc.to_self_delay = static_cast<uint16_t>(data[offset]) |
+                       (static_cast<uint16_t>(data[offset + 1]) << 8);
+    offset += 2;
+
+    // Max accepted HTLCs (2 bytes)
+    oc.max_accepted_htlcs = static_cast<uint16_t>(data[offset]) |
+                            (static_cast<uint16_t>(data[offset + 1]) << 8);
+    offset += 2;
+
+    // Public keys (each 2592 bytes)
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, oc.funding_pubkey.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, oc.revocation_basepoint.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, oc.payment_basepoint.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, oc.delayed_payment_basepoint.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, oc.htlc_basepoint.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, oc.first_per_commitment_point.begin());
+
+    return oc;
+}
+
+// AcceptChannel message implementation
+Message AcceptChannel::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Temporary channel ID (32 bytes)
+    payload.insert(payload.end(), temporary_channel_id.begin(), temporary_channel_id.end());
+
+    // Dust limit satoshis (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((dust_limit_satoshis >> (i * 8)) & 0xFF));
+    }
+
+    // Max HTLC value in flight msat (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((max_htlc_value_in_flight_msat >> (i * 8)) & 0xFF));
+    }
+
+    // Channel reserve satoshis (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((channel_reserve_satoshis >> (i * 8)) & 0xFF));
+    }
+
+    // HTLC minimum msat (4 bytes)
+    payload.push_back(static_cast<uint8_t>(htlc_minimum_msat & 0xFF));
+    payload.push_back(static_cast<uint8_t>((htlc_minimum_msat >> 8) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((htlc_minimum_msat >> 16) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((htlc_minimum_msat >> 24) & 0xFF));
+
+    // Minimum depth (4 bytes)
+    payload.push_back(static_cast<uint8_t>(minimum_depth & 0xFF));
+    payload.push_back(static_cast<uint8_t>((minimum_depth >> 8) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((minimum_depth >> 16) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((minimum_depth >> 24) & 0xFF));
+
+    // To self delay (2 bytes)
+    payload.push_back(static_cast<uint8_t>(to_self_delay & 0xFF));
+    payload.push_back(static_cast<uint8_t>((to_self_delay >> 8) & 0xFF));
+
+    // Max accepted HTLCs (2 bytes)
+    payload.push_back(static_cast<uint8_t>(max_accepted_htlcs & 0xFF));
+    payload.push_back(static_cast<uint8_t>((max_accepted_htlcs >> 8) & 0xFF));
+
+    // Public keys (each 2592 bytes for Dilithium5)
+    payload.insert(payload.end(), funding_pubkey.begin(), funding_pubkey.end());
+    payload.insert(payload.end(), revocation_basepoint.begin(), revocation_basepoint.end());
+    payload.insert(payload.end(), payment_basepoint.begin(), payment_basepoint.end());
+    payload.insert(payload.end(), delayed_payment_basepoint.begin(), delayed_payment_basepoint.end());
+    payload.insert(payload.end(), htlc_basepoint.begin(), htlc_basepoint.end());
+    payload.insert(payload.end(), first_per_commitment_point.begin(), first_per_commitment_point.end());
+
+    return Message(MessageType::ACCEPT_CHANNEL, payload);
+}
+
+AcceptChannel AcceptChannel::from_message(const Message& msg) {
+    AcceptChannel ac;
+    if (msg.type != MessageType::ACCEPT_CHANNEL) {
+        return ac;
+    }
+
+    const auto& data = msg.payload;
+    if (data.size() < 15594) return ac;  // Minimum size
+
+    size_t offset = 0;
+
+    // Temporary channel ID (32 bytes)
+    std::copy(data.begin() + offset, data.begin() + offset + 32, ac.temporary_channel_id.begin());
+    offset += 32;
+
+    // Dust limit satoshis (8 bytes)
+    ac.dust_limit_satoshis = 0;
+    for (int i = 0; i < 8; i++) {
+        ac.dust_limit_satoshis |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    // Max HTLC value in flight msat (8 bytes)
+    ac.max_htlc_value_in_flight_msat = 0;
+    for (int i = 0; i < 8; i++) {
+        ac.max_htlc_value_in_flight_msat |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    // Channel reserve satoshis (8 bytes)
+    ac.channel_reserve_satoshis = 0;
+    for (int i = 0; i < 8; i++) {
+        ac.channel_reserve_satoshis |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    // HTLC minimum msat (4 bytes)
+    ac.htlc_minimum_msat = static_cast<uint32_t>(data[offset]) |
+                           (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                           (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                           (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    // Minimum depth (4 bytes)
+    ac.minimum_depth = static_cast<uint32_t>(data[offset]) |
+                       (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                       (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                       (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    // To self delay (2 bytes)
+    ac.to_self_delay = static_cast<uint16_t>(data[offset]) |
+                       (static_cast<uint16_t>(data[offset + 1]) << 8);
+    offset += 2;
+
+    // Max accepted HTLCs (2 bytes)
+    ac.max_accepted_htlcs = static_cast<uint16_t>(data[offset]) |
+                            (static_cast<uint16_t>(data[offset + 1]) << 8);
+    offset += 2;
+
+    // Public keys (each 2592 bytes)
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, ac.funding_pubkey.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, ac.revocation_basepoint.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, ac.payment_basepoint.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, ac.delayed_payment_basepoint.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, ac.htlc_basepoint.begin());
+    offset += 2592;
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, ac.first_per_commitment_point.begin());
+
+    return ac;
+}
+
+// FundingCreated message implementation
+Message FundingCreated::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Temporary channel ID (32 bytes)
+    payload.insert(payload.end(), temporary_channel_id.begin(), temporary_channel_id.end());
+
+    // Funding TXID (32 bytes)
+    payload.insert(payload.end(), funding_txid.begin(), funding_txid.end());
+
+    // Funding output index (2 bytes)
+    payload.push_back(static_cast<uint8_t>(funding_output_index & 0xFF));
+    payload.push_back(static_cast<uint8_t>((funding_output_index >> 8) & 0xFF));
+
+    // Signature (4595 bytes for Dilithium5)
+    payload.insert(payload.end(), signature.begin(), signature.end());
+
+    return Message(MessageType::FUNDING_CREATED, payload);
+}
+
+FundingCreated FundingCreated::from_message(const Message& msg) {
+    FundingCreated fc;
+    if (msg.type != MessageType::FUNDING_CREATED || msg.payload.size() < 4661) {
+        return fc;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, fc.temporary_channel_id.begin());
+    offset += 32;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, fc.funding_txid.begin());
+    offset += 32;
+
+    fc.funding_output_index = static_cast<uint16_t>(data[offset]) |
+                              (static_cast<uint16_t>(data[offset + 1]) << 8);
+    offset += 2;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 4595, fc.signature.begin());
+
+    return fc;
+}
+
+// FundingSigned message implementation
+Message FundingSigned::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Channel ID (32 bytes)
+    payload.insert(payload.end(), channel_id.begin(), channel_id.end());
+
+    // Signature (4595 bytes for Dilithium5)
+    payload.insert(payload.end(), signature.begin(), signature.end());
+
+    return Message(MessageType::FUNDING_SIGNED, payload);
+}
+
+FundingSigned FundingSigned::from_message(const Message& msg) {
+    FundingSigned fs;
+    if (msg.type != MessageType::FUNDING_SIGNED || msg.payload.size() < 4627) {
+        return fs;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, fs.channel_id.begin());
+    offset += 32;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 4595, fs.signature.begin());
+
+    return fs;
+}
+
+// UpdateAddHTLC message implementation
+Message UpdateAddHTLC::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Channel ID (32 bytes)
+    payload.insert(payload.end(), channel_id.begin(), channel_id.end());
+
+    // HTLC ID (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((htlc_id >> (i * 8)) & 0xFF));
+    }
+
+    // Amount msat (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((amount_msat >> (i * 8)) & 0xFF));
+    }
+
+    // Payment hash (32 bytes)
+    payload.insert(payload.end(), payment_hash.begin(), payment_hash.end());
+
+    // CLTV expiry (4 bytes)
+    payload.push_back(static_cast<uint8_t>(cltv_expiry & 0xFF));
+    payload.push_back(static_cast<uint8_t>((cltv_expiry >> 8) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((cltv_expiry >> 16) & 0xFF));
+    payload.push_back(static_cast<uint8_t>((cltv_expiry >> 24) & 0xFF));
+
+    // Onion routing packet (1366 bytes fixed)
+    if (onion_routing_packet.size() >= 1366) {
+        payload.insert(payload.end(), onion_routing_packet.begin(), onion_routing_packet.begin() + 1366);
+    } else {
+        payload.insert(payload.end(), onion_routing_packet.begin(), onion_routing_packet.end());
+        // Pad to 1366 bytes
+        payload.insert(payload.end(), 1366 - onion_routing_packet.size(), 0);
+    }
+
+    return Message(MessageType::UPDATE_ADD_HTLC, payload);
+}
+
+UpdateAddHTLC UpdateAddHTLC::from_message(const Message& msg) {
+    UpdateAddHTLC uah;
+    if (msg.type != MessageType::UPDATE_ADD_HTLC || msg.payload.size() < 1450) {
+        return uah;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, uah.channel_id.begin());
+    offset += 32;
+
+    uah.htlc_id = 0;
+    for (int i = 0; i < 8; i++) {
+        uah.htlc_id |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    uah.amount_msat = 0;
+    for (int i = 0; i < 8; i++) {
+        uah.amount_msat |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, uah.payment_hash.begin());
+    offset += 32;
+
+    uah.cltv_expiry = static_cast<uint32_t>(data[offset]) |
+                      (static_cast<uint32_t>(data[offset + 1]) << 8) |
+                      (static_cast<uint32_t>(data[offset + 2]) << 16) |
+                      (static_cast<uint32_t>(data[offset + 3]) << 24);
+    offset += 4;
+
+    uah.onion_routing_packet.assign(data.begin() + offset, data.begin() + offset + 1366);
+
+    return uah;
+}
+
+// UpdateFulfillHTLC message implementation
+Message UpdateFulfillHTLC::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Channel ID (32 bytes)
+    payload.insert(payload.end(), channel_id.begin(), channel_id.end());
+
+    // HTLC ID (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((htlc_id >> (i * 8)) & 0xFF));
+    }
+
+    // Payment preimage (32 bytes)
+    if (payment_preimage.size() >= 32) {
+        payload.insert(payload.end(), payment_preimage.begin(), payment_preimage.begin() + 32);
+    } else {
+        payload.insert(payload.end(), payment_preimage.begin(), payment_preimage.end());
+        payload.insert(payload.end(), 32 - payment_preimage.size(), 0);
+    }
+
+    return Message(MessageType::UPDATE_FULFILL_HTLC, payload);
+}
+
+UpdateFulfillHTLC UpdateFulfillHTLC::from_message(const Message& msg) {
+    UpdateFulfillHTLC ufh;
+    if (msg.type != MessageType::UPDATE_FULFILL_HTLC || msg.payload.size() < 72) {
+        return ufh;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, ufh.channel_id.begin());
+    offset += 32;
+
+    ufh.htlc_id = 0;
+    for (int i = 0; i < 8; i++) {
+        ufh.htlc_id |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    ufh.payment_preimage.assign(data.begin() + offset, data.begin() + offset + 32);
+
+    return ufh;
+}
+
+// UpdateFailHTLC message implementation
+Message UpdateFailHTLC::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Channel ID (32 bytes)
+    payload.insert(payload.end(), channel_id.begin(), channel_id.end());
+
+    // HTLC ID (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((htlc_id >> (i * 8)) & 0xFF));
+    }
+
+    // Reason length (2 bytes)
+    uint16_t reason_len = static_cast<uint16_t>(reason.size());
+    payload.push_back(static_cast<uint8_t>(reason_len & 0xFF));
+    payload.push_back(static_cast<uint8_t>((reason_len >> 8) & 0xFF));
+
+    // Reason data
+    payload.insert(payload.end(), reason.begin(), reason.end());
+
+    return Message(MessageType::UPDATE_FAIL_HTLC, payload);
+}
+
+UpdateFailHTLC UpdateFailHTLC::from_message(const Message& msg) {
+    UpdateFailHTLC ufh;
+    if (msg.type != MessageType::UPDATE_FAIL_HTLC || msg.payload.size() < 42) {
+        return ufh;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, ufh.channel_id.begin());
+    offset += 32;
+
+    ufh.htlc_id = 0;
+    for (int i = 0; i < 8; i++) {
+        ufh.htlc_id |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    uint16_t reason_len = static_cast<uint16_t>(data[offset]) |
+                          (static_cast<uint16_t>(data[offset + 1]) << 8);
+    offset += 2;
+
+    if (data.size() >= offset + reason_len) {
+        ufh.reason.assign(data.begin() + offset, data.begin() + offset + reason_len);
+    }
+
+    return ufh;
+}
+
+// CommitmentSigned message implementation
+Message CommitmentSigned::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Channel ID (32 bytes)
+    payload.insert(payload.end(), channel_id.begin(), channel_id.end());
+
+    // Signature (4595 bytes for Dilithium5)
+    payload.insert(payload.end(), signature.begin(), signature.end());
+
+    // HTLC signature count (2 bytes)
+    uint16_t htlc_count = static_cast<uint16_t>(htlc_signatures.size());
+    payload.push_back(static_cast<uint8_t>(htlc_count & 0xFF));
+    payload.push_back(static_cast<uint8_t>((htlc_count >> 8) & 0xFF));
+
+    // HTLC signatures (each 4595 bytes)
+    for (const auto& sig : htlc_signatures) {
+        payload.insert(payload.end(), sig.begin(), sig.end());
+    }
+
+    return Message(MessageType::COMMITMENT_SIGNED, payload);
+}
+
+CommitmentSigned CommitmentSigned::from_message(const Message& msg) {
+    CommitmentSigned cs;
+    if (msg.type != MessageType::COMMITMENT_SIGNED || msg.payload.size() < 4629) {
+        return cs;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, cs.channel_id.begin());
+    offset += 32;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 4595, cs.signature.begin());
+    offset += 4595;
+
+    uint16_t htlc_count = static_cast<uint16_t>(data[offset]) |
+                          (static_cast<uint16_t>(data[offset + 1]) << 8);
+    offset += 2;
+
+    for (uint16_t i = 0; i < htlc_count && (offset + 4595) <= data.size(); i++) {
+        crypto::DilithiumSignature sig;
+        std::copy(data.begin() + offset, data.begin() + offset + 4595, sig.begin());
+        cs.htlc_signatures.push_back(sig);
+        offset += 4595;
+    }
+
+    return cs;
+}
+
+// RevokeAndAck message implementation
+Message RevokeAndAck::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Channel ID (32 bytes)
+    payload.insert(payload.end(), channel_id.begin(), channel_id.end());
+
+    // Per commitment secret (32 bytes)
+    if (per_commitment_secret.size() >= 32) {
+        payload.insert(payload.end(), per_commitment_secret.begin(), per_commitment_secret.begin() + 32);
+    } else {
+        payload.insert(payload.end(), per_commitment_secret.begin(), per_commitment_secret.end());
+        payload.insert(payload.end(), 32 - per_commitment_secret.size(), 0);
+    }
+
+    // Next per commitment point (2592 bytes for Dilithium5 pubkey)
+    payload.insert(payload.end(), next_per_commitment_point.begin(), next_per_commitment_point.end());
+
+    return Message(MessageType::REVOKE_AND_ACK, payload);
+}
+
+RevokeAndAck RevokeAndAck::from_message(const Message& msg) {
+    RevokeAndAck raa;
+    if (msg.type != MessageType::REVOKE_AND_ACK || msg.payload.size() < 2656) {
+        return raa;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, raa.channel_id.begin());
+    offset += 32;
+
+    raa.per_commitment_secret.assign(data.begin() + offset, data.begin() + offset + 32);
+    offset += 32;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 2592, raa.next_per_commitment_point.begin());
+
+    return raa;
+}
+
+// Shutdown message implementation
+Message Shutdown::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Channel ID (32 bytes)
+    payload.insert(payload.end(), channel_id.begin(), channel_id.end());
+
+    // Scriptpubkey length (2 bytes)
+    uint16_t script_len = static_cast<uint16_t>(scriptpubkey.size());
+    payload.push_back(static_cast<uint8_t>(script_len & 0xFF));
+    payload.push_back(static_cast<uint8_t>((script_len >> 8) & 0xFF));
+
+    // Scriptpubkey data
+    payload.insert(payload.end(), scriptpubkey.begin(), scriptpubkey.end());
+
+    return Message(MessageType::SHUTDOWN, payload);
+}
+
+Shutdown Shutdown::from_message(const Message& msg) {
+    Shutdown sd;
+    if (msg.type != MessageType::SHUTDOWN || msg.payload.size() < 34) {
+        return sd;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, sd.channel_id.begin());
+    offset += 32;
+
+    uint16_t script_len = static_cast<uint16_t>(data[offset]) |
+                          (static_cast<uint16_t>(data[offset + 1]) << 8);
+    offset += 2;
+
+    if (data.size() >= offset + script_len) {
+        sd.scriptpubkey.assign(data.begin() + offset, data.begin() + offset + script_len);
+    }
+
+    return sd;
+}
+
+// ClosingSigned message implementation
+Message ClosingSigned::to_message() const {
+    std::vector<uint8_t> payload;
+
+    // Channel ID (32 bytes)
+    payload.insert(payload.end(), channel_id.begin(), channel_id.end());
+
+    // Fee satoshis (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        payload.push_back(static_cast<uint8_t>((fee_satoshis >> (i * 8)) & 0xFF));
+    }
+
+    // Signature (4595 bytes for Dilithium5)
+    payload.insert(payload.end(), signature.begin(), signature.end());
+
+    return Message(MessageType::CLOSING_SIGNED, payload);
+}
+
+ClosingSigned ClosingSigned::from_message(const Message& msg) {
+    ClosingSigned cs;
+    if (msg.type != MessageType::CLOSING_SIGNED || msg.payload.size() < 4635) {
+        return cs;
+    }
+
+    const auto& data = msg.payload;
+    size_t offset = 0;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 32, cs.channel_id.begin());
+    offset += 32;
+
+    cs.fee_satoshis = 0;
+    for (int i = 0; i < 8; i++) {
+        cs.fee_satoshis |= (static_cast<uint64_t>(data[offset + i]) << (i * 8));
+    }
+    offset += 8;
+
+    std::copy(data.begin() + offset, data.begin() + offset + 4595, cs.signature.begin());
+
+    return cs;
+}
+
 } // namespace messages
 
 } // namespace lightning
