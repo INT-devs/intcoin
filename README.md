@@ -38,7 +38,7 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 - ✅ **Transaction Mempool**: Fee-based transaction prioritization
 - ✅ **Qt GUI Wallet**: Professional cross-platform graphical interface
 - ✅ **JSON-RPC API**: Complete remote control capabilities
-- ✅ **Lightning Network**: Fast, low-cost Layer 2 payment channels
+- ✅ **Lightning Network**: Fast, low-cost Layer 2 with Watchtowers, AMP, Submarine Swaps, Splicing
 - ✅ **Smart Contracts**: Secure VM with gas metering and SafeMath
 - ✅ **Cross-Chain Bridges**: Atomic swaps with Bitcoin and Ethereum
 - ✅ **TOR Support**: Anonymous networking with hidden service capability
@@ -356,23 +356,28 @@ cmake .. -DBUILD_TESTS=ON
 
 INTcoin includes a fully-featured Lightning Network implementation for instant, low-cost transactions:
 
-**Current Features:**
-- Payment channels with HTLC support
-- Multi-hop routing with onion encryption
-- BOLT #11 invoice support
-- Channel management (open, close, force-close)
-- Real-time fee estimation
+**Core Features:**
+- ✅ Payment channels with HTLC support
+- ✅ Multi-hop routing with onion encryption
+- ✅ BOLT #11 invoice support
+- ✅ Channel management (open, close, force-close)
+- ✅ Real-time fee estimation
+- ✅ Quantum-resistant signatures (CRYSTALS-Dilithium5)
+
+**Advanced Features:**
+- ✅ **Watchtowers**: Third-party monitoring services protecting channels when offline
+- ✅ **Submarine Swaps**: Trustless atomic on-chain ↔ Lightning conversions using HTLCs
+- ✅ **Atomic Multi-Path Payments (AMP)**: Split payments across multiple routes for reliability
+- ✅ **Channel Factories**: Batch channel creation - one on-chain transaction, multiple channels
+- ✅ **Splicing**: Add or remove funds from channels without closing (splice-in/splice-out)
+- ✅ **Dual-Funded Channels**: Both parties contribute funds for immediate bidirectional liquidity
 
 **Future Enhancements:**
-- **Watchtowers**: Third-party monitoring services for channel security
-- **Submarine Swaps**: Seamless on-chain ↔ off-chain conversions
-- **Atomic Multi-Path Payments (AMP)**: Split large payments across multiple routes
 - **Trampoline Routing**: Lightweight routing for mobile clients
-- **Channel Factories**: Batch channel creation for efficiency
-- **Splicing**: Dynamic channel capacity adjustments without closing
-- **Dual-Funded Channels**: Both parties contribute to initial funding
+- **Eltoo**: Simplified channel updates using SIGHASH_NOINPUT
+- **Point Time Locked Contracts (PTLCs)**: Enhanced privacy using adaptor signatures
 
-See [src/lightning/README.md](src/lightning/README.md) for complete documentation.
+See [docs/LIGHTNING-ADVANCED-FEATURES.md](docs/LIGHTNING-ADVANCED-FEATURES.md) and [docs/WATCHTOWER.md](docs/WATCHTOWER.md) for complete documentation.
 
 ### Smart Contracts
 
