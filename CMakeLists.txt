@@ -203,16 +203,23 @@ target_link_libraries(intcoin_core
         kyber
 )
 
-# Link liboqs if found (for post-quantum crypto)
+# Link liboqs (REQUIRED for post-quantum crypto)
 find_library(LIBOQS_LIBRARY NAMES oqs liboqs
     HINTS
         /usr/local/lib
         /opt/homebrew/lib
         /usr/lib
+    REQUIRED
 )
-if(LIBOQS_LIBRARY)
-    target_link_libraries(intcoin_core PUBLIC ${LIBOQS_LIBRARY})
+if(NOT LIBOQS_LIBRARY)
+    message(FATAL_ERROR "liboqs is required but not found. Please install liboqs:\n"
+        "  Ubuntu/Debian: Run scripts/install_liboqs_debian.sh\n"
+        "  macOS: Run scripts/install_liboqs_macos.sh\n"
+        "  FreeBSD: Run scripts/install_liboqs_freebsd.sh\n"
+        "  Or build from source: https://github.com/open-quantum-safe/liboqs")
 endif()
+message(STATUS "Found liboqs: ${LIBOQS_LIBRARY}")
+target_link_libraries(intcoin_core PUBLIC ${LIBOQS_LIBRARY})
 
 # Find and link libusb and hidapi for hardware wallet support
 find_library(LIBUSB_LIBRARY NAMES usb-1.0 libusb-1.0

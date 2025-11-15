@@ -121,29 +121,53 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 
 ### Prerequisites
 
-#### macOS
+**⚠️ IMPORTANT**: INTcoin requires **liboqs** (Open Quantum Safe library) for post-quantum cryptography. Install it first before building.
+
+#### Installing liboqs
+
+**macOS:**
+```bash
+./scripts/install_liboqs_macos.sh
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo ./scripts/install_liboqs_debian.sh
+```
+
+**FreeBSD:**
+```bash
+sudo ./scripts/install_liboqs_freebsd.sh
+```
+
+For manual installation, see: https://github.com/open-quantum-safe/liboqs
+
+#### Other Dependencies
+
+**macOS:**
 ```bash
 brew install cmake boost openssl qt@5 python3
 ```
 
-#### Linux (Ubuntu/Debian)
+**Linux (Ubuntu/Debian):**
 ```bash
 sudo apt-get update
 sudo apt-get install build-essential cmake libboost-all-dev libssl-dev \
-    qtbase5-dev qttools5-dev libqt5svg5-dev python3 python3-pip
+    qtbase5-dev qttools5-dev libqt5svg5-dev python3 python3-pip \
+    libhidapi-dev libusb-1.0-0-dev
 ```
 
-#### FreeBSD
+**FreeBSD:**
 ```bash
-pkg install cmake boost-all openssl qt5 python3
+pkg install cmake boost-all openssl qt5 python3 libusb hidapi
 ```
 
-#### Windows
+**Windows:**
 - Install Visual Studio 2022 or later
 - Install CMake 3.20+
 - Install vcpkg and dependencies:
 ```powershell
-vcpkg install boost openssl qt5
+vcpkg install boost openssl qt5 liboqs
 ```
 
 ### Build Instructions
