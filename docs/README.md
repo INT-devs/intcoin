@@ -109,10 +109,11 @@ cd crypto
 
 ### For Users
 
-- **Getting Started**: [Quick Start](QUICK-START.md)
+- **Getting Started**: [Quick Start](QUICK-START.md) | [Web Guide](https://international-coin.org/docs/getting-started.html)
 - **Installation**: [BUILD.md](../BUILD.md)
 - **RPC API**: [RPC-API.md](RPC-API.md)
 - **Project Overview**: [README](../README.md)
+- **Whitepaper**: [View Online](https://international-coin.org/docs/whitepaper.html) | [Download PDF](https://international-coin.org/docs/whitepaper.pdf)
 - **Network Info**: [Seed Nodes](SEED_NODES.md), [Tor Guide](TOR-GUIDE.md)
 - **Security**: [Security Audit](SECURITY-AUDIT.md), [GPG Signing](GPG-SIGNING.md)
 
@@ -187,7 +188,9 @@ After building, you'll have the following executables:
 - **Security**: security@international-coin.org
 - **GitLab**: https://gitlab.com/intcoin/crypto
 - **Website**: https://international-coin.org
-- **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/home
+- **Documentation**: https://international-coin.org/docs/
+- **Getting Started**: https://international-coin.org/docs/getting-started.html
+- **Whitepaper**: https://international-coin.org/docs/whitepaper.html
 
 ### GPG Keys
 - **Admin**: `6E68 20D6 0277 879B 3EFA 62D1 EB1A 8F24 AB19 0CBC`
@@ -213,4 +216,4 @@ INTcoin is released under the terms of the MIT license. See [COPYING](../COPYING
 
 ---
 
-**Last Updated**: November 14, 2025
+**Last Updated**: November 15, 2025

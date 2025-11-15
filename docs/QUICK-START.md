@@ -324,6 +324,9 @@ sudo ufw allow 9333/tcp
 ## Getting Help
 
 - **Documentation**: [docs/README.md](README.md)
+- **Website Documentation**: https://international-coin.org/docs/
+- **Getting Started Guide**: https://international-coin.org/docs/getting-started.html
+- **Whitepaper**: https://international-coin.org/docs/whitepaper.html
 - **RPC API**: [docs/RPC-API.md](RPC-API.md)
 - **Security**: [docs/SECURITY-AUDIT.md](SECURITY-AUDIT.md)
 - **Website**: https://international-coin.org

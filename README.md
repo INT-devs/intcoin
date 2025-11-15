@@ -99,8 +99,11 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 <div align="center">
 
 **Website**: [international-coin.org](https://international-coin.org) |
+**Documentation**: [Docs](https://international-coin.org/docs/) |
+**Whitepaper**: [HTML](https://international-coin.org/docs/whitepaper.html) | [PDF](https://international-coin.org/docs/whitepaper.pdf)
+
 **Repository**: [gitlab.com/intcoin/crypto](https://gitlab.com/intcoin/crypto) |
-**Wiki**: [Documentation](https://gitlab.com/intcoin/crypto/-/wikis/home)
+**Wiki**: [Technical Docs](https://gitlab.com/intcoin/crypto/-/wikis/home)
 
 **Lead Developer**: Maddison Lane | **License**: MIT
 
@@ -405,6 +408,9 @@ See the [docs](docs/) directory for detailed documentation:
 
 **Getting Started:**
 - [Quick Start Guide](docs/QUICK-START.md) - Get started in minutes
+- [Website Getting Started](https://international-coin.org/docs/getting-started.html) - Interactive web guide
+- [Whitepaper](https://international-coin.org/docs/whitepaper.html) - Technical whitepaper (HTML)
+- [Whitepaper PDF](https://international-coin.org/docs/whitepaper.pdf) - Download PDF version
 - [Genesis Block](docs/GENESIS_BLOCK.md) - Official mainnet genesis block details
 - [Project Status](PROJECT-STATUS.md) - Current development status
 
