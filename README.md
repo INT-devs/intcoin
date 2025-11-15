@@ -372,12 +372,14 @@ INTcoin includes a fully-featured Lightning Network implementation for instant, 
 - ✅ **Splicing**: Add or remove funds from channels without closing (splice-in/splice-out)
 - ✅ **Dual-Funded Channels**: Both parties contribute funds for immediate bidirectional liquidity
 
+**Next-Generation Features:**
+- ✅ **Eltoo**: Simplified channel updates using SIGHASH_NOINPUT (no penalty transactions)
+- ✅ **Point Time Locked Contracts (PTLCs)**: Enhanced privacy with adaptor signatures (scriptless scripts)
+
 **Future Enhancements:**
 - **Trampoline Routing**: Lightweight routing for mobile clients
-- **Eltoo**: Simplified channel updates using SIGHASH_NOINPUT
-- **Point Time Locked Contracts (PTLCs)**: Enhanced privacy using adaptor signatures
 
-See [docs/LIGHTNING-ADVANCED-FEATURES.md](docs/LIGHTNING-ADVANCED-FEATURES.md) and [docs/WATCHTOWER.md](docs/WATCHTOWER.md) for complete documentation.
+See [docs/LIGHTNING-ADVANCED-FEATURES.md](docs/LIGHTNING-ADVANCED-FEATURES.md), [docs/WATCHTOWER.md](docs/WATCHTOWER.md), [docs/ELTOO.md](docs/ELTOO.md), and [docs/PTLC.md](docs/PTLC.md) for complete documentation.
 
 ### Smart Contracts
 
