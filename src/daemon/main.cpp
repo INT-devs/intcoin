@@ -232,7 +232,22 @@ int main(int argc, char* argv[]) {
         log_message(config, "Initializing P2P network...");
         p2p::Network network(config.port, false);
 
-        // Add seed nodes
+        // Add hardcoded Tor seed nodes
+        const std::vector<std::string> tor_seeds = {
+            "2nrhdp7i4dricaf362hwnajj27lscbmimggvjetwjhuwgtdnfcurxzyd.onion:9333"  // intcoind bridge
+        };
+
+        for (const auto& seed : tor_seeds) {
+            log_message(config, "Adding Tor seed: " + seed);
+            size_t colon_pos = seed.find(':');
+            std::string addr = seed.substr(0, colon_pos);
+            uint16_t port = (colon_pos != std::string::npos)
+                ? std::stoi(seed.substr(colon_pos + 1))
+                : 9333;
+            network.add_seed_node(p2p::PeerAddress(addr, port));
+        }
+
+        // Add seed nodes from config
         for (const auto& node : config.addnode) {
             log_message(config, "Adding node: " + node);
             // Parse IP:port
