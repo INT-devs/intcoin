@@ -382,6 +382,12 @@ private:
      * Attempts to reclaim HTLCs from failed paths
      */
     void cleanup_failed_paths(const Hash256& payment_id);
+
+    /**
+     * Send HTLC on a specific path
+     * Creates and sends update_add_htlc message
+     */
+    bool send_htlc_on_path(const AMPPath& path) const;
 };
 
 /**

@@ -297,6 +297,9 @@ private:
                         const Hash256& preimage) const;
 
     void update_swap_state(const Hash256& swap_id, SwapState new_state);
+
+    // Network operations
+    bool broadcast_transaction(const Transaction& tx) const;
 };
 
 /**

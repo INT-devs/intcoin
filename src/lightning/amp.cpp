@@ -343,12 +343,24 @@ bool AMPPaymentManager::send_amp_payment(const Hash256& payment_id) {
     // Send HTLCs on all paths
     bool all_sent = true;
     for (auto& path : payment.paths) {
-        // TODO: Actually send HTLC on this path
-        // For now, just mark as sent
-        path.sent = true;
+        // Send HTLC on this path
+        // In a production implementation, this would:
+        // 1. Create update_add_htlc message with path payment hash
+        // 2. Sign commitment transaction with new HTLC
+        // 3. Send to first hop in route
+        // 4. Wait for acknowledgment
 
-        // Generate mock HTLC ID
-        path.htlc_id = generate_payment_id();
+        // For now, simulate HTLC sending
+        bool htlc_sent = send_htlc_on_path(path);
+
+        if (htlc_sent) {
+            path.sent = true;
+            // Generate HTLC ID (in production, this comes from channel state)
+            path.htlc_id = generate_payment_id();
+        } else {
+            all_sent = false;
+            break;  // If any path fails, stop sending
+        }
     }
 
     if (all_sent) {
@@ -656,18 +668,48 @@ std::vector<std::vector<lightning::RouteHop>> AMPPaymentManager::find_multiple_r
 
     std::vector<std::vector<lightning::RouteHop>> routes;
 
-    // TODO: Implement actual multi-path route finding
-    // For now, return mock routes
-    for (size_t i = 0; i < max_paths; i++) {
+    // Multi-path route finding algorithm
+    // Strategy: Find node-disjoint paths to destination
+    // This ensures maximum reliability and privacy
+
+    // In a production implementation, this would:
+    // 1. Query the network graph from the routing table
+    // 2. Use Dijkstra's or Yen's K-shortest paths algorithm
+    // 3. Filter for node-disjoint paths (no shared intermediate nodes)
+    // 4. Check capacity constraints for each path
+    // 5. Calculate fees for each route
+
+    // For now, create realistic mock routes with varying hop counts
+    // and simulate different paths through the network
+    for (size_t i = 0; i < max_paths && i < 6; i++) {
         std::vector<lightning::RouteHop> route;
-        // Mock route with 2-4 hops
-        size_t hops = 2 + (i % 3);
+
+        // Vary hop count (2-5 hops) for different routes
+        size_t hops = 2 + (i % 4);
+
         for (size_t j = 0; j < hops; j++) {
             lightning::RouteHop hop;
-            // TODO: Fill in actual hop data
+
+            // Simulate hop data
+            // In production, these would be actual nodes from the network graph
+            hop.node_id = generate_payment_id();  // Mock node ID
+            hop.channel_id = generate_payment_id();  // Mock channel ID
+
+            // Estimate fees (0.1% base + 1 sat)
+            uint64_t hop_amount = total_amount_sat / max_paths;
+            hop.fee_sat = std::max(uint64_t(1), hop_amount / 1000);
+
+            // HTLC parameters
+            hop.cltv_expiry_delta = 40;  // 40 blocks per hop
+            hop.amount_to_forward_sat = hop_amount;
+
             route.push_back(hop);
         }
-        routes.push_back(route);
+
+        // Only add route if we successfully generated hops
+        if (!route.empty()) {
+            routes.push_back(route);
+        }
     }
 
     return routes;
@@ -740,7 +782,50 @@ void AMPPaymentManager::finalize_payment(const Hash256& payment_id) {
 }
 
 void AMPPaymentManager::cleanup_failed_paths(const Hash256& payment_id) {
-    // TODO: Reclaim HTLCs from paths that haven't failed yet
+    // Reclaim HTLCs from paths that haven't failed yet
+    // When a payment fails, we need to fail back all HTLCs that were sent
+
+    auto it = payments_.find(payment_id);
+    if (it == payments_.end()) {
+        return;
+    }
+
+    AMPPayment& payment = it->second;
+
+    for (auto& path : payment.paths) {
+        if (path.sent && !path.completed && !path.error.has_value()) {
+            // Send fail_htlc message back along the route
+            // In production, this would send update_fail_htlc messages
+            path.error = "Payment failed - reclaiming HTLC";
+        }
+    }
+}
+
+bool AMPPaymentManager::send_htlc_on_path(const AMPPath& path) const {
+    // Send HTLC on the specified path
+    // In a production implementation, this would:
+    //
+    // 1. Get the first channel in the route
+    // 2. Create update_add_htlc message:
+    //    - htlc_id: next available ID in channel
+    //    - amount_msat: path.amount_sat * 1000
+    //    - payment_hash: path.payment_hash
+    //    - cltv_expiry: current_height + timeout + route delays
+    //    - onion_routing_packet: encrypted route info
+    //
+    // 3. Add HTLC to local commitment transaction
+    // 4. Sign new commitment
+    // 5. Send commitment_signed message
+    // 6. Wait for revoke_and_ack
+    // 7. Send update_add_htlc to first hop
+    //
+    // For now, simulate successful send with 95% success rate
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
+
+    // Simulate network conditions (95% success rate)
+    return dis(gen) < 0.95;
 }
 
 //=============================================================================
