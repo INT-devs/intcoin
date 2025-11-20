@@ -4,7 +4,7 @@
 #
 # INTcoin Core CMake Build System
 
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 4.0)
 
 # Project information
 project(INTcoin

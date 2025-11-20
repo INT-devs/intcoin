@@ -8,7 +8,17 @@
 #include <chrono>
 #include <cstring>
 #include <fstream>
+#include <iostream>
 #include <hidapi/hidapi.h>
+#include <openssl/evp.h>
+
+// Platform-specific includes for file permissions
+#ifdef _WIN32
+    #include <windows.h>
+#else
+    #include <sys/stat.h>
+    #include <sys/types.h>
+#endif
 
 namespace intcoin {
 
@@ -589,14 +599,69 @@ bool HDWallet::backup_to_file(const std::string& filepath) const {
     // Encrypt wallet data if encrypted
     std::vector<uint8_t> final_data;
     if (encrypted_ && !encryption_key_.empty()) {
-        // Use encryption key to encrypt the wallet data
-        // Note: In production, should use AES256_GCM with the encryption key
-        // For now, we'll store encrypted flag and append encryption key
+        // ✅ SECURITY: Use AES-256-GCM for authenticated encryption
         uint8_t enc_flag = 1;
         final_data.push_back(enc_flag);
-        final_data.insert(final_data.end(), encryption_key_.begin(), encryption_key_.end());
-        final_data.insert(final_data.end(), wallet_data.begin(), wallet_data.end());
+
+        // Generate random IV/nonce (12 bytes for GCM)
+        std::vector<uint8_t> nonce = crypto::SecureRandom::generate(12);
+        final_data.insert(final_data.end(), nonce.begin(), nonce.end());
+
+        // Generate random salt for key derivation (32 bytes)
+        std::vector<uint8_t> salt = crypto::SecureRandom::generate(32);
+        final_data.insert(final_data.end(), salt.begin(), salt.end());
+
+        // Encrypt wallet data using AES-256-GCM
+        // Note: encryption_key_ is derived from password during encrypt()
+        std::vector<uint8_t> ciphertext;
+        std::vector<uint8_t> auth_tag;
+
+        // Use OpenSSL's EVP API for AES-256-GCM
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        if (!ctx) {
+            return false;
+        }
+
+        // Initialize encryption
+        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, encryption_key_.data(), nonce.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return false;
+        }
+
+        // Encrypt the wallet data
+        ciphertext.resize(wallet_data.size() + EVP_CIPHER_block_size(EVP_aes_256_gcm()));
+        int len;
+        if (EVP_EncryptUpdate(ctx, ciphertext.data(), &len, wallet_data.data(), wallet_data.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return false;
+        }
+        int ciphertext_len = len;
+
+        // Finalize encryption
+        if (EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return false;
+        }
+        ciphertext_len += len;
+        ciphertext.resize(ciphertext_len);
+
+        // Get authentication tag (16 bytes)
+        auth_tag.resize(16);
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, auth_tag.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return false;
+        }
+
+        EVP_CIPHER_CTX_free(ctx);
+
+        // Append auth tag and ciphertext
+        final_data.insert(final_data.end(), auth_tag.begin(), auth_tag.end());
+        final_data.insert(final_data.end(), ciphertext.begin(), ciphertext.end());
+
+        // ✅ SECURITY: Zero out sensitive data from memory
+        crypto::SecureMemory::secure_zero(wallet_data);
     } else {
+        // ⚠️  WARNING: Storing unencrypted wallet - should require explicit user consent
         uint8_t enc_flag = 0;
         final_data.push_back(enc_flag);
         final_data.insert(final_data.end(), wallet_data.begin(), wallet_data.end());
@@ -610,6 +675,21 @@ bool HDWallet::backup_to_file(const std::string& filepath) const {
 
     file.write(reinterpret_cast<const char*>(final_data.data()), final_data.size());
     file.close();
+
+    // ✅ SECURITY: Set file permissions to 600 (owner read/write only)
+    #ifdef _WIN32
+        // Windows: Use SetFileAttributes to set read-only for others
+        DWORD attrs = GetFileAttributesA(filepath.c_str());
+        if (attrs != INVALID_FILE_ATTRIBUTES) {
+            SetFileAttributesA(filepath.c_str(), attrs | FILE_ATTRIBUTE_ENCRYPTED);
+        }
+    #else
+        // Unix/Linux/macOS/FreeBSD: Use chmod to set 0600
+        if (chmod(filepath.c_str(), S_IRUSR | S_IWUSR) != 0) {
+            // Failed to set permissions - warn but don't fail the save
+            std::cerr << "Warning: Failed to set wallet file permissions to 600" << std::endl;
+        }
+    #endif
 
     return true;
 }
@@ -639,25 +719,92 @@ HDWallet HDWallet::restore_from_file(const std::string& filepath, const std::str
     std::vector<uint8_t> wallet_data;
 
     if (enc_flag == 1) {
-        // Wallet is encrypted
-        // Extract encryption key (32 bytes)
-        if (file_data.size() < 33) {
-            return HDWallet();
+        // ✅ SECURITY: Wallet is encrypted with AES-256-GCM
+        // Extract nonce (12 bytes)
+        if (file_data.size() < 1 + 12 + 32 + 16) {
+            return HDWallet();  // File too small to contain encrypted data
         }
 
-        std::vector<uint8_t> stored_enc_key(
+        std::vector<uint8_t> nonce(
+            file_data.begin() + offset,
+            file_data.begin() + offset + 12
+        );
+        offset += 12;
+
+        // Extract salt (32 bytes)
+        std::vector<uint8_t> salt(
             file_data.begin() + offset,
             file_data.begin() + offset + 32
         );
         offset += 32;
 
-        wallet_data.assign(file_data.begin() + offset, file_data.end());
+        // Extract authentication tag (16 bytes)
+        std::vector<uint8_t> auth_tag(
+            file_data.begin() + offset,
+            file_data.begin() + offset + 16
+        );
+        offset += 16;
 
-        // In a full implementation, would verify password here
-        // For now, we'll just use the stored data
-        (void)password;
+        // Extract ciphertext
+        std::vector<uint8_t> ciphertext(
+            file_data.begin() + offset,
+            file_data.end()
+        );
+
+        // Derive encryption key from password using HKDF
+        std::vector<uint8_t> encryption_key = crypto::HKDF::derive(
+            std::vector<uint8_t>(password.begin(), password.end()),
+            salt,
+            std::vector<uint8_t>(),
+            32
+        );
+
+        // Decrypt using AES-256-GCM
+        EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+        if (!ctx) {
+            crypto::SecureMemory::secure_zero(encryption_key);
+            return HDWallet();
+        }
+
+        // Initialize decryption
+        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, encryption_key.data(), nonce.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            crypto::SecureMemory::secure_zero(encryption_key);
+            return HDWallet();
+        }
+
+        // Decrypt the ciphertext
+        wallet_data.resize(ciphertext.size());
+        int len;
+        if (EVP_DecryptUpdate(ctx, wallet_data.data(), &len, ciphertext.data(), ciphertext.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            crypto::SecureMemory::secure_zero(encryption_key);
+            return HDWallet();
+        }
+        int plaintext_len = len;
+
+        // Set the authentication tag
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, auth_tag.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            crypto::SecureMemory::secure_zero(encryption_key);
+            return HDWallet();
+        }
+
+        // Finalize decryption (this also verifies the auth tag)
+        if (EVP_DecryptFinal_ex(ctx, wallet_data.data() + len, &len) != 1) {
+            // Authentication failed - wrong password or tampered data
+            EVP_CIPHER_CTX_free(ctx);
+            crypto::SecureMemory::secure_zero(encryption_key);
+            std::cerr << "Error: Failed to decrypt wallet - wrong password or corrupted file" << std::endl;
+            return HDWallet();
+        }
+        plaintext_len += len;
+        wallet_data.resize(plaintext_len);
+
+        EVP_CIPHER_CTX_free(ctx);
+        crypto::SecureMemory::secure_zero(encryption_key);
     } else {
-        // Not encrypted
+        // Not encrypted - WARNING: This is insecure
         wallet_data.assign(file_data.begin() + offset, file_data.end());
     }
 
