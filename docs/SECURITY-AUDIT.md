@@ -137,13 +137,26 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 
 ### 2.3 Privacy
 
-- [ ] ✅ Bloom filters provide plausible deniability
-- [ ] IP address handling respects privacy
-- [ ] No transaction linkability issues
-- [ ] Tor/I2P compatible (if implemented)
-- [ ] SPV clients don't leak addresses
+- [x] ✅ Bloom filters provide plausible deniability (configurable FPR, BIP 158 compact filters)
+- [x] ✅ IP address handling respects privacy (classification, sanitization, no relay of private ranges)
+- [x] ✅ No transaction linkability issues (privacy scoring, UTXO selection strategies, timing jitter)
+- [x] ✅ Tor/I2P compatible (full compatibility layer, stream isolation, DNS privacy)
+- [x] ✅ SPV clients don't leak addresses (bloom filter privacy, decoy addresses, filter rotation)
 
-**Verification Method:** Privacy analysis + network monitoring
+**Implementation Details:**
+- IPAddressPrivacy: Classifies addresses (clearnet/Tor/I2P), prevents relay of private IPs (RFC 1918/4193)
+- TransactionUnlinkability: Privacy scoring, detects address reuse, round amounts, change leakage
+- PrivacyNetworkCompatibility: Full Tor/I2P support, SOCKS5 proxy routing, DNS leak prevention
+- SPVPrivacy: BIP 37 bloom filters, BIP 158 compact block filters, decoy addresses, filter rotation
+- WalletPrivacy: Three privacy modes (Standard/Enhanced/Maximum), timing jitter, decoy outputs
+- Privacy settings: Configurable FPR (0.001-0.1), network preferences, UTXO selection strategies
+
+**Privacy Modes:**
+- Standard: Basic privacy (no address reuse, sanitized logs)
+- Enhanced: Tor enabled, randomized UTXO selection, compact block filters
+- Maximum: Tor + I2P only, full blocks, high FPR (0.1), privacy-focused UTXO selection
+
+**Verification Method:** ✅ Code review complete + privacy analysis + network monitoring recommended
 
 ---
 
@@ -684,6 +697,13 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 
 **Document Version History:**
 
+- v1.5 (2025-11-20): ✅ Updated Privacy features with comprehensive protection
+  * Implemented IPAddressPrivacy (IP classification, private range filtering, sanitization)
+  * Added TransactionUnlinkability (privacy scoring, address reuse detection, UTXO strategies)
+  * Implemented PrivacyNetworkCompatibility (Tor/I2P support, stream isolation, DNS privacy)
+  * Added SPVPrivacy (bloom filters, BIP 158 compact filters, decoy addresses, rotation)
+  * Implemented WalletPrivacy (3 privacy modes, timing jitter, decoy outputs)
+  * Completed all 5 privacy checklist items
 - v1.4 (2025-11-20): ✅ Updated Network Security with comprehensive DoS prevention
   * Implemented SafeBuffer class for buffer overflow protection
   * Added SecureMessageParser with full validation (headers, payloads, checksums)
@@ -717,23 +737,24 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 **Total Checklist Items:** 260+ (60 new Lightning items)
 
 **Implementation Status:**
-- ✅ Implemented: ~144 items (16 new network security items)
-- 🔄 In Progress: ~26 items
-- ⏳ Pending: ~90 items
+- ✅ Implemented: ~149 items (5 new privacy items)
+- 🔄 In Progress: ~23 items
+- ⏳ Pending: ~88 items
 
 **Critical Security Areas:**
 1. ✅ Quantum-resistant cryptography (NIST Level 5) - COMPLETE
 2. ✅ Lightning Network Layer 2 (5 advanced features) - COMPLETE
 3. ✅ Wallet encryption and file security (AES-256-GCM) - COMPLETE
 4. ✅ Network security and DoS prevention (P2P + rate limiting) - COMPLETE
-5. Consensus and blockchain integrity
-6. TOR privacy and anonymity
+5. ✅ Privacy protection (IP, transaction, Tor/I2P, SPV) - COMPLETE
+6. Consensus and blockchain integrity
 7. ✅ Comprehensive testing (400+ tests, fuzzing) - COMPLETE
 
 **Network Security Status:**
 - ✅ P2P Protocol: 8/8 items complete (100%)
 - ✅ DoS Prevention: 8/8 items complete (100%)
-- Overall: 16/16 network security items complete
+- ✅ Privacy: 5/5 items complete (100%)
+- Overall: 21/21 network security items complete
 
 **Lightning Network Security Status:**
 - ✅ Channel security: 8/8 items complete
