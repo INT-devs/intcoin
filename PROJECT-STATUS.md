@@ -273,7 +273,7 @@ USB Libraries Linked:
 
 ## Website and Documentation
 
-### Website Files (`/Users/neiladamson/Desktop/website files/`)
+### Website Files
 ✅ **Complete and production-ready:**
 - Modern responsive design with quantum theme
 - Interactive particle background effects
