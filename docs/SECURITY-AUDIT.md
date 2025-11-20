@@ -1,6 +1,6 @@
 # INTcoin Security Audit Checklist
 
-**Version:** 2.0
+**Version:** 2.1
 **Date:** 2025-11-20
 **Status:** Pre-Production Review
 
@@ -392,7 +392,7 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 
 **Status**: Core channel operations complete and secure. All commitment transactions use quantum-resistant signatures.
 
-### 6.2 Routing Security
+### 6.2 Routing Security (8/8 complete)
 
 - [x] ✅ Onion routing encryption implemented (Kyber1024 key exchange)
 - [x] ✅ Path finding doesn't leak payment info (node-disjoint paths)
@@ -400,12 +400,45 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 - [x] ✅ Fee validation prevents exploitation (base + proportional fees)
 - [x] ✅ Payment decorrelation via PTLCs (no hash correlation)
 - [x] ✅ Multi-path payments prevent payment analysis (AMP)
-- [ ] Maximum hop count enforced (20 hops recommended)
-- [ ] Route timeout calculation correct
+- [x] ✅ Maximum hop count enforced (20 hops max, 3 hops min for privacy)
+- [x] ✅ Route timeout calculation correct (base 30s + 5s/hop + CLTV overhead)
+
+**Implementation:** `include/intcoin/lightning_routing.h`
+- `HopCountEnforcer`: Enforces 3-20 hop limits with violation tracking
+- `RouteTimeoutCalculator`: Correct timeout calculation (base + per-hop + CLTV)
+- `RoutePathfinder`: Dijkstra-based pathfinding with hop count limits
+- `RouteValidator`: Complete route validation (hops, timeout, CLTV, fees)
+- `LightningRoutingManager`: Central routing coordination
+
+**Hop Count Enforcement:**
+- Maximum: 20 hops (BOLT spec recommendation)
+- Minimum: 3 hops (privacy protection)
+- Validation: Automatic rejection of out-of-bounds routes
+- Statistics: Tracks violations and acceptance rates
+
+**Timeout Calculation:**
+- Base timeout: 30 seconds
+- Per-hop timeout: 5 seconds per hop
+- CLTV overhead: 10% of CLTV processing time (~1 day/144 blocks per hop)
+- Maximum timeout: 5 minutes (300 seconds)
+- Automatic capping: Prevents excessive timeouts
+
+**CLTV Calculation:**
+- Base expiry: 9 blocks
+- Per-hop delta: 144 blocks (~1 day)
+- Decreasing values: Each hop has lower CLTV than previous
+- Validation: Ensures CLTV values are in future and properly ordered
+
+**Route Validation:**
+- Hop count: 3-20 hops enforced
+- Timeout: ≤5 minutes maximum
+- CLTV values: Must be decreasing along route
+- Fee validation: Checks against 5% maximum
+- Amount validation: Non-zero amounts required
 
 **Verification Method:** Integration tests + privacy analysis + network monitoring
 
-**Status**: Advanced privacy features complete. PTLCs eliminate payment correlation. AMP provides payment splitting privacy.
+**Status**: ✅ COMPLETE. All routing security implemented including hop limits, timeout calculations, and CLTV validation.
 
 ### 6.3 Watchtower Security
 
@@ -874,6 +907,13 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 
 **Document Version History:**
 
+- v2.1 (2025-11-20): ✅ Updated Lightning Routing with hop count enforcement and timeout calculations
+  * Implemented HopCountEnforcer (3-20 hop limits, violation tracking)
+  * Added RouteTimeoutCalculator (base 30s + 5s/hop + CLTV overhead, max 5min)
+  * Implemented RoutePathfinder (Dijkstra-based with hop limits)
+  * Added RouteValidator (complete validation: hops, timeout, CLTV, fees)
+  * Implemented LightningRoutingManager (central routing coordination)
+  * Completed all 2 Lightning routing security items
 - v2.0 (2025-11-20): ✅ Updated TOR Integration with complete privacy network support
   * Implemented StreamIsolation (per-stream circuits, 10-minute rotation)
   * Added GuardNodeManager (trusted guards, uptime tracking, secure selection)
@@ -950,9 +990,9 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 **Total Checklist Items:** 260+ (60 new Lightning items)
 
 **Implementation Status:**
-- ✅ Implemented: ~199 items (19 new TOR network security items)
-- 🔄 In Progress: ~8 items
-- ⏳ Pending: ~53 items
+- ✅ Implemented: ~201 items (2 new Lightning routing security items)
+- 🔄 In Progress: ~7 items
+- ⏳ Pending: ~52 items
 
 **Critical Security Areas:**
 1. ✅ Quantum-resistant cryptography (NIST Level 5) - COMPLETE
@@ -997,14 +1037,14 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 - **Overall TOR: 19/19 items complete (100%)**
 
 **Lightning Network Security Status:**
-- ✅ Channel security: 8/8 items complete
-- ✅ Routing security: 6/8 items complete (75%)
-- ✅ Watchtower security: 10/10 items complete
+- ✅ Channel security: 8/8 items complete (100%)
+- ✅ Routing security: 8/8 items complete (100%)
+- ✅ Watchtower security: 10/10 items complete (100%)
 - ✅ Submarine swap security: 8/10 items complete (80%)
 - ✅ AMP security: 7/9 items complete (78%)
 - ✅ PTLC security: 7/9 items complete (78%)
 - ✅ Eltoo security: 8/10 items complete (80%)
-- **Overall: 54/64 Lightning items complete (84%)**
+- **Overall: 56/64 Lightning items complete (88%)**
 
 **Pre-Mainnet Requirements:**
 - All critical severity items must be addressed
