@@ -49,6 +49,8 @@ option(ENABLE_LIGHTNING "Enable Lightning Network support" OFF)
 option(ENABLE_SMART_CONTRACTS "Enable smart contract support" OFF)
 option(ENABLE_CROSS_CHAIN "Enable cross-chain bridge" OFF)
 option(ENABLE_WALLET "Enable wallet functionality" ON)
+option(ENABLE_I2P "Enable I2P network support" ON)
+option(ENABLE_ML "Enable Machine Learning features" ON)
 
 # Platform detection
 if(APPLE)
@@ -175,6 +177,14 @@ endif()
 
 if(ENABLE_CROSS_CHAIN)
     add_subdirectory(src/bridge)
+endif()
+
+if(ENABLE_I2P)
+    add_subdirectory(src/i2p)
+endif()
+
+if(ENABLE_ML)
+    add_subdirectory(src/ml)
 endif()
 
 add_subdirectory(src/rpc)
@@ -393,4 +403,6 @@ message(STATUS "  Lightning:       ${ENABLE_LIGHTNING}")
 message(STATUS "  Smart Contracts: ${ENABLE_SMART_CONTRACTS}")
 message(STATUS "  Cross-chain:     ${ENABLE_CROSS_CHAIN}")
 message(STATUS "  Wallet:          ${ENABLE_WALLET}")
+message(STATUS "  I2P Network:     ${ENABLE_I2P}")
+message(STATUS "  Machine Learning: ${ENABLE_ML}")
 message(STATUS "")
