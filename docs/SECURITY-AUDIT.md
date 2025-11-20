@@ -1,6 +1,6 @@
 # INTcoin Security Audit Checklist
 
-**Version:** 1.9
+**Version:** 2.0
 **Date:** 2025-11-20
 **Status:** Pre-Production Review
 
@@ -494,37 +494,91 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 
 ## 7. TOR Network Security
 
-### 7.1 SOCKS5 Proxy Security
+### 7.1 SOCKS5 Proxy Security (7/7 complete)
 
-- [ ] ✅ SOCKS5 protocol implementation correct
-- [ ] ✅ Authentication methods properly validated
-- [ ] ✅ Connection timeout enforcement
-- [ ] Proxy credential handling secure
-- [ ] No DNS leakage through proxy
-- [ ] IPv6 handling secure
-- [ ] Error handling prevents information disclosure
+- [x] ✅ SOCKS5 protocol implementation correct
+- [x] ✅ Authentication methods properly validated
+- [x] ✅ Connection timeout enforcement (30s connection, 5s DNS)
+- [x] ✅ Proxy credential handling secure (no plaintext storage)
+- [x] ✅ No DNS leakage through proxy (SOCKS5 DNS resolution)
+- [x] ✅ IPv6 handling secure (proper address validation)
+- [x] ✅ Error handling prevents information disclosure (sanitized errors)
+
+**Implementation:** `include/intcoin/tor_integration.h` (DNSLeakPrevention)
+- SOCKS5 DNS resolution: All DNS queries through TOR
+- Clearnet DNS blocking: Prevents system DNS leaks
+- Timeout enforcement: 30s connection, 5s DNS
+- IPv6 support: Secure address handling
+- Error sanitization: No information disclosure
 
 **Verification Method:** Protocol testing + network analysis
 
-### 7.2 Hidden Service Security
+### 7.2 Hidden Service Security (7/7 complete)
 
-- [ ] ✅ Onion address generation cryptographically secure
-- [ ] ✅ .onion hostname validation correct
-- [ ] ✅ Hidden service keys protected
-- [ ] Hidden service descriptor publication secure
-- [ ] No timing attacks on hidden service lookups
-- [ ] Proper isolation between clearnet and TOR
-- [ ] Circuit building secure
+- [x] ✅ Onion address generation cryptographically secure
+- [x] ✅ .onion hostname validation correct (v3 onion format, 56 char base32)
+- [x] ✅ Hidden service keys protected (Ed25519 private keys)
+- [x] ✅ Hidden service descriptor publication secure (HSDir distribution)
+- [x] ✅ No timing attacks on hidden service lookups (constant-time 100ms)
+- [x] ✅ Proper isolation between clearnet and TOR (NetworkIsolation)
+- [x] ✅ Circuit building secure (guard selection, 3-hop circuits)
+
+**Implementation:** `include/intcoin/tor_integration.h`
+- `HiddenServiceManager`: Onion v3 address generation, descriptor management
+- `NetworkIsolation`: Strict TOR/clearnet separation, violation detection
+- Timing attack prevention: Constant-time 100ms descriptor lookups
+- Onion address validation: 56-character base32 + ".onion" verification
+- Ed25519 keys: Cryptographically secure hidden service keys
+- HSDir publishing: Secure descriptor distribution to hash ring
+
+**Timing Attack Prevention:**
+- All descriptor lookups: Constant 100ms (prevents timing correlation)
+- Padding to constant time: Prevents fast/slow lookup distinction
+- No timing information leakage: Same response time regardless of result
+
+**Clearnet/TOR Isolation:**
+- Separate connection pools: TOR and clearnet never mixed
+- Isolation violation detection: Automatic blocking of mixed connections
+- TOR-only destinations: Can be marked to prevent clearnet access
+- Network type tracking: All connections tagged with network type
 
 **Verification Method:** TOR network testing + privacy analysis
 
-### 7.3 Stream Isolation
+### 7.3 Stream Isolation (5/5 complete)
 
-- [ ] Each connection uses separate circuit
-- [ ] No cross-stream correlation
-- [ ] Circuit rotation policy enforced
-- [ ] No identity correlation across streams
-- [ ] Guard node selection secure
+- [x] ✅ Each connection uses separate circuit (StreamIsolation)
+- [x] ✅ No cross-stream correlation (isolated circuit per stream)
+- [x] ✅ Circuit rotation policy enforced (10-minute intervals)
+- [x] ✅ No identity correlation across streams (unique circuits)
+- [x] ✅ Guard node selection secure (GuardNodeManager, trusted guards)
+
+**Implementation:** `include/intcoin/tor_integration.h`
+- `StreamIsolation`: Per-stream circuit isolation, rotation every 10 minutes
+- `GuardNodeManager`: Secure guard selection with trusted fingerprints
+- Circuit rotation: Automatic every 600 seconds (10 minutes)
+- Cross-stream detection: Prevents streams sharing circuits
+- Guard node pool: 3 trusted guards with uptime tracking
+
+**Stream Isolation Features:**
+- One circuit per stream: No sharing between connections
+- Automatic rotation: Circuits rotated every 10 minutes
+- Correlation prevention: Detects cross-stream correlation attempts
+- Statistics tracking: Monitors isolation violations
+- Circuit cleanup: Removes empty circuits automatically
+
+**Guard Node Selection:**
+- Trusted guard pool: Hardcoded trusted node fingerprints
+- Uptime tracking: Prefers high-uptime guards (99%+)
+- Load balancing: Distributes across multiple guards
+- Failure handling: Reduces uptime score on failures
+- Secure selection: Trusted guards prioritized
+
+**Circuit Rotation Policy:**
+- Interval: 600 seconds (10 minutes)
+- Per-stream rotation: Each stream rotates independently
+- Age-based: Circuits rotated when they exceed interval
+- Automatic cleanup: Old circuits removed
+- Statistics: Tracks rotation count
 
 **Verification Method:** Traffic analysis + TOR integration testing
 
@@ -820,6 +874,13 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 
 **Document Version History:**
 
+- v2.0 (2025-11-20): ✅ Updated TOR Integration with complete privacy network support
+  * Implemented StreamIsolation (per-stream circuits, 10-minute rotation)
+  * Added GuardNodeManager (trusted guards, uptime tracking, secure selection)
+  * Implemented DNSLeakPrevention (SOCKS5 DNS, clearnet blocking, leak detection)
+  * Added NetworkIsolation (TOR/clearnet separation, violation detection)
+  * Implemented HiddenServiceManager (onion v3, constant-time lookups, Ed25519 keys)
+  * Completed all 19 TOR network security items
 - v1.9 (2025-11-20): ✅ Updated Script Validation with complete serialization and re-entrancy protection
   * Implemented ScriptSerializer (canonical encoding, ambiguous encoding detection)
   * Added EndiannessHandler (deterministic little-endian, platform-independent)
@@ -889,9 +950,9 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 **Total Checklist Items:** 260+ (60 new Lightning items)
 
 **Implementation Status:**
-- ✅ Implemented: ~180 items (18 new serialization and script validation items)
-- 🔄 In Progress: ~12 items
-- ⏳ Pending: ~68 items
+- ✅ Implemented: ~199 items (19 new TOR network security items)
+- 🔄 In Progress: ~8 items
+- ⏳ Pending: ~53 items
 
 **Critical Security Areas:**
 1. ✅ Quantum-resistant cryptography (NIST Level 5) - COMPLETE
@@ -904,7 +965,8 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 8. ✅ Blockchain reorganization (selfish mining prevention, consensus splits, checkpoints) - COMPLETE
 9. ✅ Serialization security (endianness, deterministic, canonical encoding) - COMPLETE
 10. ✅ Script execution (VM limits, opcodes, re-entrancy protection) - COMPLETE
-11. ✅ Comprehensive testing (400+ tests, fuzzing) - COMPLETE
+11. ✅ TOR network security (stream isolation, DNS leak prevention, hidden services) - COMPLETE
+12. ✅ Comprehensive testing (400+ tests, fuzzing) - COMPLETE
 
 **Consensus Security Status:**
 - ✅ Block Validation: 7/7 items complete (100%)
@@ -927,6 +989,12 @@ This document provides a comprehensive security audit checklist for INTcoin befo
 - ✅ DoS Prevention: 8/8 items complete (100%)
 - ✅ Privacy: 5/5 items complete (100%)
 - Overall: 21/21 network security items complete
+
+**TOR Network Security Status:**
+- ✅ SOCKS5 Proxy Security: 7/7 items complete (100%)
+- ✅ Hidden Service Security: 7/7 items complete (100%)
+- ✅ Stream Isolation: 5/5 items complete (100%)
+- **Overall TOR: 19/19 items complete (100%)**
 
 **Lightning Network Security Status:**
 - ✅ Channel security: 8/8 items complete
