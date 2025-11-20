@@ -29,17 +29,35 @@ Welcome to INTcoin - the world's first fully quantum-resistant, ASIC-resistant c
    - ✅ Qt GUI integration
    - **6,520+ lines of production-ready code**
 
-3. **Professional Brand Identity**
+3. **I2P Network Integration** ✅ (November 20, 2025)
+   - SAM v3.1 protocol implementation
+   - Independent ports (9336 SAM, 9337 router)
+   - Garlic routing and hidden services
+   - Address book and service discovery
+   - Complete anonymity layer
+
+4. **Machine Learning Features** ✅ (November 20, 2025)
+   - Transaction fee prediction
+   - Anomaly detection (8 attack types)
+   - Network traffic forecasting
+   - Lightning route optimization
+   - Smart mempool management
+   - Difficulty prediction
+   - Peer quality scoring
+
+5. **Professional Brand Identity**
    - Logos and design system
    - Complete color palette
    - Website-ready graphics
 
-4. **Comprehensive Documentation**
-   - 30+ professional documents
+6. **Comprehensive Documentation**
+   - 35+ professional documents
    - Build guides for all platforms
    - Technical specifications
    - 5-year roadmap
    - Complete Lightning Network docs
+   - I2P integration guide
+   - Machine Learning guide
 
 ---
 
@@ -127,6 +145,9 @@ cd build
 | [docs/WATCHTOWER.md](docs/WATCHTOWER.md) | Watchtower implementation guide |
 | [docs/PTLC.md](docs/PTLC.md) | Point Time-Locked Contracts |
 | [docs/ELTOO.md](docs/ELTOO.md) | Eltoo channel updates |
+| [docs/I2P-INTEGRATION.md](docs/I2P-INTEGRATION.md) | I2P network integration |
+| [docs/MACHINE-LEARNING.md](docs/MACHINE-LEARNING.md) | ML features and usage |
+| [docs/NETWORK-PORTS.md](docs/NETWORK-PORTS.md) | Port allocation guide |
 | [BRAND-GUIDELINES.md](branding/BRAND-GUIDELINES.md) | Brand identity guide |
 
 ---
@@ -251,6 +272,14 @@ bool is_valid = Address::validate(address);
 | - PTLCs | ✅ Complete | ✓ Production |
 | - Eltoo | ✅ Complete | ✓ Production |
 | - Qt GUI | ✅ Complete | ✓ Production |
+| **I2P Network** | ✅ **v1.2.0** | ✓ **Production** |
+| - SAM Protocol | ✅ Complete | ✓ Production |
+| - Garlic Routing | ✅ Complete | ✓ Production |
+| - Hidden Services | ✅ Complete | ✓ Production |
+| **Machine Learning** | ✅ **v1.2.0** | ✓ **Production** |
+| - Fee Prediction | ✅ Complete | ✓ Production |
+| - Anomaly Detection | ✅ Complete | ✓ Production |
+| - Route Optimization | ✅ Complete | ✓ Production |
 | Brand Identity | ✅ Complete | ✓ Production |
 | Documentation | ✅ Complete | ✓ Production |
 | Build System | ✅ Complete | ✓ Working |
@@ -279,7 +308,19 @@ bool is_valid = Address::validate(address);
 - **Max Supply**: 221 Trillion INT
 - **Block Time**: 2 minutes
 - **Consensus**: Pure Proof of Work
-- **Privacy**: Pseudonymous by default
+- **Privacy**: Pseudonymous by default + I2P/Tor
+
+### Network Ports (Independent)
+- **P2P**: 9333 (mainnet), 19333 (testnet)
+- **Lightning**: 9335 (NOT 9735 - independent from Bitcoin)
+- **I2P SAM**: 9336 (NOT 7656 - no conflicts)
+- **I2P Router**: 9337 (custom port)
+- **RPC**: 9334 (localhost only)
+
+### Privacy Networks
+- **Tor**: Hidden service support (.onion addresses)
+- **I2P**: Garlic routing (.b32.i2p addresses)
+- **Dual-stack**: Run both simultaneously
 
 ---
 
@@ -298,11 +339,15 @@ bool is_valid = Address::validate(address);
 ✅ **World-class cryptography** (NIST-approved quantum-resistant)
 ✅ **Lightning Network v1.1.0** (6,520+ lines, 75% complete)
 ✅ **Advanced Layer 2 features** (Watchtowers, AMP, PTLCs, Eltoo)
+✅ **I2P network integration** (SAM v3.1, garlic routing, hidden services)
+✅ **Machine Learning** (fee prediction, anomaly detection, optimization)
+✅ **Independent ports** (no conflicts with Bitcoin/Litecoin/I2P)
 ✅ **Professional branding** (website-ready)
-✅ **Comprehensive docs** (30+ documents)
+✅ **Comprehensive docs** (35+ documents)
 ✅ **Cross-platform** (macOS, Linux, FreeBSD, Windows)
 ✅ **Qt GUI** (Full Lightning management interface)
 ✅ **Tor integration** (Hidden service seed nodes)
+✅ **Privacy-first** (Tor + I2P dual-stack)
 
 ---
 
