@@ -15,6 +15,52 @@ namespace contracts {
 // MockState Implementation
 // ============================================================================
 
+// Helper to convert uint64_t to Word
+static Word uint64_to_word(uint64_t value) {
+    Word w = {};
+    for (int i = 0; i < 8 && i < 32; ++i) {
+        w[31 - i] = (value >> (i * 8)) & 0xFF;
+    }
+    return w;
+}
+
+// Helper to convert Word to uint64_t
+[[maybe_unused]] static uint64_t word_to_uint64(const Word& w) {
+    uint64_t value = 0;
+    for (int i = 0; i < 8; ++i) {
+        value |= static_cast<uint64_t>(w[31 - i]) << (i * 8);
+    }
+    return value;
+}
+
+// Account methods
+bool MockState::account_exists(const Address& addr) const {
+    return balances.find(addr) != balances.end() ||
+           code.find(addr) != code.end() ||
+           nonces.find(addr) != nonces.end();
+}
+
+Word MockState::get_balance(const Address& addr) const {
+    auto it = balances.find(addr);
+    return (it != balances.end()) ? it->second : Word{};
+}
+
+uint64_t MockState::get_nonce(const Address& addr) const {
+    auto it = nonces.find(addr);
+    return (it != nonces.end()) ? it->second : 0;
+}
+
+std::vector<uint8_t> MockState::get_code(const Address& addr) const {
+    auto it = code.find(addr);
+    return (it != code.end()) ? it->second : std::vector<uint8_t>{};
+}
+
+Hash256 MockState::get_code_hash(const Address& addr) const {
+    auto it = code_hashes.find(addr);
+    return (it != code_hashes.end()) ? it->second : Hash256{};
+}
+
+// Storage methods
 Word MockState::get_storage(const Address& addr, const Hash256& key) const {
     auto it = storage.find(addr);
     if (it != storage.end()) {
@@ -30,36 +76,106 @@ void MockState::set_storage(const Address& addr, const Hash256& key, const Word&
     storage[addr][key] = value;
 }
 
-std::vector<uint8_t> MockState::get_code(const Address& addr) const {
-    auto it = code.find(addr);
-    return (it != code.end()) ? it->second : std::vector<uint8_t>{};
+// Modification methods
+void MockState::set_balance(const Address& addr, const Word& balance) {
+    balances[addr] = balance;
 }
 
-uint64_t MockState::get_balance(const Address& addr) const {
-    auto it = balances.find(addr);
-    return (it != balances.end()) ? it->second : 0;
-}
-
-bool MockState::transfer(const Address& from, const Address& to, uint64_t amount) {
-    if (balances[from] < amount) return false;
-    balances[from] -= amount;
-    balances[to] += amount;
-    return true;
-}
-
-void MockState::set_balance(const Address& addr, uint64_t amount) {
-    balances[addr] = amount;
+void MockState::set_nonce(const Address& addr, uint64_t nonce) {
+    nonces[addr] = nonce;
 }
 
 void MockState::set_code(const Address& addr, const std::vector<uint8_t>& bytecode) {
     code[addr] = bytecode;
+    // Compute simple hash of code
+    Hash256 hash = {};
+    for (size_t i = 0; i < bytecode.size() && i < 32; ++i) {
+        hash[i] = bytecode[i];
+    }
+    code_hashes[addr] = hash;
 }
 
+void MockState::create_account(const Address& addr) {
+    balances[addr] = Word{};
+    nonces[addr] = 0;
+}
+
+void MockState::destruct_account(const Address& addr, const Address& beneficiary) {
+    // Transfer balance to beneficiary
+    auto it = balances.find(addr);
+    if (it != balances.end()) {
+        Word balance = it->second;
+        balances[beneficiary] = balance;
+        balances.erase(it);
+    }
+    code.erase(addr);
+    code_hashes.erase(addr);
+    nonces.erase(addr);
+    storage.erase(addr);
+}
+
+// Block context methods
+Hash256 MockState::get_block_hash(uint64_t number) const {
+    Hash256 hash = {};
+    for (int i = 0; i < 8 && i < 32; ++i) {
+        hash[i] = (number >> (i * 8)) & 0xFF;
+    }
+    return hash;
+}
+
+Address MockState::get_coinbase() const {
+    return coinbase;
+}
+
+uint64_t MockState::get_timestamp() const {
+    return timestamp;
+}
+
+uint64_t MockState::get_block_number() const {
+    return block_number;
+}
+
+uint64_t MockState::get_difficulty() const {
+    return difficulty;
+}
+
+uint64_t MockState::get_gas_limit() const {
+    return gas_limit;
+}
+
+uint64_t MockState::get_chain_id() const {
+    return chain_id;
+}
+
+uint64_t MockState::get_base_fee() const {
+    return base_fee;
+}
+
+// Snapshot methods
+size_t MockState::snapshot() {
+    snapshots.push_back(balances);
+    return snapshots.size() - 1;
+}
+
+void MockState::revert(size_t snapshot_id) {
+    if (snapshot_id < snapshots.size()) {
+        balances = snapshots[snapshot_id];
+        snapshots.resize(snapshot_id);
+    }
+}
+
+void MockState::commit() {
+    snapshots.clear();
+}
+
+// Test helpers
 void MockState::reset() {
     storage.clear();
     code.clear();
+    code_hashes.clear();
     balances.clear();
     nonces.clear();
+    snapshots.clear();
 }
 
 // ============================================================================
@@ -129,23 +245,27 @@ TestResult ContractTest::run() {
 
     Message msg;
     msg.sender = impl_->sender;
-    msg.value = impl_->value;
+    msg.recipient = contract_addr;
+    msg.value = uint64_to_word(impl_->value);
     msg.gas = impl_->gas_limit;
     msg.data = impl_->bytecode;
+    msg.depth = 0;
+    msg.is_create = false;
+    msg.is_static = false;
 
-    ExecutionResult result = vm.execute(state, contract_addr, msg);
+    ExecutionResult result = vm.execute(state, msg);
 
     auto end = std::chrono::high_resolution_clock::now();
     double duration = std::chrono::duration<double, std::milli>(end - start).count();
 
     TestResult test_result;
     test_result.name = impl_->name;
-    test_result.gas_used = impl_->gas_limit - result.gas_remaining;
+    test_result.gas_used = result.gas_used;
     test_result.duration_ms = duration;
 
     // Check revert expectation
     if (impl_->expect_revert_flag) {
-        test_result.passed = (result.status == ExecStatus::Revert);
+        test_result.passed = (result.status == ExecStatus::REVERT);
         if (!test_result.passed) {
             test_result.message = "Expected revert but execution succeeded";
         }
@@ -153,14 +273,14 @@ TestResult ContractTest::run() {
     }
 
     // Check success
-    if (result.status != ExecStatus::Success) {
+    if (result.status != ExecStatus::SUCCESS) {
         test_result.passed = false;
-        test_result.message = "Execution failed: " + std::to_string(static_cast<int>(result.status));
+        test_result.message = "Execution failed: " + result.error_message;
         return test_result;
     }
 
     // Check return data
-    if (impl_->expected_return && result.return_data != *impl_->expected_return) {
+    if (impl_->expected_return && result.output != *impl_->expected_return) {
         test_result.passed = false;
         test_result.message = "Return data mismatch";
         return test_result;
@@ -168,7 +288,7 @@ TestResult ContractTest::run() {
 
     // Check gas range
     if (impl_->expected_gas_range) {
-        uint64_t gas_used = impl_->gas_limit - result.gas_remaining;
+        uint64_t gas_used = result.gas_used;
         if (gas_used < impl_->expected_gas_range->first ||
             gas_used > impl_->expected_gas_range->second) {
             test_result.passed = false;
@@ -399,13 +519,16 @@ SDK::DeployResult SDK::deploy(const std::vector<uint8_t>& bytecode,
     std::vector<uint8_t> init_code = bytecode;
     init_code.insert(init_code.end(), constructor_args.begin(), constructor_args.end());
 
-    ContractDeployer deployer;
-    auto [addr, exec_result] = deployer.deploy(*impl_->state, impl_->sender,
-                                                init_code, value, gas_limit);
+    ContractDeployer deployer(impl_->vm, *impl_->state);
+    auto [addr, exec_result] = deployer.deploy(impl_->sender, init_code,
+                                                uint64_to_word(value), gas_limit);
 
-    result.success = (exec_result.status == ExecStatus::Success);
+    result.success = (exec_result.status == ExecStatus::SUCCESS);
     result.contract_address = addr;
-    result.gas_used = gas_limit - exec_result.gas_remaining;
+    result.gas_used = exec_result.gas_used;
+    if (exec_result.created_address) {
+        result.contract_address = *exec_result.created_address;
+    }
     return result;
 }
 
@@ -420,15 +543,19 @@ SDK::CallResult SDK::call(const Address& contract, const std::vector<uint8_t>& c
 
     Message msg;
     msg.sender = impl_->sender;
-    msg.value = value;
+    msg.recipient = contract;
+    msg.value = uint64_to_word(value);
     msg.gas = gas_limit;
     msg.data = calldata;
+    msg.depth = 0;
+    msg.is_create = false;
+    msg.is_static = false;
 
-    ExecutionResult exec_result = impl_->vm.execute(*impl_->state, contract, msg);
+    ExecutionResult exec_result = impl_->vm.execute(*impl_->state, msg);
 
-    result.success = (exec_result.status == ExecStatus::Success);
-    result.return_data = exec_result.return_data;
-    result.gas_used = gas_limit - exec_result.gas_remaining;
+    result.success = (exec_result.status == ExecStatus::SUCCESS);
+    result.return_data = exec_result.output;
+    result.gas_used = exec_result.gas_used;
     result.logs = exec_result.logs;
     return result;
 }

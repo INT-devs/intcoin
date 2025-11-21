@@ -11,8 +11,10 @@
 #include <memory>
 #include <stack>
 #include <unordered_map>
+#include <unordered_set>
 #include <optional>
 #include <limits>
+#include <mutex>
 
 namespace intcoin {
 namespace contracts {

@@ -41,19 +41,54 @@ public:
     // Storage
     std::map<Address, std::map<Hash256, Word>> storage;
     std::map<Address, std::vector<uint8_t>> code;
-    std::map<Address, uint64_t> balances;
+    std::map<Address, Word> balances;  // Changed to Word for StateInterface
     std::map<Address, uint64_t> nonces;
+    std::map<Address, Hash256> code_hashes;
+    std::vector<std::map<Address, Word>> snapshots;
 
-    // StateInterface implementation
+    // Block context
+    uint64_t block_number = 0;
+    uint64_t timestamp = 0;
+    uint64_t difficulty = 1;
+    uint64_t gas_limit = 30000000;
+    uint64_t chain_id = 1;
+    uint64_t base_fee = 0;
+    Address coinbase;
+
+    // StateInterface implementation (account)
+    bool account_exists(const Address& addr) const override;
+    Word get_balance(const Address& addr) const override;
+    uint64_t get_nonce(const Address& addr) const override;
+    std::vector<uint8_t> get_code(const Address& addr) const override;
+    Hash256 get_code_hash(const Address& addr) const override;
+
+    // StateInterface implementation (storage)
     Word get_storage(const Address& addr, const Hash256& key) const override;
     void set_storage(const Address& addr, const Hash256& key, const Word& value) override;
-    std::vector<uint8_t> get_code(const Address& addr) const override;
-    uint64_t get_balance(const Address& addr) const override;
-    bool transfer(const Address& from, const Address& to, uint64_t amount) override;
+
+    // StateInterface implementation (modification)
+    void set_balance(const Address& addr, const Word& balance) override;
+    void set_nonce(const Address& addr, uint64_t nonce) override;
+    void set_code(const Address& addr, const std::vector<uint8_t>& code) override;
+    void create_account(const Address& addr) override;
+    void destruct_account(const Address& addr, const Address& beneficiary) override;
+
+    // StateInterface implementation (block context)
+    Hash256 get_block_hash(uint64_t number) const override;
+    Address get_coinbase() const override;
+    uint64_t get_timestamp() const override;
+    uint64_t get_block_number() const override;
+    uint64_t get_difficulty() const override;
+    uint64_t get_gas_limit() const override;
+    uint64_t get_chain_id() const override;
+    uint64_t get_base_fee() const override;
+
+    // StateInterface implementation (snapshots)
+    size_t snapshot() override;
+    void revert(size_t snapshot_id) override;
+    void commit() override;
 
     // Test helpers
-    void set_balance(const Address& addr, uint64_t amount);
-    void set_code(const Address& addr, const std::vector<uint8_t>& bytecode);
     void reset();
 };
 
