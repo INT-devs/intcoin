@@ -317,6 +317,199 @@ public:
     // Set callback for sync progress
     void on_sync_progress(SyncCallback callback);
 
+    // ========== Lightning Network ==========
+
+    // Check if Lightning is available
+    bool has_lightning() const;
+
+    // Open Lightning channel
+    struct ChannelInfo {
+        std::string channel_id;
+        std::string peer_address;
+        uint64_t local_balance;
+        uint64_t remote_balance;
+        uint64_t capacity;
+        bool is_active;
+    };
+    std::optional<ChannelInfo> open_lightning_channel(
+        const std::string& peer_address,
+        uint64_t amount,
+        const std::string& password);
+
+    // Close Lightning channel
+    bool close_lightning_channel(const std::string& channel_id,
+                                  const std::string& password);
+
+    // Get Lightning channels
+    std::vector<ChannelInfo> get_lightning_channels() const;
+
+    // Send Lightning payment
+    struct LightningPayment {
+        std::string payment_hash;
+        uint64_t amount;
+        uint64_t fee;
+        bool success;
+        std::string error;
+    };
+    LightningPayment send_lightning_payment(const std::string& invoice,
+                                             const std::string& password);
+
+    // Create Lightning invoice
+    std::string create_lightning_invoice(uint64_t amount,
+                                         const std::string& description = "",
+                                         uint32_t expiry_seconds = 3600);
+
+    // Get Lightning balance
+    uint64_t get_lightning_balance() const;
+
+    // ========== Smart Contracts ==========
+
+    // Check if smart contracts are enabled
+    bool has_smart_contracts() const;
+
+    // Deploy smart contract
+    struct ContractDeployment {
+        bool success;
+        std::string contract_address;
+        std::string tx_hash;
+        uint64_t gas_used;
+        std::string error;
+    };
+    ContractDeployment deploy_contract(
+        const std::vector<uint8_t>& bytecode,
+        const std::vector<uint8_t>& constructor_args,
+        uint64_t gas_limit,
+        const std::string& password);
+
+    // Call smart contract function
+    struct ContractCall {
+        bool success;
+        std::vector<uint8_t> return_data;
+        std::string tx_hash;
+        uint64_t gas_used;
+        std::string error;
+    };
+    ContractCall call_contract(
+        const std::string& contract_address,
+        const std::vector<uint8_t>& function_data,
+        uint64_t gas_limit,
+        uint64_t value,
+        const std::string& password);
+
+    // Read contract state (no transaction)
+    struct ContractRead {
+        bool success;
+        std::vector<uint8_t> return_data;
+        std::string error;
+    };
+    ContractRead read_contract(
+        const std::string& contract_address,
+        const std::vector<uint8_t>& function_data);
+
+    // Get contract events/logs
+    struct ContractEvent {
+        std::string contract_address;
+        std::string tx_hash;
+        uint64_t block_number;
+        std::vector<std::string> topics;
+        std::vector<uint8_t> data;
+    };
+    std::vector<ContractEvent> get_contract_events(
+        const std::string& contract_address,
+        uint64_t from_block = 0,
+        uint64_t to_block = 0) const;
+
+    // Estimate gas for contract call
+    uint64_t estimate_contract_gas(
+        const std::string& contract_address,
+        const std::vector<uint8_t>& function_data) const;
+
+    // ========== Token Support (ERC20-like) ==========
+
+    struct TokenInfo {
+        std::string contract_address;
+        std::string symbol;
+        std::string name;
+        uint8_t decimals;
+        uint64_t balance;
+        std::string logo_url;
+    };
+
+    // Add token to wallet
+    bool add_token(const std::string& contract_address);
+
+    // Remove token from wallet
+    bool remove_token(const std::string& contract_address);
+
+    // Get token balances
+    std::vector<TokenInfo> get_tokens() const;
+
+    // Send tokens
+    SendResult send_tokens(
+        const std::string& token_contract,
+        const std::string& to_address,
+        uint64_t amount,
+        const std::string& password);
+
+    // ========== DApp Browser Integration ==========
+
+    // Request account access (Web3)
+    bool request_account_access(const std::string& dapp_url);
+
+    // Sign message for DApp
+    std::optional<std::string> sign_message(
+        const std::string& message,
+        const std::string& password);
+
+    // Sign typed data (EIP-712)
+    std::optional<std::string> sign_typed_data(
+        const std::string& json_data,
+        const std::string& password);
+
+    // Get connected DApps
+    std::vector<std::string> get_connected_dapps() const;
+
+    // Disconnect DApp
+    bool disconnect_dapp(const std::string& dapp_url);
+
+    // ========== Security Features ==========
+
+    // Enable transaction PIN
+    bool enable_tx_pin(const std::string& pin, const std::string& password);
+
+    // Disable transaction PIN
+    bool disable_tx_pin(const std::string& password);
+
+    // Verify transaction PIN
+    bool verify_tx_pin(const std::string& pin);
+
+    // Enable auto-lock
+    void set_auto_lock_timeout(uint32_t seconds);  // 0 = disabled
+    uint32_t get_auto_lock_timeout() const;
+
+    // Enable transaction limit
+    void set_transaction_limit(uint64_t max_amount);  // 0 = no limit
+    uint64_t get_transaction_limit() const;
+
+    // Wipe wallet data (emergency)
+    bool wipe_wallet(const std::string& password);
+
+    // ========== Backup & Recovery ==========
+
+    // Export encrypted wallet backup
+    std::optional<std::vector<uint8_t>> export_wallet_backup(
+        const std::string& password);
+
+    // Import encrypted wallet backup
+    bool import_wallet_backup(
+        const std::vector<uint8_t>& backup_data,
+        const std::string& password);
+
+    // Enable cloud backup (iCloud/Google Drive)
+    bool enable_cloud_backup(const std::string& password);
+    bool disable_cloud_backup();
+    bool is_cloud_backup_enabled() const;
+
     // ========== Settings ==========
 
     // Get/set preferred currency for display
@@ -330,6 +523,18 @@ public:
     // Enable/disable push notifications
     void set_push_notifications(bool enabled);
     bool get_push_notifications() const;
+
+    // Enable/disable testnet mode
+    void set_testnet(bool enabled);
+    bool is_testnet() const;
+
+    // Set custom node
+    void set_custom_node(const std::string& url);
+    std::string get_custom_node() const;
+
+    // Privacy settings
+    void set_privacy_mode(bool enabled);  // Hide balances
+    bool get_privacy_mode() const;
 
 private:
     class Impl;
