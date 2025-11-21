@@ -7,18 +7,71 @@
 cmake_minimum_required(VERSION 3.20)
 project(dilithium C)
 
-# Note: This is a placeholder. In production, you should:
-# 1. Git submodule: https://github.com/pq-crystals/dilithium
-# 2. Or use liboqs: https://github.com/open-quantum-safe/liboqs
+# Check if liboqs is available (preferred method)
+find_package(liboqs QUIET)
 
-# For now, create a stub library
-add_library(dilithium STATIC
-    stub.c
-)
+if(liboqs_FOUND)
+    message(STATUS "Found liboqs - using Open Quantum Safe implementation")
+    add_library(dilithium INTERFACE)
+    target_link_libraries(dilithium INTERFACE OQS::oqs)
+    target_compile_definitions(dilithium INTERFACE INTCOIN_USE_LIBOQS)
+else()
+    message(STATUS "liboqs not found - using reference implementation")
 
-target_include_directories(dilithium PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
+    # Check for git submodule (NIST reference implementation)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/ref/sign.c)
+        message(STATUS "Found CRYSTALS-Dilithium reference implementation")
 
-# TODO: Replace with actual CRYSTALS-Dilithium implementation
-# Recommended: Use reference implementation from NIST or liboqs
+        # Build reference implementation (Dilithium5)
+        add_library(dilithium STATIC
+            ref/sign.c
+            ref/packing.c
+            ref/polyvec.c
+            ref/poly.c
+            ref/ntt.c
+            ref/reduce.c
+            ref/rounding.c
+            ref/symmetric-shake.c
+            ref/fips202.c
+        )
+
+        target_include_directories(dilithium PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/ref
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+        )
+
+        target_compile_definitions(dilithium PUBLIC
+            DILITHIUM_MODE=5
+            INTCOIN_USE_DILITHIUM_REF
+        )
+    else()
+        # Fallback: Use stub implementation with clear warning
+        message(WARNING "CRYSTALS-Dilithium implementation not found!")
+        message(WARNING "To use production implementation, either:")
+        message(WARNING "  1. Install liboqs: https://github.com/open-quantum-safe/liboqs")
+        message(WARNING "  2. Or clone reference: git submodule add https://github.com/pq-crystals/dilithium external/dilithium/ref")
+        message(WARNING "Using STUB implementation - NOT SECURE FOR PRODUCTION!")
+
+        add_library(dilithium STATIC
+            stub.c
+        )
+
+        target_include_directories(dilithium PUBLIC
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+        )
+
+        target_compile_definitions(dilithium PUBLIC
+            INTCOIN_USE_DILITHIUM_STUB
+        )
+    endif()
+endif()
+
+# Common compile options
+if(NOT liboqs_FOUND)
+    target_compile_options(dilithium PRIVATE
+        -Wall
+        -Wextra
+        -O3
+        -march=native
+    )
+endif()
