@@ -13,6 +13,17 @@
 namespace intcoin {
 namespace contracts {
 
+// Hash function for Address type
+struct AddressHash {
+    size_t operator()(const Address& addr) const {
+        size_t hash = 0;
+        for (size_t i = 0; i < addr.size(); ++i) {
+            hash = hash * 31 + addr[i];
+        }
+        return hash;
+    }
+};
+
 // ============================================================================
 // VM Implementation
 // ============================================================================
@@ -22,7 +33,7 @@ public:
     uint32_t max_call_depth = 1024;
     size_t max_code_size = 24576;  // 24KB
     GasSchedule gas_schedule;
-    std::unordered_map<Address, PrecompileFunc, std::hash<std::string>> precompiles;
+    std::unordered_map<Address, PrecompileFunc, AddressHash> precompiles;
 
     // Execution state
     struct Frame {

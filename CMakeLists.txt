@@ -204,11 +204,11 @@ if(ENABLE_CROSS_CHAIN)
     add_subdirectory(src/bridge)
 endif()
 
-if(ENABLE_I2P)
+if(ENABLE_I2P AND EXISTS ${CMAKE_SOURCE_DIR}/src/i2p)
     add_subdirectory(src/i2p)
 endif()
 
-if(ENABLE_ML)
+if(ENABLE_ML AND EXISTS ${CMAKE_SOURCE_DIR}/src/ml)
     add_subdirectory(src/ml)
 endif()
 

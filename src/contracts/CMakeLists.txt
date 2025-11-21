@@ -7,6 +7,7 @@
 # Source files
 set(CONTRACTS_SOURCES
     vm.cpp
+    sdk.cpp
     contract.cpp
     opcodes.cpp
     gas.cpp

@@ -14,7 +14,6 @@ set(TEST_TARGETS
     test_blockchain
     test_wallet
     test_network
-    test_lightning
     test_tor
     test_security
     test_dilithium_nist
@@ -51,12 +50,7 @@ target_compile_definitions(test_network PRIVATE ${TEST_DEFINITIONS})
 target_compile_options(test_network PRIVATE ${TEST_COMPILE_OPTIONS})
 add_test(NAME network_tests COMMAND test_network)
 
-# Lightning tests
-add_executable(test_lightning test_lightning.cpp)
-target_link_libraries(test_lightning PRIVATE intcoin_core)
-target_compile_definitions(test_lightning PRIVATE ${TEST_DEFINITIONS})
-target_compile_options(test_lightning PRIVATE ${TEST_COMPILE_OPTIONS})
-add_test(NAME lightning_tests COMMAND test_lightning)
+# Lightning tests (defined in src/lightning/tests/CMakeLists.txt)
 
 # TOR tests
 add_executable(test_tor test_tor.cpp)
