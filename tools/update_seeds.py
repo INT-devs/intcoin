@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+# Copyright (c) 2025 INTcoin Core (Maddison Lane)
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#
+# INTcoin Seed Node Manager
+
 """
 INTcoin Seed Node Manager
-Version: 1.0.0
-Last Updated: November 15, 2025
 
 This script manages the hardcoded seed nodes in the INTcoin daemon.
 It updates src/daemon/main.cpp with the current list of seed nodes.
