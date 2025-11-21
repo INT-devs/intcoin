@@ -100,7 +100,17 @@ AMPPath AMPPath::deserialize(const std::vector<uint8_t>& data) {
     uint32_t hop_count;
     std::memcpy(&hop_count, &data[offset], sizeof(hop_count));
     offset += sizeof(hop_count);
-    // TODO: Deserialize actual route hops
+    // Deserialize route hops
+    for (uint32_t i = 0; i < hop_count && offset < data.size(); ++i) {
+        RouteHop hop;
+        std::copy(data.begin() + offset, data.begin() + offset + 1952, hop.pubkey.begin());
+        offset += 1952;
+        std::memcpy(&hop.channel_id, &data[offset], sizeof(hop.channel_id));
+        offset += sizeof(hop.channel_id);
+        std::memcpy(&hop.amount_msat, &data[offset], sizeof(hop.amount_msat));
+        offset += sizeof(hop.amount_msat);
+        path.route.push_back(hop);
+    }
 
     // Optional HTLC ID
     if (data[offset++] == 1) {
@@ -385,7 +395,13 @@ bool AMPPaymentManager::cancel_amp_payment(const Hash256& payment_id) {
         return false;
     }
 
-    // TODO: Cancel/reclaim HTLCs on all paths
+    // Cancel/reclaim HTLCs on all paths
+    for (auto& path : payment.paths) {
+        if (path.state == AMPPathState::IN_FLIGHT || path.state == AMPPathState::PENDING) {
+            cancel_htlc_on_path(path);
+            path.state = AMPPathState::FAILED;
+        }
+    }
 
     payment.state = AMPPaymentState::CANCELLED;
     payment.completed_at = current_height_;
@@ -735,13 +751,27 @@ std::vector<uint64_t> AMPPaymentManager::split_payment_amount(
         }
 
         case SplitStrategy::WEIGHTED: {
-            // TODO: Weight by path capacity and reliability
-            // For now, use equal split
-            uint64_t amount_per_path = total_amount_sat / routes.size();
-            uint64_t remainder = total_amount_sat % routes.size();
+            // Weight by path capacity and reliability
+            uint64_t total_weight = 0;
+            std::vector<uint64_t> weights;
+            for (const auto& route : routes) {
+                uint64_t capacity = get_route_capacity(route);
+                double reliability = get_route_reliability(route);
+                uint64_t weight = static_cast<uint64_t>(capacity * reliability);
+                weights.push_back(weight);
+                total_weight += weight;
+            }
 
+            if (total_weight == 0) total_weight = 1;
+            uint64_t allocated = 0;
             for (size_t i = 0; i < routes.size(); i++) {
-                amounts.push_back(amount_per_path + (i == 0 ? remainder : 0));
+                uint64_t amount = (total_amount_sat * weights[i]) / total_weight;
+                amounts.push_back(amount);
+                allocated += amount;
+            }
+            // Distribute remainder to first path
+            if (allocated < total_amount_sat && !amounts.empty()) {
+                amounts[0] += (total_amount_sat - allocated);
             }
             break;
         }
@@ -879,9 +909,9 @@ AMPInvoice AMPInvoice::deserialize(const std::vector<uint8_t>& data) {
     std::copy(data.begin() + offset, data.begin() + offset + 32, invoice.payment_id.data.begin());
     offset += 32;
 
-    // Destination pubkey
-    // TODO: Deserialize pubkey
-    offset += 1952;  // Dilithium5 public key size
+    // Destination pubkey - Dilithium5 public key
+    std::copy(data.begin() + offset, data.begin() + offset + 1952, invoice.destination.begin());
+    offset += 1952;
 
     // Amount
     std::memcpy(&invoice.amount_sat, &data[offset], sizeof(invoice.amount_sat));
@@ -909,13 +939,21 @@ AMPInvoice AMPInvoice::deserialize(const std::vector<uint8_t>& data) {
 }
 
 std::string AMPInvoice::encode() const {
-    // TODO: Implement Bech32 encoding
-    return "intc1...";
+    // Bech32 encoding for AMP invoices
+    std::vector<uint8_t> data = serialize();
+    return bech32_encode("intcamp", data);
 }
 
 std::optional<AMPInvoice> AMPInvoice::decode(const std::string& encoded) {
-    // TODO: Implement Bech32 decoding
-    return std::nullopt;
+    // Bech32 decoding for AMP invoices
+    if (encoded.substr(0, 7) != "intcamp") {
+        return std::nullopt;
+    }
+    auto decoded = bech32_decode(encoded);
+    if (!decoded) {
+        return std::nullopt;
+    }
+    return AMPInvoice::deserialize(*decoded);
 }
 
 } // namespace amp

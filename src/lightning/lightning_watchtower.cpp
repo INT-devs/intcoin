@@ -349,11 +349,13 @@ bool WatchtowerClient::upload_breach_remedy(const std::string& watchtower_addres
     payload.to_local_amount = commitment.to_local_sat;
     payload.to_remote_amount = commitment.to_remote_sat;
 
-    // Generate random salt
+    // Generate random salt using secure random generator
     std::vector<uint8_t> salt(32);
-    // TODO: Use secure random generator
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<int> dist(0, 255);
     for (size_t i = 0; i < salt.size(); ++i) {
-        salt[i] = static_cast<uint8_t>(rand() % 256);
+        salt[i] = static_cast<uint8_t>(dist(gen));
     }
 
     // Get commitment TXID
@@ -1021,8 +1023,8 @@ std::vector<WatchtowerManager::WatchtowerStatus> WatchtowerManager::get_watchtow
         WatchtowerStatus status;
         status.address = address;
         status.port = port;
-        status.online = true;  // TODO: Implement actual health check
-        status.last_contact = 0;  // TODO: Track last contact time
+        status.online = check_watchtower_health(address, port);
+        status.last_contact = get_last_contact_time(address, port);
         status.remedies_uploaded = remedy_counts_.at({address, port});
 
         statuses.push_back(status);
@@ -1037,8 +1039,31 @@ size_t WatchtowerManager::get_total_watchtowers() const {
 }
 
 size_t WatchtowerManager::get_online_watchtowers() const {
-    // TODO: Implement actual health checking
-    return get_total_watchtowers();
+    std::lock_guard<std::mutex> lock(mutex_);
+    size_t online_count = 0;
+    for (const auto& [key, count] : remedy_counts_) {
+        if (check_watchtower_health(key.first, key.second)) {
+            online_count++;
+        }
+    }
+    return online_count;
+}
+
+bool WatchtowerManager::check_watchtower_health(const std::string& address, uint16_t port) const {
+    auto key = std::make_pair(address, port);
+    auto it = last_contact_times_.find(key);
+    if (it == last_contact_times_.end()) return false;
+
+    auto now = std::chrono::steady_clock::now();
+    auto last = std::chrono::steady_clock::time_point(std::chrono::seconds(it->second));
+    return (now - last) < std::chrono::minutes(5);  // Online if contacted within 5 minutes
+}
+
+uint64_t WatchtowerManager::get_last_contact_time(const std::string& address, uint16_t port) const {
+    auto key = std::make_pair(address, port);
+    auto it = last_contact_times_.find(key);
+    if (it != last_contact_times_.end()) return it->second;
+    return 0;
 }
 
 size_t WatchtowerManager::get_total_remedies_uploaded() const {

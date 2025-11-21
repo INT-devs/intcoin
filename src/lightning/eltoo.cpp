@@ -526,8 +526,11 @@ bool EltooChannelManager::close_channel_cooperative(const Hash256& channel_id) {
     EltooChannel& channel = it->second;
     channel.state = EltooChannelState::CLOSING;
 
-    // Create final settlement transaction
-    // TODO: Broadcast cooperative close transaction
+    // Create and broadcast cooperative close transaction
+    auto close_tx = create_cooperative_close_transaction(channel);
+    if (!broadcast_transaction(close_tx)) {
+        return false;
+    }
 
     channel.state = EltooChannelState::CLOSED;
     channel.closed_at = current_height_;
@@ -550,8 +553,13 @@ bool EltooChannelManager::close_channel_force(const Hash256& channel_id) {
         return false;
     }
 
-    // Broadcast latest update transaction
-    // TODO: Actually broadcast to network
+    // Broadcast latest update transaction to network
+    auto update_tx = create_update_transaction(channel, latest->update_number,
+                                               latest->party_a_balance_sat,
+                                               latest->party_b_balance_sat);
+    if (!broadcast_transaction(update_tx)) {
+        return false;
+    }
 
     channel.state = EltooChannelState::FORCE_CLOSING;
 
@@ -577,11 +585,17 @@ bool EltooChannelManager::broadcast_settlement(const Hash256& channel_id) {
         return false;
     }
 
-    // Check if settlement delay has passed
-    // TODO: Verify timelock
+    // Check if settlement delay (CSV) has passed
+    uint32_t update_height = channel.updates.back().created_at_height;
+    if (current_height_ < update_height + SETTLEMENT_DELAY_BLOCKS) {
+        return false;  // Timelock not yet expired
+    }
 
     // Broadcast settlement transaction
-    // TODO: Actually broadcast to network
+    auto settlement_tx = create_settlement_transaction(channel, *latest);
+    if (!broadcast_transaction(settlement_tx)) {
+        return false;
+    }
 
     channel.state = EltooChannelState::CLOSED;
     channel.closed_at = current_height_;
@@ -700,7 +714,12 @@ Transaction EltooChannelManager::create_funding_transaction(const EltooChannel& 
     tx.version = 1;
     tx.locktime = 0;
 
-    // TODO: Create 2-of-2 multisig funding output
+    // Create 2-of-2 multisig funding output
+    TxOutput funding_output;
+    funding_output.amount = channel.funding_amount_sat;
+    funding_output.script = create_2of2_multisig_script(
+        channel.party_a_pubkey, channel.party_b_pubkey);
+    tx.outputs.push_back(funding_output);
 
     return tx;
 }
@@ -715,10 +734,20 @@ Transaction EltooChannelManager::create_update_transaction(
     tx.version = 1;
     tx.locktime = 0;
 
-    // Update transactions use SIGHASH_NOINPUT
+    // Update transactions use SIGHASH_ANYPREVOUT (BIP-118)
     // They can spend any previous update or the funding output
+    TxInput input;
+    input.prev_txid = Hash256{};  // ANYPREVOUT - can be any previous output
+    input.prev_index = 0;
+    input.sequence = 0xFFFFFFFE;  // Enable RBF
+    tx.inputs.push_back(input);
 
-    // TODO: Create proper update transaction structure
+    // Single output to update script with CSV delay
+    TxOutput update_output;
+    update_output.amount = party_a_balance + party_b_balance;
+    update_output.script = create_eltoo_update_script(
+        channel.party_a_pubkey, channel.party_b_pubkey, update_number);
+    tx.outputs.push_back(update_output);
 
     return tx;
 }
@@ -733,8 +762,23 @@ Transaction EltooChannelManager::create_settlement_transaction(
 
     // Settlement transaction spends update output after CSV delay
     // Pays out final balances to both parties
+    TxInput input;
+    input.prev_txid = Hash256{};  // Will be filled with update txid
+    input.prev_index = 0;
+    input.sequence = SETTLEMENT_DELAY_BLOCKS;  // CSV relative timelock
+    tx.inputs.push_back(input);
 
-    // TODO: Create proper settlement transaction structure
+    // Output to party A
+    TxOutput output_a;
+    output_a.amount = update.party_a_balance_sat;
+    output_a.script = create_p2pkh_script(channel.party_a_pubkey);
+    tx.outputs.push_back(output_a);
+
+    // Output to party B
+    TxOutput output_b;
+    output_b.amount = update.party_b_balance_sat;
+    output_b.script = create_p2pkh_script(channel.party_b_pubkey);
+    tx.outputs.push_back(output_b);
 
     return tx;
 }
@@ -753,7 +797,14 @@ bool EltooChannelManager::validate_update(
         return false;
     }
 
-    // TODO: Verify signatures
+    // Verify both party signatures on the update
+    auto update_hash = compute_update_hash(update);
+    if (!verify_dilithium_signature(update.party_a_sig, update_hash, channel.party_a_pubkey)) {
+        return false;
+    }
+    if (!verify_dilithium_signature(update.party_b_sig, update_hash, channel.party_b_pubkey)) {
+        return false;
+    }
 
     return true;
 }

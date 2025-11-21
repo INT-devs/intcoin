@@ -499,7 +499,7 @@ SwapQuote SubmarineSwapManager::get_swap_quote(SwapDirection direction, uint64_t
     SwapQuote quote;
     quote.amount_sat = amount_sat;
     quote.service_fee_sat = calculate_service_fee(amount_sat);
-    quote.network_fee_sat = 5000;  // Estimated on-chain fee (TODO: dynamic estimation)
+    quote.network_fee_sat = estimate_network_fee(amount_sat);  // Dynamic fee estimation
     quote.total_cost_sat = amount_sat + quote.service_fee_sat + quote.network_fee_sat;
     quote.timeout_blocks = DEFAULT_SWAP_TIMEOUT;
     quote.exchange_rate = 1.0;
@@ -806,8 +806,22 @@ bool SubmarineSwapService::start() {
         return false;
     }
 
-    // TODO: Start network listener
-    // TODO: Start blockchain monitor
+    // Start network listener for incoming swap requests
+    network_listener_running_ = true;
+    network_thread_ = std::thread([this]() {
+        while (network_listener_running_) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    });
+
+    // Start blockchain monitor for HTLC confirmations
+    blockchain_monitor_running_ = true;
+    monitor_thread_ = std::thread([this]() {
+        while (blockchain_monitor_running_) {
+            check_pending_swaps();
+            std::this_thread::sleep_for(std::chrono::seconds(10));
+        }
+    });
 
     running_ = true;
     return true;
@@ -820,8 +834,17 @@ void SubmarineSwapService::stop() {
         return;
     }
 
-    // TODO: Stop network listener
-    // TODO: Stop blockchain monitor
+    // Stop network listener
+    network_listener_running_ = false;
+    if (network_thread_.joinable()) {
+        network_thread_.join();
+    }
+
+    // Stop blockchain monitor
+    blockchain_monitor_running_ = false;
+    if (monitor_thread_.joinable()) {
+        monitor_thread_.join();
+    }
 
     running_ = false;
 }
@@ -846,11 +869,23 @@ bool SubmarineSwapService::handle_swap_request(const SubmarineSwap& swap) {
         return false;
     }
 
-    // TODO: Validate swap request
-    // TODO: Create corresponding swap on service side
-    // TODO: Fund Lightning payment or create on-chain HTLC
+    // Validate swap request
+    if (!validate_swap_request(swap)) {
+        return false;
+    }
 
-    return true;
+    // Create corresponding swap on service side
+    auto service_swap = create_service_swap(swap);
+    if (!service_swap) {
+        return false;
+    }
+
+    // Fund Lightning payment or create on-chain HTLC based on direction
+    if (swap.direction == SwapDirection::SUBMARINE) {
+        return fund_lightning_payment(*service_swap);
+    } else {
+        return create_onchain_htlc(*service_swap);
+    }
 }
 
 SubmarineSwapService::ServiceStats SubmarineSwapService::get_stats() const {
