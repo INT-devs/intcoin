@@ -563,6 +563,325 @@ public:
     }
 };
 
+/**
+ * RAII Resource Manager
+ * Generic RAII wrapper for any resource with custom deleter
+ */
+template<typename T, typename Deleter>
+class RAIIResource {
+    T resource_;
+    Deleter deleter_;
+    bool owns_ = true;
+
+public:
+    explicit RAIIResource(T resource, Deleter deleter)
+        : resource_(resource), deleter_(deleter) {}
+
+    // No copy (single ownership)
+    RAIIResource(const RAIIResource&) = delete;
+    RAIIResource& operator=(const RAIIResource&) = delete;
+
+    // Move allowed
+    RAIIResource(RAIIResource&& other) noexcept
+        : resource_(other.resource_), deleter_(std::move(other.deleter_)), owns_(other.owns_) {
+        other.owns_ = false;
+    }
+
+    RAIIResource& operator=(RAIIResource&& other) noexcept {
+        if (this != &other) {
+            release();
+            resource_ = other.resource_;
+            deleter_ = std::move(other.deleter_);
+            owns_ = other.owns_;
+            other.owns_ = false;
+        }
+        return *this;
+    }
+
+    ~RAIIResource() { release(); }
+
+    T get() const { return resource_; }
+    T operator*() const { return resource_; }
+
+    void release() {
+        if (owns_) {
+            deleter_(resource_);
+            owns_ = false;
+        }
+    }
+
+    T detach() {
+        owns_ = false;
+        return resource_;
+    }
+};
+
+/**
+ * RAII File Handle
+ * Automatic file closing on scope exit
+ */
+class FileHandle {
+    FILE* file_ = nullptr;
+    std::string path_;
+
+public:
+    FileHandle() = default;
+
+    explicit FileHandle(const std::string& path, const char* mode = "r")
+        : path_(path) {
+        file_ = std::fopen(path.c_str(), mode);
+    }
+
+    // No copy
+    FileHandle(const FileHandle&) = delete;
+    FileHandle& operator=(const FileHandle&) = delete;
+
+    // Move allowed
+    FileHandle(FileHandle&& other) noexcept
+        : file_(other.file_), path_(std::move(other.path_)) {
+        other.file_ = nullptr;
+    }
+
+    FileHandle& operator=(FileHandle&& other) noexcept {
+        if (this != &other) {
+            close();
+            file_ = other.file_;
+            path_ = std::move(other.path_);
+            other.file_ = nullptr;
+        }
+        return *this;
+    }
+
+    ~FileHandle() { close(); }
+
+    bool is_open() const { return file_ != nullptr; }
+    FILE* get() const { return file_; }
+    const std::string& path() const { return path_; }
+
+    void close() {
+        if (file_) {
+            std::fclose(file_);
+            file_ = nullptr;
+        }
+    }
+};
+
+/**
+ * RAII Scope Guard
+ * Execute cleanup function on scope exit
+ */
+class ScopeGuard {
+    std::function<void()> cleanup_;
+    bool dismissed_ = false;
+
+public:
+    explicit ScopeGuard(std::function<void()> cleanup)
+        : cleanup_(std::move(cleanup)) {}
+
+    // No copy or move
+    ScopeGuard(const ScopeGuard&) = delete;
+    ScopeGuard& operator=(const ScopeGuard&) = delete;
+    ScopeGuard(ScopeGuard&&) = delete;
+    ScopeGuard& operator=(ScopeGuard&&) = delete;
+
+    ~ScopeGuard() {
+        if (!dismissed_ && cleanup_) {
+            cleanup_();
+        }
+    }
+
+    void dismiss() { dismissed_ = true; }
+};
+
+/**
+ * Smart Pointer Guidelines Enforcer
+ * Factory methods that encourage proper smart pointer usage
+ */
+class SmartPointerFactory {
+public:
+    // Create unique_ptr (single ownership - preferred for most cases)
+    template<typename T, typename... Args>
+    static std::unique_ptr<T> make_unique(Args&&... args) {
+        return std::make_unique<T>(std::forward<Args>(args)...);
+    }
+
+    // Create shared_ptr (shared ownership - use only when necessary)
+    template<typename T, typename... Args>
+    static std::shared_ptr<T> make_shared(Args&&... args) {
+        return std::make_shared<T>(std::forward<Args>(args)...);
+    }
+
+    // Create weak_ptr from shared_ptr (non-owning observer)
+    template<typename T>
+    static std::weak_ptr<T> make_weak(const std::shared_ptr<T>& shared) {
+        return std::weak_ptr<T>(shared);
+    }
+
+    // Safe shared_ptr access (checks if expired)
+    template<typename T>
+    static std::shared_ptr<T> lock_weak(const std::weak_ptr<T>& weak) {
+        return weak.lock();  // Returns nullptr if expired
+    }
+};
+
+/**
+ * Undefined Behavior Prevention
+ * Safe arithmetic and operations to prevent UB
+ */
+class UBPrevention {
+public:
+    // Safe signed integer addition (prevents overflow UB)
+    static std::optional<int64_t> safe_add(int64_t a, int64_t b) {
+        if (b > 0 && a > INT64_MAX - b) return std::nullopt;
+        if (b < 0 && a < INT64_MIN - b) return std::nullopt;
+        return a + b;
+    }
+
+    // Safe signed integer subtraction
+    static std::optional<int64_t> safe_sub(int64_t a, int64_t b) {
+        if (b < 0 && a > INT64_MAX + b) return std::nullopt;
+        if (b > 0 && a < INT64_MIN + b) return std::nullopt;
+        return a - b;
+    }
+
+    // Safe signed integer multiplication
+    static std::optional<int64_t> safe_mul(int64_t a, int64_t b) {
+        if (a == 0 || b == 0) return 0;
+        if (a > 0 && b > 0 && a > INT64_MAX / b) return std::nullopt;
+        if (a > 0 && b < 0 && b < INT64_MIN / a) return std::nullopt;
+        if (a < 0 && b > 0 && a < INT64_MIN / b) return std::nullopt;
+        if (a < 0 && b < 0 && a < INT64_MAX / b) return std::nullopt;
+        return a * b;
+    }
+
+    // Safe signed integer division (prevents divide by zero and INT_MIN/-1)
+    static std::optional<int64_t> safe_div(int64_t a, int64_t b) {
+        if (b == 0) return std::nullopt;
+        if (a == INT64_MIN && b == -1) return std::nullopt;
+        return a / b;
+    }
+
+    // Safe left shift (prevents UB from oversized shifts)
+    static std::optional<uint64_t> safe_shl(uint64_t value, unsigned shift) {
+        if (shift >= 64) return std::nullopt;
+        if (value > (UINT64_MAX >> shift)) return std::nullopt;
+        return value << shift;
+    }
+
+    // Safe right shift
+    static uint64_t safe_shr(uint64_t value, unsigned shift) {
+        if (shift >= 64) return 0;
+        return value >> shift;
+    }
+
+    // Safe pointer dereference (checks null)
+    template<typename T>
+    static T& safe_deref(T* ptr) {
+        if (!ptr) {
+            throw std::runtime_error("Null pointer dereference");
+        }
+        return *ptr;
+    }
+
+    // Safe array access (bounds checking)
+    template<typename Container>
+    static auto safe_at(Container& c, size_t index) -> decltype(c.at(index)) {
+        return c.at(index);
+    }
+
+    // Safe modulo (prevents divide by zero)
+    static std::optional<int64_t> safe_mod(int64_t a, int64_t b) {
+        if (b == 0) return std::nullopt;
+        return a % b;
+    }
+};
+
+/**
+ * Non-Null Pointer Wrapper
+ * Compile-time guarantee of non-null pointer
+ */
+template<typename T>
+class NonNull {
+    T* ptr_;
+
+public:
+    explicit NonNull(T* ptr) : ptr_(ptr) {
+        if (!ptr_) {
+            throw std::invalid_argument("NonNull constructed with null");
+        }
+    }
+
+    explicit NonNull(T& ref) : ptr_(&ref) {}
+
+    NonNull() = delete;
+
+    T* get() const noexcept { return ptr_; }
+    T& operator*() const noexcept { return *ptr_; }
+    T* operator->() const noexcept { return ptr_; }
+
+    bool operator==(const NonNull& o) const { return ptr_ == o.ptr_; }
+    bool operator!=(const NonNull& o) const { return ptr_ != o.ptr_; }
+};
+
+/**
+ * Optional Reference
+ * Safe alternative to nullable pointers
+ */
+template<typename T>
+class OptionalRef {
+    T* ptr_ = nullptr;
+
+public:
+    OptionalRef() = default;
+    OptionalRef(T& ref) : ptr_(&ref) {}
+    OptionalRef(std::nullopt_t) : ptr_(nullptr) {}
+
+    bool has_value() const noexcept { return ptr_ != nullptr; }
+    explicit operator bool() const noexcept { return has_value(); }
+
+    T& value() {
+        if (!ptr_) throw std::bad_optional_access();
+        return *ptr_;
+    }
+
+    const T& value() const {
+        if (!ptr_) throw std::bad_optional_access();
+        return *ptr_;
+    }
+
+    T& value_or(T& def) noexcept { return ptr_ ? *ptr_ : def; }
+    const T& value_or(const T& def) const noexcept { return ptr_ ? *ptr_ : def; }
+};
+
+/**
+ * Memory Safety Statistics
+ */
+class MemorySafetyStats {
+    static inline struct Stats {
+        std::atomic<uint64_t> raii_created{0};
+        std::atomic<uint64_t> raii_destroyed{0};
+        std::atomic<uint64_t> bounds_checks{0};
+        std::atomic<uint64_t> overflow_prevented{0};
+        std::atomic<uint64_t> null_checks{0};
+    } stats_;
+
+public:
+    static void track_raii_create() { ++stats_.raii_created; }
+    static void track_raii_destroy() { ++stats_.raii_destroyed; }
+    static void track_bounds_check() { ++stats_.bounds_checks; }
+    static void track_overflow_prevented() { ++stats_.overflow_prevented; }
+    static void track_null_check() { ++stats_.null_checks; }
+
+    static bool check_balance() {
+        return stats_.raii_created.load() == stats_.raii_destroyed.load();
+    }
+
+    static uint64_t get_raii_created() { return stats_.raii_created.load(); }
+    static uint64_t get_raii_destroyed() { return stats_.raii_destroyed.load(); }
+    static uint64_t get_bounds_checks() { return stats_.bounds_checks.load(); }
+    static uint64_t get_overflow_prevented() { return stats_.overflow_prevented.load(); }
+};
+
 } // namespace memory_safety
 } // namespace intcoin
 
