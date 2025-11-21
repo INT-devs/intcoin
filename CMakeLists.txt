@@ -8,14 +8,14 @@ cmake_minimum_required(VERSION 4.0)
 
 # Project information
 project(INTcoin
-    VERSION 1.1.0
+    VERSION 1.2.0
     DESCRIPTION "Quantum-resistant cryptocurrency with SHA256 PoW"
     LANGUAGES CXX C
 )
 
 # Semantic versioning
 set(INTCOIN_VERSION_MAJOR 1)
-set(INTCOIN_VERSION_MINOR 1)
+set(INTCOIN_VERSION_MINOR 2)
 set(INTCOIN_VERSION_PATCH 0)
 set(INTCOIN_VERSION "${INTCOIN_VERSION_MAJOR}.${INTCOIN_VERSION_MINOR}.${INTCOIN_VERSION_PATCH}")
 
@@ -65,6 +65,16 @@ elseif(WIN32)
     set(WINDOWS TRUE)
 endif()
 
+# Architecture detection
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv64|riscv")
+    set(RISCV TRUE)
+    message(STATUS "RISC-V architecture detected")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
+    set(ARM64 TRUE)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    set(X86_64 TRUE)
+endif()
+
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(
@@ -76,6 +86,21 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -fstack-protector-strong
         -fPIC
     )
+
+    # Architecture-specific optimizations
+    if(RISCV)
+        # RISC-V specific flags
+        add_compile_options(-march=rv64gc -mabi=lp64d)
+        message(STATUS "Using RISC-V optimizations: rv64gc, lp64d ABI")
+    elseif(ARM64)
+        # ARM64 optimizations
+        if(NOT APPLE)
+            add_compile_options(-march=armv8-a)
+        endif()
+    elseif(X86_64)
+        # x86_64 optimizations (conservative for compatibility)
+        add_compile_options(-march=x86-64)
+    endif()
 
     if(CMAKE_BUILD_TYPE MATCHES "Release")
         add_compile_options(-O3 -DNDEBUG)
@@ -391,6 +416,14 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C++ standard: C++${CMAKE_CXX_STANDARD}")
 message(STATUS "Platform: ${CMAKE_SYSTEM_NAME}")
+message(STATUS "Architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+if(RISCV)
+    message(STATUS "  RISC-V: Yes (rv64gc)")
+elseif(ARM64)
+    message(STATUS "  ARM64: Yes")
+elseif(X86_64)
+    message(STATUS "  x86_64: Yes")
+endif()
 message(STATUS "")
 message(STATUS "Build options:")
 message(STATUS "  Tests:           ${BUILD_TESTS}")

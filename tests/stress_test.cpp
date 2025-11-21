@@ -290,8 +290,126 @@ private:
     // Test 5: Chain Reorganization Performance
     void test_chain_reorganization() {
         std::cout << BLUE << "\n=== Test 5: Chain Reorganization ===" << RESET << std::endl;
-        std::cout << YELLOW << "  [TODO] Chain reorganization stress test" << RESET << std::endl;
-        // This would require creating competing chains and measuring reorg time
+
+        const size_t REORG_DEPTH = 6;  // Simulate 6-block deep reorg
+        const size_t TX_PER_BLOCK = 500;
+
+        std::cout << "Simulating " << REORG_DEPTH << "-block deep chain reorganization..." << std::endl;
+
+        // Store current chain tip
+        Hash256 original_tip = blockchain_.get_best_block_hash();
+        uint32_t original_height = blockchain_.get_height();
+
+        // Create first branch (will be orphaned)
+        std::vector<Block> branch_a;
+        Hash256 prev_hash = original_tip;
+
+        for (size_t i = 0; i < REORG_DEPTH; ++i) {
+            Block block;
+            block.header.version = 1;
+            block.header.timestamp = static_cast<uint64_t>(
+                duration_cast<seconds>(system_clock::now().time_since_epoch()).count() + i
+            );
+            block.header.previous_block_hash = prev_hash;
+            block.header.bits = 0x1d00ffff;
+            block.header.nonce = 1000 + i;  // Branch A nonces
+
+            for (size_t j = 0; j < TX_PER_BLOCK; ++j) {
+                Transaction tx;
+                tx.version = 1;
+                tx.lock_time = 0;
+
+                TxInput input;
+                input.previous_output.tx_hash = Hash256{};
+                input.previous_output.tx_hash[0] = 0xAA;  // Mark as branch A
+                input.previous_output.tx_hash[1] = static_cast<uint8_t>(i);
+                input.previous_output.index = static_cast<uint32_t>(j);
+                input.script_sig = std::vector<uint8_t>(100, 0x01);
+                tx.inputs.push_back(input);
+
+                TxOutput output;
+                output.value = 5000000000;
+                output.script_pubkey = std::vector<uint8_t>(100, 0x02);
+                tx.outputs.push_back(output);
+
+                block.transactions.push_back(tx);
+            }
+
+            blockchain_.add_block(block);
+            prev_hash = block.get_hash();
+            branch_a.push_back(block);
+        }
+
+        Hash256 branch_a_tip = blockchain_.get_best_block_hash();
+        uint32_t height_after_a = blockchain_.get_height();
+
+        std::cout << "  Branch A: " << REORG_DEPTH << " blocks added (height: "
+                  << height_after_a << ")" << std::endl;
+
+        // Create competing branch B (longer, will trigger reorg)
+        std::vector<Block> branch_b;
+        prev_hash = original_tip;
+
+        auto reorg_start = high_resolution_clock::now();
+
+        for (size_t i = 0; i < REORG_DEPTH + 1; ++i) {  // One more block than A
+            Block block;
+            block.header.version = 1;
+            block.header.timestamp = static_cast<uint64_t>(
+                duration_cast<seconds>(system_clock::now().time_since_epoch()).count() + i + 100
+            );
+            block.header.previous_block_hash = prev_hash;
+            block.header.bits = 0x1d00ffff;
+            block.header.nonce = 2000 + i;  // Branch B nonces
+
+            for (size_t j = 0; j < TX_PER_BLOCK; ++j) {
+                Transaction tx;
+                tx.version = 1;
+                tx.lock_time = 0;
+
+                TxInput input;
+                input.previous_output.tx_hash = Hash256{};
+                input.previous_output.tx_hash[0] = 0xBB;  // Mark as branch B
+                input.previous_output.tx_hash[1] = static_cast<uint8_t>(i);
+                input.previous_output.index = static_cast<uint32_t>(j);
+                input.script_sig = std::vector<uint8_t>(100, 0x01);
+                tx.inputs.push_back(input);
+
+                TxOutput output;
+                output.value = 5000000000;
+                output.script_pubkey = std::vector<uint8_t>(100, 0x02);
+                tx.outputs.push_back(output);
+
+                block.transactions.push_back(tx);
+            }
+
+            blockchain_.add_block(block);
+            prev_hash = block.get_hash();
+            branch_b.push_back(block);
+        }
+
+        auto reorg_end = high_resolution_clock::now();
+        double reorg_duration_ms = duration_cast<milliseconds>(reorg_end - reorg_start).count();
+
+        Hash256 branch_b_tip = blockchain_.get_best_block_hash();
+        uint32_t final_height = blockchain_.get_height();
+
+        // Verify reorg occurred - chain should follow branch B
+        bool reorg_successful = (final_height == original_height + REORG_DEPTH + 1);
+
+        std::cout << "  Branch B: " << (REORG_DEPTH + 1) << " blocks added (height: "
+                  << final_height << ")" << std::endl;
+        std::cout << "  Reorg depth: " << REORG_DEPTH << " blocks" << std::endl;
+
+        size_t total_txs = (REORG_DEPTH + 1) * TX_PER_BLOCK;
+        print_test_result("Chain reorganization (" + std::to_string(REORG_DEPTH) + " blocks)",
+                         reorg_duration_ms, total_txs, reorg_successful);
+
+        if (reorg_successful) {
+            std::cout << GREEN << "  ✓ Reorg to longer chain successful" << RESET << std::endl;
+        } else {
+            std::cout << RED << "  ✗ Reorg verification failed" << RESET << std::endl;
+        }
     }
 
     // Test 6: Large Block Processing

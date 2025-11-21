@@ -5,24 +5,27 @@
 ; INTcoin NSIS Installer Script
 
 !define PRODUCT_NAME "INTcoin"
-!define PRODUCT_VERSION "0.1.0"
+!define PRODUCT_VERSION "1.2.0"
 !define PRODUCT_PUBLISHER "INTcoin Core (Maddison Lane)"
 !define PRODUCT_WEB_SITE "https://international-coin.org"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\intcoin-qt.exe"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
+; Build from scripts directory - paths relative to project root
+!define PROJECT_ROOT ".."
+
 !include "MUI2.nsh"
 
 ; MUI Settings
 !define MUI_ABORTWARNING
-!define MUI_ICON "resources\icons\intcoin.ico"
+!define MUI_ICON "${PROJECT_ROOT}\resources\icons\intcoin.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
 
 ; Welcome page
 !insertmacro MUI_PAGE_WELCOME
 ; License page
-!insertmacro MUI_PAGE_LICENSE "COPYING"
+!insertmacro MUI_PAGE_LICENSE "${PROJECT_ROOT}\COPYING"
 ; Directory page
 !insertmacro MUI_PAGE_DIRECTORY
 ; Components page
@@ -57,9 +60,9 @@ Section "INTcoin Core (required)" SEC01
   SetOverwrite ifnewer
 
   ; Main executables
-  File "build\Release\intcoind.exe"
-  File "build\Release\intcoin-cli.exe"
-  File "build\Release\intcoin-qt.exe"
+  File "${PROJECT_ROOT}\build\Release\intcoind.exe"
+  File "${PROJECT_ROOT}\build\Release\intcoin-cli.exe"
+  File "${PROJECT_ROOT}\build\Release\intcoin-qt.exe"
 
   ; Create shortcuts
   CreateDirectory "$SMPROGRAMS\INTcoin"
@@ -70,28 +73,27 @@ SectionEnd
 
 Section "CPU Miner" SEC02
   SetOutPath "$INSTDIR"
-  File "build\Release\intcoin-miner.exe"
+  File "${PROJECT_ROOT}\build\Release\intcoin-miner.exe"
   CreateShortCut "$SMPROGRAMS\INTcoin\INTcoin Miner.lnk" "$INSTDIR\intcoin-miner.exe"
 SectionEnd
 
 Section "Block Explorer" SEC03
   SetOutPath "$INSTDIR"
-  File "build\Release\intcoin-explorer.exe"
+  File "${PROJECT_ROOT}\build\Release\intcoin-explorer.exe"
   CreateShortCut "$SMPROGRAMS\INTcoin\Block Explorer.lnk" "$INSTDIR\intcoin-explorer.exe"
 SectionEnd
 
 Section "Configuration Files" SEC04
   SetOutPath "$INSTDIR\config"
-  File /r "config\*.*"
+  File /r "${PROJECT_ROOT}\config\*.*"
 SectionEnd
 
 Section "Documentation" SEC05
   SetOutPath "$INSTDIR\docs"
-  File "README.md"
-  File "COPYING"
-  File "ROADMAP.md"
-  File "DESIGN-DECISIONS.md"
-  File /nonfatal /r "docs\*.md"
+  File "${PROJECT_ROOT}\README.md"
+  File "${PROJECT_ROOT}\COPYING"
+  File /nonfatal "${PROJECT_ROOT}\DESIGN-DECISIONS.md"
+  File /nonfatal /r "${PROJECT_ROOT}\docs\*.md"
 
   CreateShortCut "$SMPROGRAMS\INTcoin\Documentation.lnk" "$INSTDIR\docs"
 SectionEnd
