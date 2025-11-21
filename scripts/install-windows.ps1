@@ -324,7 +324,7 @@ server=1
 rpcuser=intcoinrpc
 rpcpassword=$rpcPassword
 rpcallowip=127.0.0.1
-rpcport=9332
+rpcport=9334
 
 # Network settings
 listen=1

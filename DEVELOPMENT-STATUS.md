@@ -2,8 +2,8 @@
 
 **Copyright (c) 2025 INTcoin Core (Maddison Lane)**
 
-**Version**: 0.1.0-alpha
-**Last Updated**: January 2025
+**Version**: 1.2.0
+**Last Updated**: November 2025
 
 ---
 

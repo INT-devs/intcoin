@@ -5,8 +5,8 @@
 # Testnet seed nodes for testing and development
 
 # Primary testnet seeds
-testnet-seed1.intcoin.org:18333
-testnet-seed2.intcoin.org:18333
+testnet-seed1.intcoin.org:19333
+testnet-seed2.intcoin.org:19333
 
 # Development seeds
-testnet-dev.intcoin.org:18333
+testnet-dev.intcoin.org:19333

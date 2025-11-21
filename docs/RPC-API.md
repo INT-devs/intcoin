@@ -2,7 +2,7 @@
 
 **Version**: 0.2.0-alpha
 **Protocol**: JSON-RPC 2.0
-**Default Port**: 8332 (mainnet), 18332 (testnet)
+**Default Port**: 9334 (mainnet), 19334 (testnet)
 
 ---
 
@@ -30,7 +30,7 @@ The INTcoin RPC API allows you to interact with the INTcoin daemon programmatica
 
 ```bash
 # Using curl
-curl --user username:password --data-binary '{"jsonrpc":"2.0","method":"getblockcount","params":[],"id":"1"}' -H 'content-type: text/plain;' http://127.0.0.1:9332/
+curl --user username:password --data-binary '{"jsonrpc":"2.0","method":"getblockcount","params":[],"id":"1"}' -H 'content-type: text/plain;' http://127.0.0.1:9334/
 ```
 
 ### Using the CLI
@@ -610,7 +610,7 @@ import requests
 import json
 
 def rpc_call(method, params=[]):
-    url = "http://127.0.0.1:9332/"
+    url = "http://127.0.0.1:9334/"
     headers = {'content-type': 'application/json'}
     payload = {
         "jsonrpc": "2.0",
@@ -640,7 +640,7 @@ address = rpc_call('getnewaddress', ['My Address'])
 const axios = require('axios');
 
 async function rpcCall(method, params = []) {
-    const response = await axios.post('http://127.0.0.1:9332/', {
+    const response = await axios.post('http://127.0.0.1:9334/', {
         jsonrpc: '2.0',
         method: method,
         params: params,

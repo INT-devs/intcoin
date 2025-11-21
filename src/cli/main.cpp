@@ -19,7 +19,7 @@ void print_help() {
     std::cout << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "  -rpcconnect=<ip>   Connect to RPC server (default: 127.0.0.1)" << std::endl;
-    std::cout << "  -rpcport=<port>    Connect to RPC port (default: 9332)" << std::endl;
+    std::cout << "  -rpcport=<port>    Connect to RPC port (default: 9334)" << std::endl;
     std::cout << "  -h, --help         Show this help message" << std::endl;
     std::cout << std::endl;
     std::cout << "Blockchain Commands:" << std::endl;
@@ -57,7 +57,7 @@ void print_help() {
 int main(int argc, char* argv[]) {
     // Parse options
     std::string rpc_host = "127.0.0.1";
-    uint16_t rpc_port = 9332;
+    uint16_t rpc_port = 9334;
     std::vector<std::string> args;
 
     for (int i = 1; i < argc; ++i) {

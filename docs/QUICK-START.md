@@ -79,8 +79,8 @@ The daemon is the core node software that connects to the INTcoin network:
 ```
 
 Default ports:
-- **P2P**: 9333 (mainnet), 18333 (testnet)
-- **RPC**: 9332 (mainnet), 18332 (testnet)
+- **P2P**: 9333 (mainnet), 19333 (testnet)
+- **RPC**: 9334 (mainnet), 19334 (testnet)
 
 ### 2. Create a Wallet
 
@@ -135,7 +135,7 @@ The GUI will guide you through:
 - **Launch Date**: January 1, 2026
 - **Genesis Hash**: `000000001f132c42a82a1e4316aab226a1c0663d1a40d2423901914417a69da9`
 - **P2P Port**: 9333
-- **RPC Port**: 9332
+- **RPC Port**: 9334
 - **Magic Bytes**: `0x494E5443` ("INTC")
 
 ### Seed Nodes
@@ -148,8 +148,8 @@ Geographic seed nodes will be activated at launch.
 
 ### Testnet
 
-- **P2P Port**: 18333
-- **RPC Port**: 18332
+- **P2P Port**: 19333
+- **RPC Port**: 19334
 - **Magic Bytes**: `0x54494E54` ("TINT")
 
 To use testnet:

@@ -41,11 +41,11 @@ namespace network {
     static constexpr uint32_t MAINNET_MAGIC = 0x494E5443;  // "INTC"
     static constexpr uint32_t TESTNET_MAGIC = 0x54494E54;  // "TINT"
 
-    // Ports
-    static constexpr uint16_t MAINNET_PORT = 8333;
-    static constexpr uint16_t MAINNET_RPC_PORT = 8332;
-    static constexpr uint16_t TESTNET_PORT = 18333;
-    static constexpr uint16_t TESTNET_RPC_PORT = 18332;
+    // Ports (INTcoin unique range: 9330-9349)
+    static constexpr uint16_t MAINNET_PORT = 9333;
+    static constexpr uint16_t MAINNET_RPC_PORT = 9334;
+    static constexpr uint16_t TESTNET_PORT = 19333;
+    static constexpr uint16_t TESTNET_RPC_PORT = 19334;
 
     // Protocol version
     static constexpr uint32_t PROTOCOL_VERSION = 1;

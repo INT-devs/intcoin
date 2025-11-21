@@ -550,8 +550,8 @@ Edit `/etc/pf.conf`:
 pass in on $ext_if proto tcp from any to any port 9333
 
 # Allow RPC only from localhost
-pass in on lo0 proto tcp from 127.0.0.1 to any port 9332
-block in on $ext_if proto tcp from any to any port 9332
+pass in on lo0 proto tcp from 127.0.0.1 to any port 9334
+block in on $ext_if proto tcp from any to any port 9334
 ```
 
 Reload:

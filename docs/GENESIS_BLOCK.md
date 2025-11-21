@@ -119,14 +119,14 @@ The genesis block implements post-quantum cryptography from the very first block
 
 - **Magic Bytes**: `0x494E5443` ("INTC")
 - **P2P Port**: 9333 (unique to INTcoin)
-- **RPC Port**: 9332 (unique to INTcoin)
+- **RPC Port**: 9334 (unique to INTcoin)
 - **Genesis Hash**: `000000001f132c42a82a1e4316aab226a1c0663d1a40d2423901914417a69da9`
 
 ### Testnet
 
 - **Magic Bytes**: `0x54494E54` ("TINT")
-- **P2P Port**: 18333
-- **RPC Port**: 18332
+- **P2P Port**: 19333
+- **RPC Port**: 19334
 - **Genesis Hash**: [To be determined]
 
 ## Checkpoints
@@ -164,7 +164,7 @@ The genesis block message references a BBC News headline from November 6, 2025, 
 ## Pre-Launch Checklist
 
 - [x] Genesis block mined and verified
-- [x] Network ports configured (9333 P2P, 9332 RPC)
+- [x] Network ports configured (9333 P2P, 9334 RPC)
 - [x] Primary seed nodes added
 - [x] Qt wallet built successfully
 - [x] Hardware wallet USB support integrated

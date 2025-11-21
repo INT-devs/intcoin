@@ -559,7 +559,7 @@ void MainWindow::on_actionSettings_triggered() {
     QLineEdit* host_edit = new QLineEdit("127.0.0.1", rpc_group);
     QSpinBox* port_spin = new QSpinBox(rpc_group);
     port_spin->setRange(1, 65535);
-    port_spin->setValue(9332);  // INTcoin RPC port (matches daemon)
+    port_spin->setValue(9334);  // INTcoin RPC port (matches daemon)
 
     rpc_layout->addRow("Host:", host_edit);
     rpc_layout->addRow("Port:", port_spin);

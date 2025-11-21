@@ -39,7 +39,7 @@ struct DaemonConfig {
 
     // RPC
     bool server = false;
-    uint16_t rpc_port = 9332;
+    uint16_t rpc_port = 9334;
     std::string rpc_bind = "127.0.0.1";
 
     // Mining
@@ -78,7 +78,7 @@ void print_help(const char* prog_name) {
     std::cout << std::endl;
     std::cout << "RPC Server Options:" << std::endl;
     std::cout << "  -server                 Accept JSON-RPC commands" << std::endl;
-    std::cout << "  -rpcport=<port>         Listen for JSON-RPC on <port> (default: 9332)" << std::endl;
+    std::cout << "  -rpcport=<port>         Listen for JSON-RPC on <port> (default: 9334)" << std::endl;
     std::cout << "  -rpcbind=<addr>         Bind to given address (default: 127.0.0.1)" << std::endl;
     std::cout << std::endl;
     std::cout << "Mining Options:" << std::endl;

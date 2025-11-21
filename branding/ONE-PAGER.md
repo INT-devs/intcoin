@@ -75,8 +75,8 @@ Quantum computers pose an existential threat to traditional cryptocurrencies:
 | **Signatures** | CRYSTALS-Dilithium5 (ML-DSA-87, 4595 bytes) |
 | **Encryption** | CRYSTALS-Kyber1024 (ML-KEM-1024, 3168 bytes) |
 | **Hash Function** | SHA3-256 (FIPS 202) |
-| **P2P Port** | 9333 (mainnet), 18333 (testnet) |
-| **RPC Port** | 9332 (mainnet), 18332 (testnet) |
+| **P2P Port** | 9333 (mainnet), 19333 (testnet) |
+| **RPC Port** | 9334 (mainnet), 19334 (testnet) |
 | **Lightning** | Quantum-resistant payment channels |
 
 ---

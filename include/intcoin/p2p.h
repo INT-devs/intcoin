@@ -220,7 +220,7 @@ namespace protocol {
     static constexpr uint64_t TIMEOUT_SECONDS = 20;
     static constexpr uint64_t PING_INTERVAL_SECONDS = 120;
     static constexpr uint16_t DEFAULT_PORT = 9333;  // INTcoin P2P port (unique, not Bitcoin's 8333)
-    static constexpr uint16_t DEFAULT_PORT_TESTNET = 18333;
+    static constexpr uint16_t DEFAULT_PORT_TESTNET = 19333;
 }
 
 } // namespace p2p

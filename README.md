@@ -62,8 +62,8 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 | Block Time | ~5 minutes (300 seconds) |
 | Consensus | Proof of Work (PoW) |
 | Mining Algorithm | SHA-256 (quantum-era ASIC-resistant) |
-| P2P Port | 9333 (mainnet), 18333 (testnet) |
-| RPC Port | 9332 (mainnet), 18332 (testnet) |
+| P2P Port | 9333 (mainnet), 19333 (testnet) |
+| RPC Port | 9334 (mainnet), 19334 (testnet) |
 
 </td>
 <td>

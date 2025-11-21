@@ -133,7 +133,7 @@ public:
 
         // RPC settings
         bool server = false;
-        uint16_t rpc_port = 9332;
+        uint16_t rpc_port = 9334;
         std::string rpc_user;
         std::string rpc_password;
         std::vector<std::string> rpc_allow_ip;

@@ -74,8 +74,8 @@ testnet-seed.intcoin.org
 ```cpp
 // Testnet seed nodes
 static const char* pszTestnetSeeds[] = {
-    "testnet-seed1.intcoin.org:18333",
-    "testnet-seed2.intcoin.org:18333",
+    "testnet-seed1.intcoin.org:19333",
+    "testnet-seed2.intcoin.org:19333",
 };
 ```
 
@@ -103,7 +103,7 @@ static const char* pszTestnetSeeds[] = {
 - **OS**: Ubuntu 24.04 LTS, Debian 12, or FreeBSD 14+
 - **intcoind**: Latest stable version (v1.1.0+)
 - **Dependencies**: liboqs 0.14+, Boost 1.85+, RocksDB 9.7+
-- **Firewall**: UFW or iptables with port 9333/18333 open
+- **Firewall**: UFW or iptables with port 9333/19333 open
 - **Monitoring**: Prometheus + Grafana (optional)
 
 ## Deployment Process
@@ -320,7 +320,7 @@ class INTcoinSeedResolver(BaseResolver):
 # Run DNS server
 if __name__ == '__main__':
     resolver = INTcoinSeedResolver(
-        'http://localhost:9332',
+        'http://localhost:9334',
         'intcoin_rpc',
         'strong_password'
     )

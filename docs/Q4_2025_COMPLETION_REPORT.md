@@ -361,9 +361,9 @@ seed-sa.intcoin.org:9333        # São Paulo
 
 Testnet: [config/seeds_testnet.txt](../config/seeds_testnet.txt)
 ```
-testnet-seed1.intcoin.org:18333
-testnet-seed2.intcoin.org:18333
-testnet-dev.intcoin.org:18333
+testnet-seed1.intcoin.org:19333
+testnet-seed2.intcoin.org:19333
+testnet-dev.intcoin.org:19333
 ```
 
 **3. Tor Hidden Services** (Planned)

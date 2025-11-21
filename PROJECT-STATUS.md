@@ -165,8 +165,8 @@ Created comprehensive branding for Qt wallet:
 | Proof of Work | SHA-256 | FIPS 180-4 |
 
 ### Network Protocol
-- **P2P Port:** 9333 (mainnet), 18333 (testnet)
-- **RPC Port:** 9332 (mainnet), 18332 (testnet)
+- **P2P Port:** 9333 (mainnet), 19333 (testnet)
+- **RPC Port:** 9334 (mainnet), 19334 (testnet)
 - **Protocol Version:** 1.1.0
 - **P2P Network:** Peer-to-peer with DNS seed nodes
 - **RPC Interface:** JSON-RPC 2.0
