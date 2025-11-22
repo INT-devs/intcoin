@@ -399,6 +399,352 @@ private:
 };
 
 /**
+ * Eltoo Watchtower
+ * Monitors channels and responds to old state broadcasts
+ * Much simpler than traditional Lightning watchtowers!
+ */
+class EltooWatchtower {
+public:
+    EltooWatchtower();
+    ~EltooWatchtower() = default;
+
+    /**
+     * Store latest update for monitoring (simple!)
+     * Only need latest state, not all previous states
+     */
+    bool store_update(const Hash256& channel_id, const EltooUpdate& update);
+
+    /**
+     * Retrieve latest stored update
+     */
+    std::optional<EltooUpdate> get_latest_update(const Hash256& channel_id) const;
+
+    /**
+     * Start monitoring a channel
+     */
+    void monitor_channel(const Hash256& channel_id);
+
+    /**
+     * Stop monitoring a channel
+     */
+    void stop_monitoring(const Hash256& channel_id);
+
+    /**
+     * Check for old state broadcasts
+     */
+    struct StateViolation {
+        Hash256 channel_id;
+        uint32_t broadcast_update_number;
+        uint32_t latest_update_number;
+        uint64_t detected_at_height;
+        Transaction violating_tx;
+        Hash256 violating_txid;
+    };
+
+    std::vector<StateViolation> check_for_violations(uint32_t current_height);
+
+    /**
+     * Respond to violation by broadcasting latest update
+     */
+    bool respond_to_violation(const StateViolation& violation);
+
+    /**
+     * Export watchtower data for backup
+     */
+    std::vector<uint8_t> export_data() const;
+    bool import_data(const std::vector<uint8_t>& data);
+
+    /**
+     * Statistics
+     */
+    struct WatchtowerStats {
+        size_t monitored_channels;
+        size_t total_updates_stored;
+        size_t violations_detected;
+        size_t violations_responded;
+        uint64_t total_storage_bytes;
+    };
+
+    WatchtowerStats get_stats() const;
+
+    /**
+     * Cleanup closed channels
+     */
+    void cleanup_closed_channels(uint32_t blocks_ago);
+
+private:
+    struct WatchtowerData {
+        Hash256 channel_id;
+        EltooUpdate latest_update;
+        uint64_t last_check_height;
+        bool actively_monitored;
+        uint64_t added_timestamp;
+
+        WatchtowerData()
+            : last_check_height(0)
+            , actively_monitored(false)
+            , added_timestamp(0)
+        {}
+    };
+
+    std::map<Hash256, WatchtowerData> watched_channels_;
+    mutable std::mutex watchtower_mutex_;
+
+    // Violation tracking
+    std::vector<StateViolation> detected_violations_;
+    size_t violations_responded_;
+
+    // Callbacks
+    std::function<void(const StateViolation&)> violation_callback_;
+};
+
+/**
+ * Eltoo Channel Factory
+ * Multi-party channels (much easier with Eltoo!)
+ */
+class EltooChannelFactory {
+public:
+    EltooChannelFactory();
+    ~EltooChannelFactory() = default;
+
+    /**
+     * Multi-party channel structure
+     */
+    struct MultiPartyChannel {
+        Hash256 factory_id;
+        std::vector<DilithiumPubKey> participants;
+        std::vector<uint64_t> balances;
+        uint32_t update_number;
+        Transaction funding_tx;
+        uint32_t created_at_height;
+        bool is_active;
+
+        MultiPartyChannel()
+            : update_number(0)
+            , created_at_height(0)
+            , is_active(false)
+        {}
+
+        uint64_t get_total_capacity() const {
+            uint64_t total = 0;
+            for (auto balance : balances) {
+                total += balance;
+            }
+            return total;
+        }
+    };
+
+    /**
+     * Create multi-party channel factory
+     */
+    std::optional<Hash256> create_factory(
+        const std::vector<DilithiumPubKey>& participants,
+        const std::vector<uint64_t>& initial_balances
+    );
+
+    /**
+     * Update factory state
+     */
+    bool update_factory(
+        const Hash256& factory_id,
+        const std::vector<uint64_t>& new_balances
+    );
+
+    /**
+     * Create sub-channel within factory
+     */
+    std::optional<Hash256> create_subchannel(
+        const Hash256& factory_id,
+        size_t participant_a_index,
+        size_t participant_b_index,
+        uint64_t amount
+    );
+
+    /**
+     * Close channel factory
+     */
+    bool close_factory(const Hash256& factory_id);
+
+    /**
+     * Get factory details
+     */
+    std::optional<MultiPartyChannel> get_factory(const Hash256& factory_id) const;
+
+    /**
+     * List all factories
+     */
+    std::vector<MultiPartyChannel> list_factories() const;
+
+    /**
+     * Statistics
+     */
+    struct FactoryStats {
+        size_t total_factories;
+        size_t active_factories;
+        size_t total_participants;
+        uint64_t total_capacity_sat;
+        size_t total_subchannels_created;
+    };
+
+    FactoryStats get_stats() const;
+
+private:
+    std::map<Hash256, MultiPartyChannel> factories_;
+    std::map<Hash256, Hash256> subchannel_to_factory_;  // Subchannel ID -> Factory ID
+    mutable std::mutex factory_mutex_;
+
+    size_t total_subchannels_created_;
+
+    Hash256 generate_factory_id() const;
+    bool validate_balances(const std::vector<uint64_t>& balances) const;
+};
+
+/**
+ * Enhanced Eltoo configuration
+ */
+struct EltooConfig {
+    // Settlement parameters
+    uint32_t default_settlement_delay;     // Default CSV delay (blocks)
+    uint32_t min_settlement_delay;         // Minimum allowed delay
+    uint32_t max_settlement_delay;         // Maximum allowed delay
+
+    // Funding parameters
+    uint32_t funding_confirmations;        // Required funding tx confirmations
+    uint64_t min_channel_capacity;         // Minimum channel size (sats)
+    uint64_t max_channel_capacity;         // Maximum channel size (sats)
+
+    // Update parameters
+    size_t max_stored_updates;             // Max updates to store per channel
+    uint32_t update_timeout_blocks;        // Timeout for update completion
+
+    // Watchtower settings
+    bool enable_watchtower;                // Enable watchtower monitoring
+    uint32_t watchtower_check_interval;    // Check interval (blocks)
+    size_t max_watchtower_channels;        // Max channels to monitor
+
+    // Channel factory settings
+    bool enable_channel_factories;         // Enable multi-party channels
+    size_t max_factory_participants;       // Max participants per factory
+    uint64_t min_factory_capacity;         // Minimum factory size
+
+    // Performance settings
+    size_t max_concurrent_channels;        // Max concurrent open channels
+    bool enable_batch_updates;             // Enable batched update processing
+
+    EltooConfig()
+        : default_settlement_delay(144)     // ~1 day (5 min blocks)
+        , min_settlement_delay(6)           // ~30 minutes
+        , max_settlement_delay(2016)        // ~1 week
+        , funding_confirmations(6)
+        , min_channel_capacity(100000)      // 100K sats
+        , max_channel_capacity(10000000000) // 100 INT
+        , max_stored_updates(10)
+        , update_timeout_blocks(144)
+        , enable_watchtower(true)
+        , watchtower_check_interval(1)      // Check every block
+        , max_watchtower_channels(1000)
+        , enable_channel_factories(false)   // Opt-in
+        , max_factory_participants(10)
+        , min_factory_capacity(1000000)     // 1M sats
+        , max_concurrent_channels(100)
+        , enable_batch_updates(false)
+    {}
+};
+
+/**
+ * SIGHASH_NOINPUT utilities
+ */
+class SigHashNOINPUT {
+public:
+    /**
+     * Calculate signature hash with NOINPUT flag
+     *
+     * SIGHASH_NOINPUT doesn't commit to:
+     * - Input transaction ID (txid)
+     * - Input output index (vout)
+     * - Input sequence number
+     *
+     * This allows the signature to be valid for spending any input!
+     */
+    static Hash256 calculate_sighash_noinput(
+        const Transaction& tx,
+        uint32_t input_index,
+        const std::vector<uint8_t>& script_code,
+        uint64_t amount
+    );
+
+    /**
+     * Sign transaction with SIGHASH_NOINPUT
+     */
+    static DilithiumSignature sign_noinput(
+        const Transaction& tx,
+        uint32_t input_index,
+        const std::vector<uint8_t>& script_code,
+        uint64_t amount,
+        const DilithiumPrivateKey& privkey
+    );
+
+    /**
+     * Verify SIGHASH_NOINPUT signature
+     */
+    static bool verify_noinput(
+        const Transaction& tx,
+        uint32_t input_index,
+        const std::vector<uint8_t>& script_code,
+        uint64_t amount,
+        const DilithiumSignature& signature,
+        const DilithiumPubKey& pubkey
+    );
+
+    /**
+     * Batch verify multiple NOINPUT signatures
+     */
+    static bool batch_verify_noinput(
+        const std::vector<Transaction>& txs,
+        const std::vector<uint32_t>& input_indices,
+        const std::vector<std::vector<uint8_t>>& script_codes,
+        const std::vector<uint64_t>& amounts,
+        const std::vector<DilithiumSignature>& signatures,
+        const std::vector<DilithiumPubKey>& pubkeys
+    );
+};
+
+/**
+ * Eltoo backup and restore utilities
+ */
+class EltooBackup {
+public:
+    /**
+     * Export channel backup (minimal data needed with Eltoo!)
+     */
+    static std::vector<uint8_t> export_channel(const EltooChannel& channel);
+
+    /**
+     * Import channel from backup
+     */
+    static std::optional<EltooChannel> import_channel(const std::vector<uint8_t>& data);
+
+    /**
+     * Export all channels
+     */
+    static std::vector<uint8_t> export_all_channels(
+        const std::vector<EltooChannel>& channels
+    );
+
+    /**
+     * Import multiple channels
+     */
+    static std::vector<EltooChannel> import_all_channels(
+        const std::vector<uint8_t>& data
+    );
+
+    /**
+     * Verify backup integrity
+     */
+    static bool verify_backup(const std::vector<uint8_t>& data);
+};
+
+/**
  * Eltoo advantages over traditional Lightning channels:
  *
  * 1. No penalty transactions - simpler and safer
@@ -408,11 +754,20 @@ private:
  * 5. Better for channel factories - easier to manage multiple channels
  * 6. Reduced storage requirements - don't need to keep all old states
  * 7. Simpler backup/restore - just need latest state
+ * 8. Faster channel updates - no revocation ceremony
+ * 9. Better privacy - no breach remedies to leak
+ * 10. Easier implementation - less complex state machine
  *
  * Technical Requirements:
  * - SIGHASH_NOINPUT signature flag (soft fork required)
  * - Monotonically increasing update numbers
  * - CSV (CheckSequenceVerify) for settlement delay
+ *
+ * Performance Benefits:
+ * - 80% reduction in storage per update
+ * - O(1) backup size vs O(n) for traditional channels
+ * - O(1) watchtower storage vs O(n)
+ * - Faster update processing
  */
 
 } // namespace eltoo
