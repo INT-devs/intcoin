@@ -39,16 +39,18 @@ INTcoin is a next-generation cryptocurrency designed from the ground up to be re
 - ✅ **Qt GUI Wallet**: Professional cross-platform graphical interface
 - ✅ **JSON-RPC API**: Complete remote control capabilities
 - ✅ **Lightning Network**: Fast, low-cost Layer 2 with Watchtowers, AMP, Submarine Swaps, Splicing
-- ✅ **Smart Contracts**: Secure VM with gas metering and SafeMath
+- ✅ **Smart Contracts**: Secure VM with gas metering, SafeMath, and quantum-resistant opcodes
 - ✅ **Cross-Chain Bridges**: Atomic swaps with Bitcoin, Ethereum, Litecoin, and Cardano
 - ✅ **Cross-Chain DeFi**: Liquidity pools, yield farming, and cross-chain swap routing
 - ✅ **Bridge Monitoring**: Real-time health checks, alerts, and performance analytics
 - ✅ **Oracle Network**: Decentralized price feeds with multi-source consensus
+- ✅ **Exchange Integration**: Enterprise-grade API with hot/cold wallet separation and multi-sig
+- ✅ **Performance Optimization**: LRU caching, batch processing, and signature verification batching
 - ✅ **TOR Support**: Anonymous networking with hidden service capability
 - ✅ **Merkle Tree Structure**: SHA3-256 based efficient transaction verification
 - ✅ **Pure PoW**: No staking, governance, or centralization mechanisms
 - ✅ **Mining Pool Support**: Stratum protocol V1 for pooled mining
-- ✅ **Full P2P Network**: IBD, peer discovery, scoring, and SPV support
+- ✅ **Full P2P Network**: IBD, peer discovery, scoring, SPV support, DDoS protection, and bandwidth management
 
 ### 📊 Specifications
 
@@ -392,6 +394,11 @@ Secure virtual machine with comprehensive safety features:
 - Memory and stack safety
 - ERC20-compatible token support
 - Security analyzer for vulnerability detection
+- **Quantum-resistant opcodes**: Dilithium signing/verification, Kyber key encapsulation
+- **Zero-knowledge proofs**: ZK_VERIFY, ZK_RANGE_PROOF, ZK_MEMBERSHIP_PROOF
+- **Time locks**: CHECKLOCKTIMEVERIFY (CLTV), CHECKSEQUENCEVERIFY (CSV)
+- **State channels**: Eltoo integration for simplified channel updates
+- **Atomic swaps**: Built-in cross-chain swap primitives
 
 See [src/contracts/README.md](src/contracts/README.md) for contract development guide.
 
@@ -459,6 +466,49 @@ Real-time monitoring and alerting for bridge operations:
 - Proof verification failures, stuck transactions
 
 See [docs/BRIDGE-MONITORING.md](docs/BRIDGE-MONITORING.md) for monitoring setup.
+
+### Exchange Integration
+
+Enterprise-grade exchange API for institutional and commercial integration:
+
+**Core Features:**
+- ✅ **Multi-wallet architecture**: Hot, warm, and cold wallet segregation
+- ✅ **Multi-signature withdrawals**: M-of-N signature schemes with quantum-resistant keys
+- ✅ **Automated sweeping**: Hot wallet → cold wallet security transfers
+- ✅ **Rate limiting**: Configurable limits for deposits and withdrawals
+- ✅ **Comprehensive API**: Deposit generation, withdrawal processing, balance queries
+- ✅ **Audit logging**: Complete transaction history and compliance reporting
+- ✅ **High-volume support**: Batch operations for institutional scale
+
+**Security Features:**
+- Quantum-resistant multi-signature (Dilithium5)
+- Hot wallet balance limits (configurable thresholds)
+- Withdrawal approval workflows
+- Time-locked withdrawals (optional security delay)
+- Automated cold storage management
+
+See [include/intcoin/exchange_api.h](include/intcoin/exchange_api.h) for API documentation.
+
+### Performance Optimization
+
+High-performance infrastructure for production deployment:
+
+**Caching Systems:**
+- ✅ **LRU caches**: Block cache (1000 blocks), transaction cache (10,000 txs)
+- ✅ **Memory pooling**: Reduces allocation overhead for high-frequency operations
+- ✅ **Signature verification batching**: Verify up to 1000 signatures in parallel
+
+**Batch Processing:**
+- ✅ **Transaction validation**: Parallel UTXO lookups and signature verification
+- ✅ **Block processing**: Multi-threaded block validation
+- ✅ **Database operations**: Batch writes to reduce I/O
+
+**Profiling Tools:**
+- ✅ **Performance profiler**: Function-level timing analysis
+- ✅ **Statistics tracking**: Operation counts and timing metrics
+- ✅ **Automatic reporting**: JSON export for analysis
+
+See [include/intcoin/performance.h](include/intcoin/performance.h) for implementation details.
 
 ### Oracle Network
 
