@@ -217,8 +217,19 @@ public:
     std::vector<CrossChainProof> get_pending_proofs() const;
 
 private:
+    struct SwapMonitorInfo {
+        Hash256 swap_id;
+        ChainType chain;
+        Hash256 expected_txid;
+        uint64_t start_time;
+        bool verified;
+
+        SwapMonitorInfo() : start_time(0), verified(false) {}
+    };
+
     std::unordered_map<ChainType, std::shared_ptr<SPVChainVerifier>> verifiers_;
     std::unordered_map<Hash256, CrossChainProof> pending_proofs_;
+    std::unordered_map<Hash256, SwapMonitorInfo> monitored_swaps_;
     mutable std::mutex relay_mutex_;
 
     // Callbacks

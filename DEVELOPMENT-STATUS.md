@@ -781,6 +781,24 @@ INTcoin is a quantum-resistant cryptocurrency built with C++23, Python 3, and CM
 - Wallet integration for cross-chain transactions
 - Network layer for cross-chain communication
 
+**v1.3.0 Enhancements** (November 22, 2025):
+- ✅ **SPV Proof Serialization**: Implemented complete confirmation header serialization/deserialization
+  - Added header serialization in CrossChainProof::serialize() (~20 lines)
+  - Added header deserialization in CrossChainProof::deserialize() (~45 lines)
+  - Ensures proper persistence of cross-chain proofs with confirmations
+- ✅ **HTLC Verification**: Implemented comprehensive swap lock verification
+  - Added HTLC address verification in BridgeRelay::verify_swap_locked() (~45 lines)
+  - Verifies transaction amount matches swap parameters
+  - Validates hash lock consistency
+  - Confirms funds locked to correct receiver address
+- ✅ **Swap Monitoring System**: Implemented active swap tracking infrastructure
+  - Added SwapMonitorInfo struct for tracking swap state
+  - Implemented BridgeRelay::monitor_swap() with timestamp tracking (~17 lines)
+  - Stores swap monitoring data for periodic verification
+  - Foundation for automated swap completion detection
+
+**Total Code Added in v1.3.0**: ~127 lines of production-ready bridge verification code
+
 ---
 
 ## External Library Integration Guide
