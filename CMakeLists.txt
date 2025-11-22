@@ -7,6 +7,7 @@
 cmake_minimum_required(VERSION 4.0)
 
 # Project information
+# Note: CUDA language is enabled conditionally in miner/CMakeLists.txt if needed
 project(INTcoin
     VERSION 1.2.0
     DESCRIPTION "Quantum-resistant cryptocurrency with SHA256 PoW"
@@ -51,6 +52,8 @@ option(ENABLE_CROSS_CHAIN "Enable cross-chain bridge" OFF)
 option(ENABLE_WALLET "Enable wallet functionality" ON)
 option(ENABLE_I2P "Enable I2P network support" ON)
 option(ENABLE_ML "Enable Machine Learning features" ON)
+option(ENABLE_GPU_CUDA "Enable CUDA GPU mining (NVIDIA)" OFF)
+option(ENABLE_GPU_OPENCL "Enable OpenCL GPU mining (AMD/Intel)" OFF)
 
 # Platform detection
 if(APPLE)
@@ -438,4 +441,8 @@ message(STATUS "  Cross-chain:     ${ENABLE_CROSS_CHAIN}")
 message(STATUS "  Wallet:          ${ENABLE_WALLET}")
 message(STATUS "  I2P Network:     ${ENABLE_I2P}")
 message(STATUS "  Machine Learning: ${ENABLE_ML}")
+message(STATUS "")
+message(STATUS "GPU Mining:")
+message(STATUS "  CUDA (NVIDIA):   ${ENABLE_GPU_CUDA}")
+message(STATUS "  OpenCL (AMD):    ${ENABLE_GPU_OPENCL}")
 message(STATUS "")

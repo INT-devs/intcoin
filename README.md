@@ -136,9 +136,11 @@ See [RELEASE_NOTES_v1.3.0.md](docs/RELEASE_NOTES_v1.3.0.md) for complete details
 
 - ✅ **Quantum-Resistant Cryptography**: CRYSTALS-Dilithium5 and Kyber1024 (NIST Level 5 post-quantum algorithms)
 - ✅ **ASIC-Resistant Mining**: SHA-256 PoW (becomes ASIC-resistant in quantum era)
+- ✅ **GPU Mining Support**: CUDA (NVIDIA) and OpenCL (AMD/Intel) for high-performance mining
 - ✅ **Privacy-Focused**: Pseudonymous transactions by default
 - ✅ **HD Wallet**: BIP39 mnemonic phrases with hierarchical deterministic key generation
 - ✅ **Multi-threaded CPU Miner**: Optimized SHA-256 mining with auto-thread detection
+- ✅ **Hybrid Mining**: CPU + GPU simultaneous mining support
 - ✅ **P2P Network**: Distributed peer-to-peer networking
 - ✅ **Transaction Mempool**: Fee-based transaction prioritization
 - ✅ **Qt GUI Wallet**: Professional cross-platform graphical interface
@@ -539,7 +541,9 @@ cmake .. -DBUILD_TESTS=ON
 ./intcoin-cli getbalance
 ```
 
-### CPU Mining
+### Mining
+
+**CPU Mining:**
 ```bash
 # Mine from wallet
 ./intcoin-qt  # Enable mining in GUI
@@ -547,6 +551,26 @@ cmake .. -DBUILD_TESTS=ON
 # Or use standalone miner
 ./intcoin-miner -t 4  # Use 4 threads
 ```
+
+**GPU Mining (NVIDIA/AMD):**
+```bash
+# List available GPUs
+./intcoin-miner --list-gpus
+
+# Auto-detect GPU platform
+./intcoin-miner --address INT1qw508... --gpu
+
+# CUDA (NVIDIA)
+./intcoin-miner --address INT1qw508... --gpu --gpu-platform cuda
+
+# OpenCL (AMD/Intel)
+./intcoin-miner --address INT1qw508... --gpu --gpu-platform opencl
+
+# Hybrid CPU + GPU
+./intcoin-miner --address INT1qw508... --threads 4 --gpu
+```
+
+See [docs/GPU-MINING.md](docs/GPU-MINING.md) for complete GPU mining guide.
 
 ## Advanced Features
 
@@ -733,6 +757,8 @@ INTcoin delivers production-grade performance with optimized code and efficient 
 
 ### Mining Performance
 
+**CPU Mining:**
+
 | CPU | Cores | Hash Rate | Daily Blocks (est.) |
 |-----|-------|-----------|---------------------|
 | Intel i3-12100 | 4 | ~100 KH/s | 0.1 |
@@ -742,7 +768,23 @@ INTcoin delivers production-grade performance with optimized code and efficient 
 | AMD Ryzen 7 7700X | 8 | ~550 KH/s | 0.6 |
 | AMD Ryzen 9 7950X | 16 | ~1.2 MH/s | 1.4 |
 
-*Estimates based on current network difficulty*
+**GPU Mining:**
+
+| GPU | Hash Rate | Power | Efficiency | Daily Blocks (est.) |
+|-----|-----------|-------|------------|---------------------|
+| NVIDIA RTX 3060 | ~45 MH/s | 170W | 265 KH/W | 52 |
+| NVIDIA RTX 3070 | ~60 MH/s | 220W | 273 KH/W | 69 |
+| NVIDIA RTX 3080 | ~95 MH/s | 320W | 297 KH/W | 110 |
+| NVIDIA RTX 3090 | ~120 MH/s | 350W | 343 KH/W | 138 |
+| NVIDIA RTX 4070 | ~75 MH/s | 200W | 375 KH/W | 87 |
+| NVIDIA RTX 4080 | ~130 MH/s | 320W | 406 KH/W | 150 |
+| NVIDIA RTX 4090 | ~180 MH/s | 450W | 400 KH/W | 208 |
+| AMD RX 6800 | ~60 MH/s | 250W | 240 KH/W | 69 |
+| AMD RX 6800 XT | ~70 MH/s | 300W | 233 KH/W | 81 |
+| AMD RX 7900 XT | ~95 MH/s | 315W | 302 KH/W | 110 |
+| AMD RX 7900 XTX | ~110 MH/s | 355W | 310 KH/W | 127 |
+
+*Estimates based on current network difficulty. See [docs/GPU-MINING.md](docs/GPU-MINING.md) for tuning guide.*
 
 ### Network Performance
 
