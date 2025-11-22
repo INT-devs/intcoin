@@ -35,6 +35,7 @@ enum class ChainType {
     ETHEREUM,
     LITECOIN,
     MONERO,
+    CARDANO,
     INTCOIN
 };
 

@@ -174,6 +174,9 @@ uint32_t calculate_safe_timelock(ChainType chain, uint32_t confirmations) {
         case ChainType::MONERO:
             block_time = 120;  // 2 minutes
             break;
+        case ChainType::CARDANO:
+            block_time = 20;   // 20 seconds
+            break;
         case ChainType::INTCOIN:
             block_time = 60;   // 1 minute
             break;
@@ -201,6 +204,8 @@ uint32_t get_recommended_confirmations(ChainType chain) {
             return 12;  // ~30 minutes
         case ChainType::MONERO:
             return 10;  // ~20 minutes
+        case ChainType::CARDANO:
+            return 15;  // ~5 minutes
         case ChainType::INTCOIN:
             return 6;   // ~6 minutes
         default:

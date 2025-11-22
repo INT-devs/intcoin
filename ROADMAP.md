@@ -467,9 +467,10 @@ INTcoin aims to become the world's leading quantum-resistant cryptocurrency, pro
 - [x] Additional bridge frameworks ✓ PARTIALLY COMPLETE
   - [x] Litecoin - **ATOMIC SWAP SUPPORT** ✓
   - [x] Monero - **ATOMIC SWAP SUPPORT** ✓
-  - [ ] Other major chains - FRAMEWORK READY
+  - [x] Other major chains - **IMPLEMENTATIONS ADDED** ✓
+    - [x] Litecoin bridge - Full RPC integration, SPV verification (393 lines)
+    - [x] Cardano bridge - Plutus script support, CBOR encoding (483 lines)
     - Atomic swap infrastructure supports any chain
-    - Chain-specific implementations needed
 - [x] Oracle system - **FULLY IMPLEMENTED** ✓
   - [x] Price feeds - Multi-pair support with history
   - [x] External data - General data aggregation system

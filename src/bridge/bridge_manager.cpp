@@ -229,6 +229,8 @@ std::string BridgeUtils::chain_type_to_string(ChainType chain) {
             return "Litecoin";
         case ChainType::MONERO:
             return "Monero";
+        case ChainType::CARDANO:
+            return "Cardano";
         case ChainType::INTCOIN:
             return "INTcoin";
         default:
@@ -248,6 +250,8 @@ std::optional<ChainType> BridgeUtils::string_to_chain_type(const std::string& st
         return ChainType::LITECOIN;
     } else if (lower_str == "monero" || lower_str == "xmr") {
         return ChainType::MONERO;
+    } else if (lower_str == "cardano" || lower_str == "ada") {
+        return ChainType::CARDANO;
     } else if (lower_str == "intcoin" || lower_str == "int") {
         return ChainType::INTCOIN;
     }
@@ -351,6 +355,10 @@ uint64_t BridgeUtils::estimate_swap_fee(ChainType chain, uint64_t amount) {
             // Monero: typically 0.0001 XMR
             return 100000000;  // 0.0001 XMR in atomic units
 
+        case ChainType::CARDANO:
+            // Cardano: typically 0.17 ADA
+            return 170000;  // 0.17 ADA in lovelace
+
         default:
             // Default: 0.1% of amount
             return amount / 1000;
@@ -372,6 +380,9 @@ uint32_t BridgeUtils::get_recommended_confirmations(ChainType chain) {
 
         case ChainType::MONERO:
             return 10;  // Monero: 10 confirmations (~20 minutes)
+
+        case ChainType::CARDANO:
+            return 15;  // Cardano: 15 confirmations (~5 minutes)
 
         case ChainType::INTCOIN:
             return 6;  // INTcoin: 6 confirmations
@@ -403,6 +414,10 @@ uint32_t BridgeUtils::calculate_safe_timelock(ChainType chain) {
         case ChainType::MONERO:
             // Monero: ~2 min per block
             return confirmations * 120 + 1200;  // +20 min buffer
+
+        case ChainType::CARDANO:
+            // Cardano: ~20 sec per block
+            return confirmations * 20 + 300;  // +5 min buffer
 
         case ChainType::INTCOIN:
             // INTcoin: ~1 min per block
