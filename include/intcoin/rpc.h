@@ -12,6 +12,7 @@
 #include "mempool.h"
 #include "miner.h"
 #include "p2p.h"
+#include "bridge/bridge.h"
 #include <string>
 #include <functional>
 #include <map>
@@ -67,7 +68,8 @@ using CommandHandler = std::function<Response(const std::vector<std::string>&)>;
 class Server {
 public:
     Server(uint16_t port, Blockchain& blockchain, Mempool& mempool,
-           HDWallet* wallet = nullptr, Miner* miner = nullptr, p2p::Network* network = nullptr);
+           HDWallet* wallet = nullptr, Miner* miner = nullptr, p2p::Network* network = nullptr,
+           bridge::BridgeManager* bridge_manager = nullptr);
     ~Server();
 
     // Server control
@@ -90,6 +92,7 @@ private:
     HDWallet* wallet_;
     Miner* miner_;
     p2p::Network* network_;
+    bridge::BridgeManager* bridge_manager_;
 
     // Command handlers
     std::map<std::string, CommandHandler> commands_;
@@ -99,6 +102,7 @@ private:
     void register_wallet_commands();
     void register_mining_commands();
     void register_network_commands();
+    void register_bridge_commands();
 
     // Blockchain RPC methods
     Response getblockcount(const std::vector<std::string>& params);
@@ -126,6 +130,17 @@ private:
     // Mempool RPC methods
     Response getmempoolinfo(const std::vector<std::string>& params);
     Response getrawmempool(const std::vector<std::string>& params);
+
+    // Bridge RPC methods
+    Response getbridgeinfo(const std::vector<std::string>& params);
+    Response listbridges(const std::vector<std::string>& params);
+    Response startbridge(const std::vector<std::string>& params);
+    Response stopbridge(const std::vector<std::string>& params);
+    Response initiateswap(const std::vector<std::string>& params);
+    Response completeswap(const std::vector<std::string>& params);
+    Response refundswap(const std::vector<std::string>& params);
+    Response getswapinfo(const std::vector<std::string>& params);
+    Response getbridgestats(const std::vector<std::string>& params);
 
     // Utility methods
     Response help(const std::vector<std::string>& params);

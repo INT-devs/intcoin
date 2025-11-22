@@ -165,18 +165,21 @@ Response Response::from_json(const std::string& json) {
 // Server implementation
 
 Server::Server(uint16_t /* port */, Blockchain& blockchain, Mempool& mempool,
-               HDWallet* wallet, Miner* miner, p2p::Network* network)
+               HDWallet* wallet, Miner* miner, p2p::Network* network,
+               bridge::BridgeManager* bridge_manager)
     : running_(false)
     , blockchain_(blockchain)
     , mempool_(mempool)
     , wallet_(wallet)
     , miner_(miner)
     , network_(network)
+    , bridge_manager_(bridge_manager)
 {
     register_blockchain_commands();
     register_wallet_commands();
     register_mining_commands();
     register_network_commands();
+    register_bridge_commands();
 
     // Register utility commands
     register_command("help", [this](const auto& p) { return help(p); });
@@ -249,6 +252,18 @@ void Server::register_network_commands() {
     register_command("getpeerinfo", [this](const auto& p) { return getpeerinfo(p); });
     register_command("getnetworkinfo", [this](const auto& p) { return getnetworkinfo(p); });
     register_command("addnode", [this](const auto& p) { return addnode(p); });
+}
+
+void Server::register_bridge_commands() {
+    register_command("getbridgeinfo", [this](const auto& p) { return getbridgeinfo(p); });
+    register_command("listbridges", [this](const auto& p) { return listbridges(p); });
+    register_command("startbridge", [this](const auto& p) { return startbridge(p); });
+    register_command("stopbridge", [this](const auto& p) { return stopbridge(p); });
+    register_command("initiateswap", [this](const auto& p) { return initiateswap(p); });
+    register_command("completeswap", [this](const auto& p) { return completeswap(p); });
+    register_command("refundswap", [this](const auto& p) { return refundswap(p); });
+    register_command("getswapinfo", [this](const auto& p) { return getswapinfo(p); });
+    register_command("getbridgestats", [this](const auto& p) { return getbridgestats(p); });
 }
 
 // Blockchain RPC methods
@@ -773,6 +788,267 @@ std::string Client::send_request(const std::string& json_request) {
     }
 
     return "{}";
+}
+
+// Bridge RPC methods
+
+Response Server::getbridgeinfo(const std::vector<std::string>& params) {
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    if (params.empty()) {
+        return Response(true, "Missing bridge chain parameter (bitcoin, ethereum, etc.)", "");
+    }
+
+    auto chain_type = bridge::BridgeUtils::string_to_chain_type(params[0]);
+    if (!chain_type.has_value()) {
+        return Response(true, "Unknown chain type: " + params[0], "");
+    }
+
+    auto bridge = bridge_manager_->get_bridge(chain_type.value());
+    if (!bridge) {
+        return Response(true, "Bridge not found for chain: " + params[0], "");
+    }
+
+    std::stringstream ss;
+    ss << "{";
+    ss << "\"chain\":\"" << bridge->get_chain_name() << "\",";
+    ss << "\"status\":";
+    switch (bridge->get_status()) {
+        case bridge::BridgeStatus::OFFLINE: ss << "\"offline\""; break;
+        case bridge::BridgeStatus::SYNCING: ss << "\"syncing\""; break;
+        case bridge::BridgeStatus::ONLINE: ss << "\"online\""; break;
+        case bridge::BridgeStatus::ERROR: ss << "\"error\""; break;
+    }
+    ss << ",";
+    ss << "\"running\":" << (bridge->is_running() ? "true" : "false") << ",";
+    ss << "\"chain_height\":" << bridge->get_chain_height() << ",";
+    ss << "\"sync_height\":" << bridge->get_sync_height();
+    ss << "}";
+
+    return Response(ss.str(), "");
+}
+
+Response Server::listbridges(const std::vector<std::string>& params) {
+    (void)params;
+
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    auto chains = bridge_manager_->get_available_chains();
+
+    std::stringstream ss;
+    ss << "[";
+    for (size_t i = 0; i < chains.size(); ++i) {
+        ss << "{";
+        ss << "\"chain\":\"" << bridge::BridgeUtils::chain_type_to_string(chains[i]) << "\"";
+
+        auto bridge = bridge_manager_->get_bridge(chains[i]);
+        if (bridge) {
+            ss << ",\"status\":";
+            switch (bridge->get_status()) {
+                case bridge::BridgeStatus::OFFLINE: ss << "\"offline\""; break;
+                case bridge::BridgeStatus::SYNCING: ss << "\"syncing\""; break;
+                case bridge::BridgeStatus::ONLINE: ss << "\"online\""; break;
+                case bridge::BridgeStatus::ERROR: ss << "\"error\""; break;
+            }
+            ss << ",\"running\":" << (bridge->is_running() ? "true" : "false");
+        }
+
+        ss << "}";
+        if (i < chains.size() - 1) ss << ",";
+    }
+    ss << "]";
+
+    return Response(ss.str(), "");
+}
+
+Response Server::startbridge(const std::vector<std::string>& params) {
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    if (params.empty()) {
+        return Response(true, "Missing bridge chain parameter", "");
+    }
+
+    auto chain_type = bridge::BridgeUtils::string_to_chain_type(params[0]);
+    if (!chain_type.has_value()) {
+        return Response(true, "Unknown chain type: " + params[0], "");
+    }
+
+    auto bridge = bridge_manager_->get_bridge(chain_type.value());
+    if (!bridge) {
+        return Response(true, "Bridge not found for chain: " + params[0], "");
+    }
+
+    if (bridge->start()) {
+        return Response("\"Bridge started successfully\"", "");
+    } else {
+        return Response(true, "Failed to start bridge", "");
+    }
+}
+
+Response Server::stopbridge(const std::vector<std::string>& params) {
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    if (params.empty()) {
+        return Response(true, "Missing bridge chain parameter", "");
+    }
+
+    auto chain_type = bridge::BridgeUtils::string_to_chain_type(params[0]);
+    if (!chain_type.has_value()) {
+        return Response(true, "Unknown chain type: " + params[0], "");
+    }
+
+    auto bridge = bridge_manager_->get_bridge(chain_type.value());
+    if (!bridge) {
+        return Response(true, "Bridge not found for chain: " + params[0], "");
+    }
+
+    bridge->stop();
+    return Response("\"Bridge stopped successfully\"", "");
+}
+
+Response Server::initiateswap(const std::vector<std::string>& params) {
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    if (params.size() < 3) {
+        return Response(true, "Usage: initiateswap <chain> <recipient_address> <amount>", "");
+    }
+
+    auto chain_type = bridge::BridgeUtils::string_to_chain_type(params[0]);
+    if (!chain_type.has_value()) {
+        return Response(true, "Unknown chain type: " + params[0], "");
+    }
+
+    // Parse recipient address (simplified - in production, decode properly)
+    PublicKey recipient;
+    // In production: decode address to public key
+
+    // Parse amount
+    uint64_t amount = std::stoull(params[2]);
+
+    try {
+        Hash256 swap_id = bridge_manager_->create_cross_chain_swap(
+            chain_type.value(),
+            recipient,
+            amount
+        );
+
+        std::string swap_id_hex = hash_to_hex(swap_id);
+        return Response("\"" + swap_id_hex + "\"", "");
+    } catch (const std::exception& e) {
+        return Response(true, std::string("Swap initiation failed: ") + e.what(), "");
+    }
+}
+
+Response Server::completeswap(const std::vector<std::string>& params) {
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    if (params.size() < 3) {
+        return Response(true, "Usage: completeswap <chain> <swap_id> <secret>", "");
+    }
+
+    auto chain_type = bridge::BridgeUtils::string_to_chain_type(params[0]);
+    if (!chain_type.has_value()) {
+        return Response(true, "Unknown chain type: " + params[0], "");
+    }
+
+    Hash256 swap_id = hex_to_hash(params[1]);
+    Hash256 secret = hex_to_hash(params[2]);
+
+    if (bridge_manager_->complete_cross_chain_swap(chain_type.value(), swap_id, secret)) {
+        return Response("\"Swap completed successfully\"", "");
+    } else {
+        return Response(true, "Failed to complete swap", "");
+    }
+}
+
+Response Server::refundswap(const std::vector<std::string>& params) {
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    if (params.size() < 2) {
+        return Response(true, "Usage: refundswap <chain> <swap_id>", "");
+    }
+
+    auto chain_type = bridge::BridgeUtils::string_to_chain_type(params[0]);
+    if (!chain_type.has_value()) {
+        return Response(true, "Unknown chain type: " + params[0], "");
+    }
+
+    auto bridge = bridge_manager_->get_bridge(chain_type.value());
+    if (!bridge) {
+        return Response(true, "Bridge not found for chain: " + params[0], "");
+    }
+
+    Hash256 swap_id = hex_to_hash(params[1]);
+
+    if (bridge->refund_swap(swap_id)) {
+        return Response("\"Swap refunded successfully\"", "");
+    } else {
+        return Response(true, "Failed to refund swap", "");
+    }
+}
+
+Response Server::getswapinfo(const std::vector<std::string>& params) {
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    if (params.size() < 2) {
+        return Response(true, "Usage: getswapinfo <chain> <swap_id>", "");
+    }
+
+    // In production: retrieve swap info from bridge
+    // For now, return placeholder
+    return Response("{\"swap_id\":\"" + params[1] + "\",\"status\":\"unknown\"}", "");
+}
+
+Response Server::getbridgestats(const std::vector<std::string>& params) {
+    (void)params;
+
+    if (!bridge_manager_) {
+        return Response(true, "Bridge manager not initialized", "");
+    }
+
+    auto all_stats = bridge_manager_->get_all_stats();
+
+    std::stringstream ss;
+    ss << "{";
+    ss << "\"total_bridges\":" << all_stats.total_bridges << ",";
+    ss << "\"online_bridges\":" << all_stats.online_bridges << ",";
+    ss << "\"total_swaps\":" << all_stats.total_swaps << ",";
+    ss << "\"total_volume\":" << all_stats.total_volume << ",";
+    ss << "\"per_chain\":{";
+
+    size_t count = 0;
+    for (const auto& [chain, stats] : all_stats.per_chain_stats) {
+        if (count > 0) ss << ",";
+        ss << "\"" << bridge::BridgeUtils::chain_type_to_string(chain) << "\":{";
+        ss << "\"total_swaps\":" << stats.total_swaps << ",";
+        ss << "\"completed_swaps\":" << stats.completed_swaps << ",";
+        ss << "\"failed_swaps\":" << stats.failed_swaps << ",";
+        ss << "\"total_volume_sent\":" << stats.total_volume_sent << ",";
+        ss << "\"total_volume_received\":" << stats.total_volume_received << ",";
+        ss << "\"success_rate\":" << std::fixed << std::setprecision(2) << (stats.success_rate * 100) << "%";
+        ss << "}";
+        count++;
+    }
+
+    ss << "}}";
+
+    return Response(ss.str(), "");
 }
 
 } // namespace rpc
