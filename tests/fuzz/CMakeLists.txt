@@ -24,6 +24,13 @@ if(ENABLE_FUZZ_TESTING)
         fuzz_p2p_message
         fuzz_script
         fuzz_rpc
+        fuzz_wallet
+        fuzz_contract
+        fuzz_lightning
+        fuzz_bridge
+        fuzz_pqc
+        fuzz_mempool
+        fuzz_consensus
     )
 
     foreach(target ${FUZZ_TARGETS})

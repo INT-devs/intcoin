@@ -33,6 +33,49 @@ Fuzz testing (fuzzing) is an automated software testing technique that involves 
    - Validates parameter handling
    - Tests error conditions
 
+6. **Wallet Operations** (`fuzz_wallet`) — **NEW**
+   - Tests address parsing and validation
+   - Tests private key import with malformed data
+   - Tests mnemonic phrase parsing
+   - Validates HD wallet derivation
+
+7. **Smart Contracts** (`fuzz_contract`) — **NEW**
+   - Tests bytecode deserialization
+   - Tests opcode parsing and validation
+   - Tests contract execution edge cases
+   - Validates VM state transitions
+
+8. **Lightning Network** (`fuzz_lightning`) — **NEW**
+   - Tests channel message parsing
+   - Tests HTLC validation with invalid data
+   - Tests invoice deserialization
+   - Validates payment routing
+
+9. **Cross-Chain Bridges** (`fuzz_bridge`) — **NEW**
+   - Tests atomic swap message parsing
+   - Tests SPV proof validation
+   - Tests cross-chain address validation
+   - Validates bridge transaction parsing
+
+10. **Post-Quantum Cryptography** (`fuzz_pqc`) — **NEW**
+    - Tests Dilithium5 signature verification with malformed inputs
+    - Tests Kyber1024 key encapsulation
+    - Tests public key validation
+    - Tests PQC parameter validation
+
+11. **Mempool Operations** (`fuzz_mempool`) — **NEW**
+    - Tests mempool transaction insertion with malformed data
+    - Tests fee calculation and priority scoring
+    - Tests ancestor/descendant tracking
+    - Tests mempool eviction logic
+
+12. **Consensus Engine** (`fuzz_consensus`) — **NEW**
+    - Tests PoW validation with various block headers
+    - Tests difficulty adjustment calculations
+    - Tests nonce validation
+    - Tests blockchain consensus rules
+    - Tests block chain validation
+
 ## Fuzzing Engines
 
 ### libFuzzer (Recommended)
@@ -446,11 +489,27 @@ When adding new fuzz targets:
 
 1. Create `fuzz_<component>.cpp`
 2. Implement `LLVMFuzzerTestOneInput`
-3. Add to `CMakeLists.txt`
-4. Create seed corpus
-5. Document in this file
-6. Run for at least 1 hour
-7. Add any crashes to regression tests
+3. Add to `CMakeLists.txt` FUZZ_TARGETS list
+4. Create seed corpus directory
+5. Add test vectors to corpus
+6. Document in this file and README.md
+7. Run for at least 1-2 hours per target
+8. Add any crashes to regression tests
+
+## Coverage Summary
+
+**14 Total Fuzz Targets:**
+- 5 original targets (transaction, block, P2P, script, RPC)
+- 5 new targets (wallet, contract, lightning, bridge, PQC)
+- 4 additional targets (mempool, consensus, and 2 future planned)
+
+**Target Areas:**
+- ✅ Core blockchain (transaction, block, mempool, consensus)
+- ✅ Network layer (P2P messages, RPC)
+- ✅ Cryptography (script, PQC, consensus)
+- ✅ User interfaces (wallet, contract VM)
+- ✅ Advanced features (Lightning, bridges)
+- ✅ Consensus & Mining (PoW, difficulty, nonce validation)
 
 ## License
 

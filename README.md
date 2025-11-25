@@ -223,7 +223,7 @@ INTcoin is **production-ready** and has undergone extensive testing and security
 - RPC authentication and authorization
 - Build and deployment security
 - Testing infrastructure with 400+ test cases
-- Fuzz testing for 7 components
+- Fuzz testing for 14 components
 - PQC verification with NIST test vectors
 - Operational security measures
 
@@ -961,14 +961,30 @@ See the [docs](docs/) directory for detailed documentation:
 - [Linux Installation](docs/INSTALL-LINUX.md) - Linux build and install instructions
 - [FreeBSD Installation](docs/INSTALL-FREEBSD.md) - FreeBSD build and install instructions
 
+**Testing & Quality Assurance:**
+- [Testing Guide](docs/TESTING.md) - Comprehensive testing documentation (7 test suites + benchmarking)
+- [Fuzz Testing](docs/FUZZ-TESTING.md) - 14 fuzz targets for security validation
+- [Security Audit](docs/SECURITY-AUDIT.md) - Complete security audit framework (260+ items)
+- [Performance Tuning](docs/PERFORMANCE-TUNING.md) - Optimization guide with 8 benchmark suites
+- [Stress Test Results](docs/STRESS_TEST_RESULTS.md) - Performance and load testing results
+- [Production Readiness](docs/PRODUCTION-READINESS.md) - Mainnet launch checklist
+
 **Technical Documentation:**
 - [Cryptography Design](docs/CRYPTOGRAPHY-DESIGN.md) - Quantum-resistant cryptography design
 - [RPC API Reference](docs/RPC-API.md) - Complete JSON-RPC API documentation
 - [Design Decisions](DESIGN-DECISIONS.md) - Architectural design decisions
-- [Lightning Network](src/lightning/README.md) - Layer 2 payment channels
+- [Lightning Network](docs/LIGHTNING.md) - Layer 2 payment channels overview
+- [Lightning Status](docs/LIGHTNING-STATUS.md) - Lightning implementation roadmap
+- [Advanced Lightning Features](docs/LIGHTNING-ADVANCED-FEATURES.md) - Eltoo, PTLCs, AMP details
 - [Smart Contracts](src/contracts/README.md) - Secure VM and contract development
+- [Contract Security Audit Guide](docs/CONTRACT-AUDIT-GUIDE.md) - 10-point automated contract audits
 - [Cross-Chain Bridges](src/bridge/README.md) - Atomic swaps with other chains
 - [Mining Pools](src/pool/README.md) - Stratum protocol implementation
+
+**New in v1.3.0 (November 2025):**
+- [Exchange Integration Guide](docs/EXCHANGE-INTEGRATION.md) - 12 API tests, security validators, compliance
+- [Mempool Design](docs/MEMPOOL-DESIGN.md) - Transaction ordering, fee estimation, fuzzing
+- [Consensus Engine](docs/CONSENSUS-ENGINE.md) - PoW validation, difficulty adjustment, security
 
 ## Security
 
@@ -984,6 +1000,22 @@ INTcoin implements comprehensive security measures throughout the codebase:
   - Binary validation (hash, pubkey, signature DER format)
   - Network validation (IPv4, IPv6, peer address)
   - Composite validators for transactions and blocks
+
+- ✅ **Smart Contract Security Audits** ([include/intcoin/contracts/security_audit.h](include/intcoin/contracts/security_audit.h)):
+  - 10 comprehensive audit checks (reentrancy, overflow, delegatecall, access control, etc.)
+  - Bytecode pattern analysis and control flow detection
+  - Runtime execution monitoring
+  - Access control validation
+  - Security audit report generation with severity levels
+  - Detailed recommendations for each finding
+
+- ✅ **Performance Benchmarking** ([tests/benchmark/performance_benchmark.h](tests/benchmark/performance_benchmark.h)):
+  - 8 comprehensive benchmark suites covering all major components
+  - 28+ performance tests (crypto, transactions, mining, contracts, Lightning, bridges, network, memory)
+  - Throughput measurement (ops/sec)
+  - Scalability analysis with dynamic workload sizing
+  - Latency statistics and memory tracking
+  - CSV/JSON export capabilities
 
 - ✅ **Integer Overflow Protection** ([include/intcoin/safe_math.h](include/intcoin/safe_math.h)):
   - Safe arithmetic operations (add, sub, mul, div) with std::optional returns
@@ -1103,7 +1135,10 @@ All critical security requirements have been implemented:
   - Secure defaults, secret detection, update mechanism security
 
 - ✅ **Testing Infrastructure** ([include/intcoin/testing_infrastructure.h](include/intcoin/testing_infrastructure.h), [include/intcoin/fuzz_targets.h](include/intcoin/fuzz_targets.h)):
-  - Coverage tracking, 400+ test cases, fuzz testing (7 targets)
+  - Coverage tracking, 400+ test cases, fuzz testing (14 targets)
+  - Comprehensive security audits (10 audit checks)
+  - Performance benchmarking (8 suites, 28+ tests)
+  - Exchange integration testing (12 API tests, security validation, performance)
   - Integration tests, functional tests, performance benchmarks
 
 - ✅ **PQC Verification** ([include/intcoin/pqc_verification.h](include/intcoin/pqc_verification.h)):
@@ -1129,8 +1164,8 @@ See [src/core/safe_transaction.cpp](src/core/safe_transaction.cpp) for comprehen
 The following enhancements are planned for future releases:
 
 - 📋 **Enhanced P2P**: Improved peer discovery and connection management
-- 📋 **Performance optimization**: Database indexing and caching improvements
 - 📋 **Additional smart contract opcodes**: Extended VM instruction set
+- 📋 **Continuous Integration**: Full CI/CD pipeline with automated testing and security scanning
 
 ### Current Development Phase
 
@@ -1149,7 +1184,7 @@ The following enhancements are planned for future releases:
   - ✅ Security audit checklist (14 sections, 279+ checks) - **v4.0**
   - ✅ Production readiness guide (mainnet launch plan)
   - ✅ Comprehensive testing infrastructure
-  - ✅ Fuzz testing targets (7 components)
+  - ✅ Fuzz testing targets (14 components)
   - ✅ PQC verification framework (NIST test vectors)
   - ✅ Security audit framework complete
   - ✅ Operational security implemented

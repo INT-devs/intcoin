@@ -55,6 +55,28 @@ INTcoin includes a comprehensive test suite covering all major components of the
    - Integer overflow detection
    - Safe arithmetic operations
 
+8. **Security Audit Tests** (`test_security_performance.cpp`)
+   - Smart contract security audit framework (10 checks)
+   - Performance benchmarking (8 suites, 28+ tests)
+   - Integrated security + performance validation
+   - Reentrancy detection, overflow/underflow, delegatecall risks
+   - Timing attacks, memory safety, crypto misuse, DOS prevention
+
+9. **Fuzz Testing** (14 Targets - `tests/fuzz/`)
+   - **Core targets**: transaction, block, P2P messages, script, RPC
+   - **Extended targets**: wallet, contract, lightning, bridge, PQC
+   - **Advanced targets**: mempool, consensus engine
+   - **Integration targets**: exchange API validation
+
+10. **Exchange Integration Tests** (`test_exchange_integration.cpp`)
+    - 12 comprehensive API tests
+    - Hot/cold wallet segregation
+    - Multi-signature withdrawal validation
+    - Deposit address generation and verification
+    - Transaction signing with quantum signatures
+    - Rate limiting and API compliance
+    - KYC/AML compliance checking
+
 ## Running Tests
 
 ### Quick Start
@@ -107,6 +129,116 @@ cd build
 ./test_lightning
 ./test_tor
 ./test_security
+./test_security_performance          # NEW: Combined security audit + benchmarks
+./test_exchange_integration          # NEW: Exchange API testing
+
+# Run specific fuzz targets
+cd build
+./fuzz_transaction                   # Original fuzz targets (5)
+./fuzz_block
+./fuzz_p2p_messages
+./fuzz_script
+./fuzz_rpc_json
+
+./fuzz_wallet                        # Extended fuzz targets (5)
+./fuzz_contract
+./fuzz_lightning
+./fuzz_bridge
+./fuzz_pqc
+
+./fuzz_mempool                       # Advanced fuzz targets (2)
+./fuzz_consensus
+
+# Run with corpus (if available)
+./fuzz_transaction tests/fuzz/corpus/transaction/
+```
+
+## Benchmark Testing
+
+### Performance Benchmarking (8 Suites)
+
+```bash
+# Run performance benchmarks
+./test_security_performance --benchmark
+
+# Benchmark results output:
+# - Cryptographic ops throughput (signs/sec, verifies/sec)
+# - Transaction processing (parse/sec, validate/sec)
+# - Mining performance (PoW checks/sec, difficulty calcs/sec)
+# - Smart contract execution (gas efficiency, opcode overhead)
+# - Lightning routing (payment routing speed, HTLC resolution)
+# - Bridge operations (atomic swap latency, proof verification)
+# - Network performance (P2P throughput, connection establishment)
+# - Memory usage (blockchain sync, UTXO set, cache efficiency)
+```
+
+### Benchmark Output Format
+
+```
+=== Cryptographic Operations Benchmark ===
+Dilithium5 Signature Generation: 500 ops/sec
+Dilithium5 Signature Verification: 1000 ops/sec
+Kyber1024 Encapsulation: 800 ops/sec
+Kyber1024 Decapsulation: 800 ops/sec
+SHA3-256 Hashing: 50000 ops/sec
+Average throughput: 10,620 ops/sec
+
+=== Transaction Processing Benchmark ===
+Transaction Parsing: 100,000 ops/sec
+Transaction Validation: 50,000 ops/sec
+Fee Calculation: 200,000 ops/sec
+Total throughput: 116,667 ops/sec
+```
+
+## Security Audit Testing
+
+### Contract Security Analysis (10 Checks)
+
+```bash
+# Run automated security audit
+./test_security_performance --audit-contracts
+
+# Checks performed:
+# 1. Reentrancy detection
+# 2. Integer overflow/underflow
+# 3. Delegatecall vulnerabilities
+# 4. Access control validation
+# 5. Timestamp dependency issues
+# 6. Memory safety violations
+# 7. Cryptographic misuse
+# 8. Denial-of-service vectors
+# 9. Quantum-safe opcodes verification
+# 10. State consistency validation
+
+# Output includes severity levels and remediation steps
+```
+
+## Exchange Integration Testing
+
+### API Validation Tests (12 Tests)
+
+```bash
+# Run exchange integration tests
+./test_exchange_integration
+
+# Tests include:
+# 1. Hot/Cold Wallet Segregation
+# 2. Multi-Signature Withdrawal (2-of-3)
+# 3. Deposit Address Generation
+# 4. Transaction Signing (Dilithium5)
+# 5. Rate Limiting Enforcement
+# 6. Audit Logging Verification
+# 7. Quantum-Safe Signature Generation
+# 8. Batch Operations
+# 9. Compliance Checks (KYC/AML)
+# 10. Security Validators (3 functions)
+# 11. Performance Monitoring
+# 12. Reconnection Handling
+
+# Performance targets:
+# - Deposits: 1,000+ ops/sec
+# - Withdrawals: 500+ ops/sec
+# - Latency: <100ms average
 ```
 
 ## Test Types

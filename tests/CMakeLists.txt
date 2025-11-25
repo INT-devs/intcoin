@@ -20,6 +20,8 @@ set(TEST_TARGETS
     test_kyber_nist
     test_hash_nist
     stress_test
+    test_security_performance
+    test_exchange_integration
 )
 
 # Crypto tests
@@ -93,6 +95,20 @@ target_link_libraries(stress_test PRIVATE intcoin_core)
 target_compile_definitions(stress_test PRIVATE ${TEST_DEFINITIONS})
 target_compile_options(stress_test PRIVATE ${TEST_COMPILE_OPTIONS})
 # Note: Stress test is not added to CTest by default as it's for manual performance testing
+
+# Security & Performance tests
+add_executable(test_security_performance test_security_performance.cpp)
+target_link_libraries(test_security_performance PRIVATE intcoin_core)
+target_compile_definitions(test_security_performance PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_security_performance PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME security_performance_tests COMMAND test_security_performance)
+
+# Exchange Integration tests
+add_executable(test_exchange_integration test_exchange_integration.cpp)
+target_link_libraries(test_exchange_integration PRIVATE intcoin_core)
+target_compile_definitions(test_exchange_integration PRIVATE ${TEST_DEFINITIONS})
+target_compile_options(test_exchange_integration PRIVATE ${TEST_COMPILE_OPTIONS})
+add_test(NAME exchange_integration_tests COMMAND test_exchange_integration)
 
 # Test coverage (optional, requires gcov/lcov)
 if(ENABLE_COVERAGE)
