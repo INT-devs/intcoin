@@ -7,7 +7,7 @@
 
 #include "../primitives.h"
 #include "../transaction.h"
-#include "../crypto/crypto.h"
+#include "../crypto.h"
 #include <string>
 #include <chrono>
 #include <memory>
@@ -47,8 +47,8 @@ enum class ChainType {
 struct HTLC {
     Hash256 hash_lock;          // SHA-256 hash of secret
     Hash256 secret;             // Secret preimage (if revealed)
-    PublicKey sender;           // Initiating party
-    PublicKey receiver;         // Receiving party
+    DilithiumPubKey sender;           // Initiating party
+    DilithiumPubKey receiver;         // Receiving party
     uint64_t amount;            // Amount locked
     uint32_t time_lock;         // Block height or timestamp for refund
     ChainType chain;            // Which blockchain
@@ -77,8 +77,8 @@ public:
 
     // Swap initiation
     static std::shared_ptr<AtomicSwap> initiate(
-        const PublicKey& initiator,
-        const PublicKey& participant,
+        const DilithiumPubKey& initiator,
+        const DilithiumPubKey& participant,
         uint64_t initiator_amount,
         uint64_t participant_amount,
         ChainType initiator_chain,
@@ -98,8 +98,8 @@ public:
     std::optional<Hash256> get_secret() const;
 
     // Swap details
-    PublicKey get_initiator() const { return initiator_; }
-    PublicKey get_participant() const { return participant_; }
+    DilithiumPubKey get_initiator() const { return initiator_; }
+    DilithiumPubKey get_participant() const { return participant_; }
     uint64_t get_initiator_amount() const { return initiator_amount_; }
     uint64_t get_participant_amount() const { return participant_amount_; }
     ChainType get_initiator_chain() const { return initiator_chain_; }
@@ -122,8 +122,8 @@ private:
     Hash256 swap_id_;
     Hash256 hash_lock_;
     Hash256 secret_;
-    PublicKey initiator_;
-    PublicKey participant_;
+    DilithiumPubKey initiator_;
+    DilithiumPubKey participant_;
 
     uint64_t initiator_amount_;
     uint64_t participant_amount_;
@@ -154,7 +154,7 @@ public:
 
     // Swap creation
     std::shared_ptr<AtomicSwap> create_swap(
-        const PublicKey& participant,
+        const DilithiumPubKey& participant,
         uint64_t send_amount,
         uint64_t receive_amount,
         ChainType send_chain,
@@ -209,8 +209,8 @@ class SwapBuilder {
 public:
     SwapBuilder();
 
-    SwapBuilder& initiator(const PublicKey& key);
-    SwapBuilder& participant(const PublicKey& key);
+    SwapBuilder& initiator(const DilithiumPubKey& key);
+    SwapBuilder& participant(const DilithiumPubKey& key);
     SwapBuilder& send_amount(uint64_t amount);
     SwapBuilder& receive_amount(uint64_t amount);
     SwapBuilder& send_chain(ChainType chain);
@@ -220,8 +220,8 @@ public:
     std::shared_ptr<AtomicSwap> build();
 
 private:
-    PublicKey initiator_;
-    PublicKey participant_;
+    DilithiumPubKey initiator_;
+    DilithiumPubKey participant_;
     uint64_t send_amount_;
     uint64_t receive_amount_;
     ChainType send_chain_;

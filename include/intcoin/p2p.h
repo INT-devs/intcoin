@@ -256,7 +256,7 @@ struct BanEntry {
     BanEntry() : banned_until(0), ban_count(0) {}
 
     bool is_banned() const {
-        return banned_until > std::chrono::system_clock::now().time_since_epoch().count();
+        return banned_until > static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count());
     }
 };
 

@@ -78,7 +78,7 @@ struct GPUConfig {
 
     GPUConfig()
         : threads_per_block(256)
-        : blocks_per_grid(8192)
+        , blocks_per_grid(8192)
         , work_group_size(256)
         , global_work_size(2097152)  // 2M
         , enable_monitoring(true)

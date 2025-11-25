@@ -63,7 +63,7 @@ public:
     virtual BridgeStatus get_status() const = 0;
 
     // Swap operations
-    virtual Hash256 initiate_swap(const PublicKey& recipient,
+    virtual Hash256 initiate_swap(const DilithiumPubKey& recipient,
                                    uint64_t amount) = 0;
     virtual bool complete_swap(const Hash256& swap_id,
                               const Hash256& secret) = 0;
@@ -104,7 +104,7 @@ public:
     BridgeStatus get_status() const override { return status_; }
 
     // Swap operations
-    Hash256 initiate_swap(const PublicKey& recipient,
+    Hash256 initiate_swap(const DilithiumPubKey& recipient,
                          uint64_t amount) override;
     bool complete_swap(const Hash256& swap_id,
                       const Hash256& secret) override;
@@ -172,7 +172,7 @@ public:
     BridgeStatus get_status() const override { return status_; }
 
     // Swap operations
-    Hash256 initiate_swap(const PublicKey& recipient,
+    Hash256 initiate_swap(const DilithiumPubKey& recipient,
                          uint64_t amount) override;
     bool complete_swap(const Hash256& swap_id,
                       const Hash256& secret) override;
@@ -215,7 +215,7 @@ private:
 
     // Smart contract interaction
     std::string encode_swap_data(const Hash256& hash_lock,
-                                const PublicKey& recipient,
+                                const DilithiumPubKey& recipient,
                                 uint32_t timelock);
     bool watch_contract_events();
 
@@ -245,7 +245,7 @@ public:
 
     // Swap operations across bridges
     Hash256 create_cross_chain_swap(ChainType target_chain,
-                                     const PublicKey& recipient,
+                                     const DilithiumPubKey& recipient,
                                      uint64_t amount);
 
     bool complete_cross_chain_swap(ChainType source_chain,
@@ -291,8 +291,8 @@ public:
     static std::optional<ChainType> string_to_chain_type(const std::string& str);
 
     // Address conversion
-    static std::string intcoin_to_bitcoin_address(const PublicKey& key);
-    static std::string intcoin_to_ethereum_address(const PublicKey& key);
+    static std::string intcoin_to_bitcoin_address(const DilithiumPubKey& key);
+    static std::string intcoin_to_ethereum_address(const DilithiumPubKey& key);
 
     // Amount conversion (accounting for different decimals)
     static uint64_t intcoin_to_satoshi(uint64_t intcoin_amount);

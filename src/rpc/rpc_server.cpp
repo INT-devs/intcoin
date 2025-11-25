@@ -929,7 +929,7 @@ Response Server::initiateswap(const std::vector<std::string>& params) {
     }
 
     // Parse recipient address (simplified - in production, decode properly)
-    PublicKey recipient;
+    DilithiumPubKey recipient{};
     // In production: decode address to public key
 
     // Parse amount
