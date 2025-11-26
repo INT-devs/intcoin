@@ -4,6 +4,9 @@ web-wallet/
 desktop-wallet/
 mobile-wallet/
 
+# Wiki (generated documentation)
+wiki/
+
 # macOS
 .DS_Store
 .AppleDouble

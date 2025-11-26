@@ -1,17 +1,19 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 4.2.0)
 
 project(INTcoin
     VERSION 1.0.0
     DESCRIPTION "Quantum-Resistant Cryptocurrency"
-    LANGUAGES C CXX
+    LANGUAGES CXX
 )
+
+# Only support 64-bit systems
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "INTcoin requires a 64-bit system")
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # Build options
 option(BUILD_TESTS "Build tests" ON)
@@ -38,37 +40,49 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 endif()
 
-# Find dependencies
-find_package(Boost 1.75 REQUIRED COMPONENTS
+# Find dependencies (currently optional for initial build)
+find_package(Boost 1.89.0 COMPONENTS
     system
     filesystem
     thread
     program_options
 )
 
-find_package(OpenSSL 3.0 REQUIRED)
-find_package(RocksDB REQUIRED)
+find_package(OpenSSL 3.5.4)
 find_package(Threads REQUIRED)
 
+# RocksDB
+find_package(RocksDB)
+
 # liboqs (Open Quantum Safe)
-find_library(OQS_LIB oqs REQUIRED)
-find_path(OQS_INCLUDE_DIR oqs/oqs.h REQUIRED)
+find_library(OQS_LIB oqs)
+find_path(OQS_INCLUDE_DIR oqs/oqs.h)
 
 # RandomX
-find_library(RANDOMX_LIB randomx REQUIRED)
-find_path(RANDOMX_INCLUDE_DIR randomx.h REQUIRED)
+find_library(RANDOMX_LIB randomx
+    PATHS
+        $ENV{HOME}/.local/lib
+        /opt/homebrew/lib
+        /usr/local/lib
+)
+find_path(RANDOMX_INCLUDE_DIR randomx.h
+    PATHS
+        $ENV{HOME}/.local/include
+        /opt/homebrew/include
+        /usr/local/include
+)
 
 # ZeroMQ
-find_library(ZMQ_LIB zmq REQUIRED)
-find_path(ZMQ_INCLUDE_DIR zmq.h REQUIRED)
+find_library(ZMQ_LIB zmq)
+find_path(ZMQ_INCLUDE_DIR zmq.h)
 
 # libevent
-find_library(EVENT_LIB event REQUIRED)
-find_path(EVENT_INCLUDE_DIR event2/event.h REQUIRED)
+find_library(EVENT_LIB event)
+find_path(EVENT_INCLUDE_DIR event2/event.h)
 
 # Qt6 (optional)
 if(BUILD_WALLET_QT)
-    find_package(Qt6 6.5 COMPONENTS
+    find_package(Qt6 6.8 COMPONENTS
         Core
         Widgets
         Network
@@ -81,132 +95,168 @@ endif()
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
-    ${Boost_INCLUDE_DIRS}
-    ${OPENSSL_INCLUDE_DIR}
-    ${OQS_INCLUDE_DIR}
-    ${RANDOMX_INCLUDE_DIR}
-    ${ZMQ_INCLUDE_DIR}
-    ${EVENT_INCLUDE_DIR}
 )
+
+# Add optional include directories if found
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
+if(OPENSSL_FOUND)
+    include_directories(${OPENSSL_INCLUDE_DIR})
+endif()
+
+if(OQS_INCLUDE_DIR)
+    include_directories(${OQS_INCLUDE_DIR})
+endif()
+
+if(RANDOMX_INCLUDE_DIR)
+    include_directories(${RANDOMX_INCLUDE_DIR})
+endif()
+
+if(ZMQ_INCLUDE_DIR)
+    include_directories(${ZMQ_INCLUDE_DIR})
+endif()
+
+if(EVENT_INCLUDE_DIR)
+    include_directories(${EVENT_INCLUDE_DIR})
+endif()
 
 # Source files
 set(INTCOIN_CORE_SOURCES
+    # Core
+    src/core/intcoin.cpp
+
+    # Utilities
+    src/util/types.cpp
+    src/util/util.cpp
+
+    # Blockchain
     src/blockchain/block.cpp
     src/blockchain/transaction.cpp
-    src/blockchain/utxo.cpp
-    src/blockchain/chain.cpp
-    src/crypto/dilithium.cpp
-    src/crypto/kyber.cpp
-    src/crypto/hash.cpp
-    src/crypto/address.cpp
-    src/consensus/pow.cpp
-    src/consensus/validation.cpp
-    src/consensus/params.cpp
-    src/network/node.cpp
-    src/network/protocol.cpp
-    src/network/peers.cpp
-    src/network/messages.cpp
-    src/storage/database.cpp
-    src/storage/index.cpp
-    src/storage/utxo_set.cpp
-    src/rpc/server.cpp
-    src/rpc/blockchain_rpc.cpp
-    src/rpc/wallet_rpc.cpp
-    src/util/logging.cpp
-    src/util/serialization.cpp
-    src/util/time.cpp
+    src/blockchain/script.cpp
+
+    # Cryptography
+    src/crypto/crypto.cpp
+
+    # Consensus
+    src/consensus/consensus.cpp
 )
 
 # Lightning Network sources (optional)
-if(ENABLE_LIGHTNING)
-    list(APPEND INTCOIN_CORE_SOURCES
-        src/lightning/channel.cpp
-        src/lightning/payment.cpp
-        src/lightning/routing.cpp
-        src/lightning/invoice.cpp
-    )
-endif()
+# TODO: Uncomment when Lightning Network implementation is added
+# if(ENABLE_LIGHTNING)
+#     list(APPEND INTCOIN_CORE_SOURCES
+#         src/lightning/channel.cpp
+#         src/lightning/payment.cpp
+#         src/lightning/routing.cpp
+#         src/lightning/invoice.cpp
+#     )
+# endif()
 
 # Core library
 add_library(intcoin_core STATIC ${INTCOIN_CORE_SOURCES})
 target_link_libraries(intcoin_core
-    ${Boost_LIBRARIES}
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    ${ROCKSDB_LIBRARIES}
-    ${OQS_LIB}
-    ${RANDOMX_LIB}
-    ${ZMQ_LIB}
-    ${EVENT_LIB}
     Threads::Threads
 )
 
-# intcoind daemon
-if(BUILD_DAEMON)
-    add_executable(intcoind
-        src/daemon/intcoind.cpp
-    )
-    target_link_libraries(intcoind intcoin_core)
-    install(TARGETS intcoind DESTINATION bin)
+# Link optional dependencies if found
+if(Boost_FOUND)
+    target_link_libraries(intcoin_core ${Boost_LIBRARIES})
 endif()
+
+if(OPENSSL_FOUND)
+    target_link_libraries(intcoin_core OpenSSL::SSL OpenSSL::Crypto)
+endif()
+
+if(ROCKSDB_FOUND)
+    target_link_libraries(intcoin_core ${ROCKSDB_LIBRARIES})
+endif()
+
+if(OQS_LIB)
+    target_link_libraries(intcoin_core ${OQS_LIB})
+endif()
+
+if(RANDOMX_LIB)
+    target_link_libraries(intcoin_core ${RANDOMX_LIB})
+endif()
+
+if(ZMQ_LIB)
+    target_link_libraries(intcoin_core ${ZMQ_LIB})
+endif()
+
+if(EVENT_LIB)
+    target_link_libraries(intcoin_core ${EVENT_LIB})
+endif()
+
+# TODO: Executables will be added as they are implemented
+# intcoind daemon
+# if(BUILD_DAEMON)
+#     add_executable(intcoind
+#         src/daemon/intcoind.cpp
+#     )
+#     target_link_libraries(intcoind intcoin_core)
+#     install(TARGETS intcoind DESTINATION bin)
+# endif()
 
 # intcoin-cli
-if(BUILD_CLI)
-    add_executable(intcoin-cli
-        src/cli/intcoin-cli.cpp
-    )
-    target_link_libraries(intcoin-cli intcoin_core)
-    install(TARGETS intcoin-cli DESTINATION bin)
-endif()
+# if(BUILD_CLI)
+#     add_executable(intcoin-cli
+#         src/cli/intcoin-cli.cpp
+#     )
+#     target_link_libraries(intcoin-cli intcoin_core)
+#     install(TARGETS intcoin-cli DESTINATION bin)
+# endif()
 
 # intcoin-miner
-if(BUILD_MINER)
-    add_executable(intcoin-miner
-        src/miner/miner.cpp
-        src/miner/randomx_miner.cpp
-    )
-    target_link_libraries(intcoin-miner intcoin_core)
-    install(TARGETS intcoin-miner DESTINATION bin)
-endif()
+# if(BUILD_MINER)
+#     add_executable(intcoin-miner
+#         src/miner/miner.cpp
+#         src/miner/randomx_miner.cpp
+#     )
+#     target_link_libraries(intcoin-miner intcoin_core)
+#     install(TARGETS intcoin-miner DESTINATION bin)
+# endif()
 
 # Qt Wallet
-if(BUILD_WALLET_QT)
-    set(CMAKE_AUTOMOC ON)
-    set(CMAKE_AUTORCC ON)
-    set(CMAKE_AUTOUIC ON)
-
-    add_executable(intcoin-qt
-        desktop-wallet/src/main.cpp
-        desktop-wallet/src/mainwindow.cpp
-        desktop-wallet/src/sendcoins.cpp
-        desktop-wallet/src/receivecoins.cpp
-        desktop-wallet/src/transactions.cpp
-    )
-    target_link_libraries(intcoin-qt
-        intcoin_core
-        Qt6::Core
-        Qt6::Widgets
-        Qt6::Network
-        Qt6::Gui
-    )
-    install(TARGETS intcoin-qt DESTINATION bin)
-endif()
+# if(BUILD_WALLET_QT)
+#     set(CMAKE_AUTOMOC ON)
+#     set(CMAKE_AUTORCC ON)
+#     set(CMAKE_AUTOUIC ON)
+#
+#     add_executable(intcoin-qt
+#         desktop-wallet/src/main.cpp
+#         desktop-wallet/src/mainwindow.cpp
+#         desktop-wallet/src/sendcoins.cpp
+#         desktop-wallet/src/receivecoins.cpp
+#         desktop-wallet/src/transactions.cpp
+#     )
+#     target_link_libraries(intcoin-qt
+#         intcoin_core
+#         Qt6::Core
+#         Qt6::Widgets
+#         Qt6::Network
+#         Qt6::Gui
+#     )
+#     install(TARGETS intcoin-qt DESTINATION bin)
+# endif()
 
 # Block Explorer
-if(BUILD_EXPLORER)
-    add_executable(intcoin-explorer
-        explorer/src/main.cpp
-        explorer/src/api.cpp
-        explorer/src/frontend.cpp
-    )
-    target_link_libraries(intcoin-explorer intcoin_core)
-    install(TARGETS intcoin-explorer DESTINATION bin)
-endif()
+# if(BUILD_EXPLORER)
+#     add_executable(intcoin-explorer
+#         explorer/src/main.cpp
+#         explorer/src/api.cpp
+#         explorer/src/frontend.cpp
+#     )
+#     target_link_libraries(intcoin-explorer intcoin_core)
+#     install(TARGETS intcoin-explorer DESTINATION bin)
+# endif()
 
 # Tests
 if(BUILD_TESTS)
     enable_testing()
-    add_subdirectory(tests)
+    # TODO: Add tests subdirectory when CMakeLists.txt is created
+    # add_subdirectory(tests)
 endif()
 
 # Installation
