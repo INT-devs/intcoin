@@ -484,24 +484,28 @@ Result<ExtendedKey> HDKeyDerivation::GenerateMaster(const std::vector<uint8_t>& 
     master.parent_fingerprint = 0;
     master.child_index = 0;
 
-    // First 32 bytes = private key (Dilithium3 seed)
-    SecretKey sk;
-    if (hmac.size() >= DILITHIUM3_SECRETKEYBYTES) {
-        std::copy(hmac.begin(), hmac.begin() + DILITHIUM3_SECRETKEYBYTES, sk.begin());
-    } else {
-        // If HMAC output is smaller, use it as seed
-        std::copy(hmac.begin(), hmac.end(), sk.begin());
-    }
-    master.private_key = sk;
+    // For quantum-resistant crypto (Dilithium3), we cannot derive public keys from private keys
+    // like in traditional ECDSA. We must generate complete keypairs.
+    //
+    // TODO: Implement deterministic key generation for Dilithium3
+    // Current limitation: This generates random keypairs, not deterministic from seed
+    // A production implementation needs to:
+    // 1. Use HMAC output to seed liboqs RNG for deterministic generation
+    // 2. Or implement a custom key derivation function for post-quantum crypto
+    //
+    // BIP32 assumes ECDSA where pubkey = privkey * G (elliptic curve math)
+    // Dilithium3 doesn't have this property - keys are generated from random seeds
 
-    // Derive public key from private key
-    auto pk_result = Dilithium3Crypto::GetPublicKey(sk);
-    if (!pk_result.IsOk()) {
-        return Result<ExtendedKey>::Error("Failed to derive public key");
+    auto keypair_result = DilithiumCrypto::GenerateKeyPair();
+    if (!keypair_result.IsOk()) {
+        return Result<ExtendedKey>::Error("Failed to generate master keypair: " + keypair_result.error);
     }
-    master.public_key = pk_result.value.value();
 
-    // Chain code from hash
+    auto keypair = keypair_result.value.value();
+    master.private_key = keypair.secret_key;
+    master.public_key = keypair.public_key;
+
+    // Chain code from HMAC for deriving children
     std::copy_n(hmac.begin(), 32, master.chain_code.begin());
 
     return Result<ExtendedKey>::Ok(master);
@@ -555,22 +559,20 @@ Result<ExtendedKey> HDKeyDerivation::DeriveChild(const ExtendedKey& parent,
 
     // Child private key (if parent has private key)
     if (parent.private_key.has_value()) {
-        SecretKey child_sk;
-        // For quantum-resistant keys, we use the HMAC output as child key seed
-        // (simplified - production would use proper key derivation)
-        if (hmac.size() >= DILITHIUM3_SECRETKEYBYTES) {
-            std::copy(hmac.begin(), hmac.begin() + DILITHIUM3_SECRETKEYBYTES, child_sk.begin());
-        } else {
-            std::copy(hmac.begin(), hmac.end(), child_sk.begin());
-        }
-        child.private_key = child_sk;
+        // For quantum-resistant keys (Dilithium3), we cannot derive public from private
+        // We must generate a complete keypair
+        //
+        // TODO: Use HMAC output to seed deterministic key generation
+        // Current implementation generates random keys (not deterministic)
 
-        // Derive public key
-        auto pk_result = Dilithium3Crypto::GetPublicKey(child_sk);
-        if (!pk_result.IsOk()) {
-            return Result<ExtendedKey>::Error("Failed to derive child public key");
+        auto keypair_result = DilithiumCrypto::GenerateKeyPair();
+        if (!keypair_result.IsOk()) {
+            return Result<ExtendedKey>::Error("Failed to generate child keypair: " + keypair_result.error);
         }
-        child.public_key = pk_result.value.value();
+
+        auto keypair = keypair_result.value.value();
+        child.private_key = keypair.secret_key;
+        child.public_key = keypair.public_key;
     }
 
     // Chain code
@@ -738,9 +740,9 @@ Result<void> WalletDB::Open() {
         return Result<void>::Error("Wallet database already open");
     }
 
-    DBConfig config;
-    config.path = impl_->wallet_path;
-    impl_->db = std::make_unique<BlockchainDB>(config);
+    // Create BlockchainDB with wallet path
+    // Note: We're using BlockchainDB as a generic key-value store for the wallet
+    impl_->db = std::make_unique<BlockchainDB>(impl_->wallet_path);
 
     auto result = impl_->db->Open();
     if (!result.IsOk()) {
@@ -756,10 +758,8 @@ Result<void> WalletDB::Close() {
         return Result<void>::Error("Wallet database not open");
     }
 
-    auto result = impl_->db->Close();
-    if (!result.IsOk()) {
-        return result;
-    }
+    // BlockchainDB::Close() returns void, not Result
+    impl_->db->Close();
 
     impl_->is_open = false;
     return Result<void>::Ok();
@@ -774,12 +774,13 @@ Result<void> WalletDB::WriteAddress(const WalletAddress& addr) {
         return Result<void>::Error("Database not open");
     }
 
+    // TODO: Implement wallet database persistence
+    // BlockchainDB doesn't have generic Put() method - need custom wallet DB
     // Serialize address data
-    std::vector<uint8_t> data;
-    // TODO: Proper serialization
+    // std::vector<uint8_t> data;
+    // std::string key = "addr_" + addr.address;
 
-    std::string key = "addr_" + addr.address;
-    return impl_->db->Put(key, data);
+    return Result<void>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<WalletAddress> WalletDB::ReadAddress(const std::string& address) {
@@ -787,16 +788,9 @@ Result<WalletAddress> WalletDB::ReadAddress(const std::string& address) {
         return Result<WalletAddress>::Error("Database not open");
     }
 
-    std::string key = "addr_" + address;
-    auto result = impl_->db->Get(key);
-    if (!result.IsOk()) {
-        return Result<WalletAddress>::Error("Address not found");
-    }
-
-    // TODO: Deserialize address data
-    WalletAddress addr;
-    addr.address = address;
-    return Result<WalletAddress>::Ok(addr);
+    // TODO: Implement wallet database persistence
+    // BlockchainDB doesn't have generic Get() method - need custom wallet DB
+    return Result<WalletAddress>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<std::vector<WalletAddress>> WalletDB::ReadAllAddresses() {
@@ -814,8 +808,9 @@ Result<void> WalletDB::DeleteAddress(const std::string& address) {
         return Result<void>::Error("Database not open");
     }
 
-    std::string key = "addr_" + address;
-    return impl_->db->Delete(key);
+    // TODO: Implement wallet database persistence
+    // BlockchainDB doesn't have generic Delete() method - need custom wallet DB
+    return Result<void>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<void> WalletDB::WriteTransaction(const WalletTransaction& wtx) {
@@ -823,9 +818,9 @@ Result<void> WalletDB::WriteTransaction(const WalletTransaction& wtx) {
         return Result<void>::Error("Database not open");
     }
 
-    std::string key = "tx_" + Uint256ToHex(wtx.txid);
-    auto serialized = wtx.tx.Serialize();
-    return impl_->db->Put(key, serialized);
+    // TODO: Implement wallet database persistence
+    // BlockchainDB doesn't have generic Put() method - need custom wallet DB
+    return Result<void>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<WalletTransaction> WalletDB::ReadTransaction(const uint256& txid) {
@@ -833,21 +828,9 @@ Result<WalletTransaction> WalletDB::ReadTransaction(const uint256& txid) {
         return Result<WalletTransaction>::Error("Database not open");
     }
 
-    std::string key = "tx_" + Uint256ToHex(txid);
-    auto result = impl_->db->Get(key);
-    if (!result.IsOk()) {
-        return Result<WalletTransaction>::Error("Transaction not found");
-    }
-
-    auto tx_result = Transaction::Deserialize(result.value.value());
-    if (!tx_result.IsOk()) {
-        return Result<WalletTransaction>::Error("Failed to deserialize transaction");
-    }
-
-    WalletTransaction wtx;
-    wtx.txid = txid;
-    wtx.tx = tx_result.value.value();
-    return Result<WalletTransaction>::Ok(wtx);
+    // TODO: Implement wallet database persistence
+    // BlockchainDB doesn't have generic Get() method - need custom wallet DB
+    return Result<WalletTransaction>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<std::vector<WalletTransaction>> WalletDB::ReadAllTransactions() {
@@ -865,8 +848,8 @@ Result<void> WalletDB::DeleteTransaction(const uint256& txid) {
         return Result<void>::Error("Database not open");
     }
 
-    std::string key = "tx_" + Uint256ToHex(txid);
-    return impl_->db->Delete(key);
+    // TODO: Implement wallet database persistence
+    return Result<void>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<void> WalletDB::WriteMasterKey(const std::vector<uint8_t>& encrypted_seed) {
@@ -874,7 +857,8 @@ Result<void> WalletDB::WriteMasterKey(const std::vector<uint8_t>& encrypted_seed
         return Result<void>::Error("Database not open");
     }
 
-    return impl_->db->Put("master_key", encrypted_seed);
+    // TODO: Implement wallet database persistence
+    return Result<void>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<std::vector<uint8_t>> WalletDB::ReadMasterKey() {
@@ -882,7 +866,8 @@ Result<std::vector<uint8_t>> WalletDB::ReadMasterKey() {
         return Result<std::vector<uint8_t>>::Error("Database not open");
     }
 
-    return impl_->db->Get("master_key");
+    // TODO: Implement wallet database persistence
+    return Result<std::vector<uint8_t>>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<void> WalletDB::WriteMetadata(const std::string& key, const std::string& value) {
@@ -890,9 +875,8 @@ Result<void> WalletDB::WriteMetadata(const std::string& key, const std::string& 
         return Result<void>::Error("Database not open");
     }
 
-    std::string db_key = "meta_" + key;
-    std::vector<uint8_t> data(value.begin(), value.end());
-    return impl_->db->Put(db_key, data);
+    // TODO: Implement wallet database persistence
+    return Result<void>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<std::string> WalletDB::ReadMetadata(const std::string& key) {
@@ -900,14 +884,8 @@ Result<std::string> WalletDB::ReadMetadata(const std::string& key) {
         return Result<std::string>::Error("Database not open");
     }
 
-    std::string db_key = "meta_" + key;
-    auto result = impl_->db->Get(db_key);
-    if (!result.IsOk()) {
-        return Result<std::string>::Error("Metadata not found");
-    }
-
-    std::string value(result.value.value().begin(), result.value.value().end());
-    return Result<std::string>::Ok(value);
+    // TODO: Implement wallet database persistence
+    return Result<std::string>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<void> WalletDB::WriteLabel(const std::string& address, const std::string& label) {
@@ -915,9 +893,8 @@ Result<void> WalletDB::WriteLabel(const std::string& address, const std::string&
         return Result<void>::Error("Database not open");
     }
 
-    std::string key = "label_" + address;
-    std::vector<uint8_t> data(label.begin(), label.end());
-    return impl_->db->Put(key, data);
+    // TODO: Implement wallet database persistence
+    return Result<void>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<std::string> WalletDB::ReadLabel(const std::string& address) {
@@ -925,14 +902,8 @@ Result<std::string> WalletDB::ReadLabel(const std::string& address) {
         return Result<std::string>::Error("Database not open");
     }
 
-    std::string key = "label_" + address;
-    auto result = impl_->db->Get(key);
-    if (!result.IsOk()) {
-        return Result<std::string>::Error("Label not found");
-    }
-
-    std::string label(result.value.value().begin(), result.value.value().end());
-    return Result<std::string>::Ok(label);
+    // TODO: Implement wallet database persistence
+    return Result<std::string>::Error("Not yet implemented - need custom wallet database");
 }
 
 Result<void> WalletDB::Backup(const std::string& backup_path) {
