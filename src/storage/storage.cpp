@@ -1,0 +1,1061 @@
+/*
+ * Copyright (c) 2025 INTcoin Team (Neil Adamson)
+ * SPDX-License-Identifier: MIT License
+ * Storage Layer Implementation (RocksDB Backend)
+ */
+
+#include "intcoin/storage.h"
+#include "intcoin/util.h"
+#include "intcoin/crypto.h"
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/write_batch.h>
+#include <rocksdb/slice.h>
+#include <rocksdb/filter_policy.h>
+#include <rocksdb/table.h>
+#include <rocksdb/cache.h>
+#include <unordered_map>
+#include <shared_mutex>
+#include <iostream>
+
+namespace intcoin {
+
+// ============================================================================
+// ChainState Serialization
+// ============================================================================
+
+std::vector<uint8_t> ChainState::Serialize() const {
+    std::vector<uint8_t> result;
+    SerializeUint256(result, best_block_hash);
+    SerializeUint64(result, best_height);
+    SerializeUint256(result, chain_work);
+    SerializeUint64(result, total_transactions);
+    SerializeUint64(result, utxo_count);
+    SerializeUint64(result, total_supply);
+    return result;
+}
+
+Result<ChainState> ChainState::Deserialize(const std::vector<uint8_t>& data) {
+    size_t pos = 0;
+    ChainState state;
+
+    // Deserialize best_block_hash (32 bytes)
+    auto hash_result = DeserializeUint256(data, pos);
+    if (hash_result.IsError()) {
+        return Result<ChainState>::Error("Failed to deserialize best_block_hash: " + hash_result.error);
+    }
+    state.best_block_hash = *hash_result.value;
+
+    // Deserialize best_height (8 bytes)
+    auto height_result = DeserializeUint64(data, pos);
+    if (height_result.IsError()) {
+        return Result<ChainState>::Error("Failed to deserialize best_height: " + height_result.error);
+    }
+    state.best_height = *height_result.value;
+
+    // Deserialize chain_work (32 bytes)
+    auto work_result = DeserializeUint256(data, pos);
+    if (work_result.IsError()) {
+        return Result<ChainState>::Error("Failed to deserialize chain_work: " + work_result.error);
+    }
+    state.chain_work = *work_result.value;
+
+    // Deserialize total_transactions (8 bytes)
+    auto tx_count_result = DeserializeUint64(data, pos);
+    if (tx_count_result.IsError()) {
+        return Result<ChainState>::Error("Failed to deserialize total_transactions: " + tx_count_result.error);
+    }
+    state.total_transactions = *tx_count_result.value;
+
+    // Deserialize utxo_count (8 bytes)
+    auto utxo_result = DeserializeUint64(data, pos);
+    if (utxo_result.IsError()) {
+        return Result<ChainState>::Error("Failed to deserialize utxo_count: " + utxo_result.error);
+    }
+    state.utxo_count = *utxo_result.value;
+
+    // Deserialize total_supply (8 bytes)
+    auto supply_result = DeserializeUint64(data, pos);
+    if (supply_result.IsError()) {
+        return Result<ChainState>::Error("Failed to deserialize total_supply: " + supply_result.error);
+    }
+    state.total_supply = *supply_result.value;
+
+    return Result<ChainState>::Ok(std::move(state));
+}
+
+// ============================================================================
+// BlockIndex Serialization
+// ============================================================================
+
+std::vector<uint8_t> BlockIndex::Serialize() const {
+    std::vector<uint8_t> result;
+    SerializeUint256(result, hash);
+    SerializeUint64(result, height);
+    SerializeUint256(result, prev_hash);
+    SerializeUint64(result, timestamp);
+    SerializeUint32(result, bits);
+    SerializeUint256(result, chain_work);
+    SerializeUint32(result, tx_count);
+    SerializeUint32(result, size);
+    SerializeUint64(result, file_pos);
+    return result;
+}
+
+Result<BlockIndex> BlockIndex::Deserialize(const std::vector<uint8_t>& data) {
+    size_t pos = 0;
+    BlockIndex index;
+
+    // Deserialize hash (32 bytes)
+    auto hash_result = DeserializeUint256(data, pos);
+    if (hash_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize hash: " + hash_result.error);
+    }
+    index.hash = *hash_result.value;
+
+    // Deserialize height (8 bytes)
+    auto height_result = DeserializeUint64(data, pos);
+    if (height_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize height: " + height_result.error);
+    }
+    index.height = *height_result.value;
+
+    // Deserialize prev_hash (32 bytes)
+    auto prev_result = DeserializeUint256(data, pos);
+    if (prev_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize prev_hash: " + prev_result.error);
+    }
+    index.prev_hash = *prev_result.value;
+
+    // Deserialize timestamp (8 bytes)
+    auto time_result = DeserializeUint64(data, pos);
+    if (time_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize timestamp: " + time_result.error);
+    }
+    index.timestamp = *time_result.value;
+
+    // Deserialize bits (4 bytes)
+    auto bits_result = DeserializeUint32(data, pos);
+    if (bits_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize bits: " + bits_result.error);
+    }
+    index.bits = *bits_result.value;
+
+    // Deserialize chain_work (32 bytes)
+    auto work_result = DeserializeUint256(data, pos);
+    if (work_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize chain_work: " + work_result.error);
+    }
+    index.chain_work = *work_result.value;
+
+    // Deserialize tx_count (4 bytes)
+    auto tx_result = DeserializeUint32(data, pos);
+    if (tx_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize tx_count: " + tx_result.error);
+    }
+    index.tx_count = *tx_result.value;
+
+    // Deserialize size (4 bytes)
+    auto size_result = DeserializeUint32(data, pos);
+    if (size_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize size: " + size_result.error);
+    }
+    index.size = *size_result.value;
+
+    // Deserialize file_pos (8 bytes)
+    auto pos_result = DeserializeUint64(data, pos);
+    if (pos_result.IsError()) {
+        return Result<BlockIndex>::Error("Failed to deserialize file_pos: " + pos_result.error);
+    }
+    index.file_pos = *pos_result.value;
+
+    return Result<BlockIndex>::Ok(std::move(index));
+}
+
+// ============================================================================
+// BlockchainDB Implementation
+// ============================================================================
+
+class BlockchainDB::Impl {
+public:
+    rocksdb::DB* db_;
+    rocksdb::WriteBatch* batch_;
+    std::string data_dir_;
+    bool is_open_;
+    bool in_batch_;
+    bool pruning_enabled_;
+    uint64_t pruning_target_size_;
+
+    Impl(const std::string& data_dir)
+        : db_(nullptr)
+        , batch_(nullptr)
+        , data_dir_(data_dir)
+        , is_open_(false)
+        , in_batch_(false)
+        , pruning_enabled_(false)
+        , pruning_target_size_(0)
+    {}
+
+    ~Impl() {
+        if (batch_) {
+            delete batch_;
+            batch_ = nullptr;
+        }
+        if (db_) {
+            delete db_;
+            db_ = nullptr;
+        }
+    }
+
+    // Helper: Create database key
+    std::string MakeKey(char prefix, const uint256& hash) const {
+        std::string key;
+        key.push_back(prefix);
+        key.append(reinterpret_cast<const char*>(hash.data()), hash.size());
+        return key;
+    }
+
+    std::string MakeKey(char prefix, uint64_t value) const {
+        std::string key;
+        key.push_back(prefix);
+        std::vector<uint8_t> data;
+        SerializeUint64(data, value);
+        key.append(reinterpret_cast<const char*>(data.data()), data.size());
+        return key;
+    }
+
+    std::string MakeKey(char prefix, const OutPoint& outpoint) const {
+        std::string key;
+        key.push_back(prefix);
+        auto serialized = outpoint.Serialize();
+        key.append(reinterpret_cast<const char*>(serialized.data()), serialized.size());
+        return key;
+    }
+
+    std::string MakeKey(char prefix) const {
+        return std::string(1, prefix);
+    }
+
+    // Helper: Put data
+    rocksdb::Status Put(const std::string& key, const std::vector<uint8_t>& value) {
+        rocksdb::Slice key_slice(key);
+        rocksdb::Slice value_slice(reinterpret_cast<const char*>(value.data()), value.size());
+
+        if (in_batch_ && batch_) {
+            batch_->Put(key_slice, value_slice);
+            return rocksdb::Status::OK();
+        } else {
+            rocksdb::WriteOptions options;
+            return db_->Put(options, key_slice, value_slice);
+        }
+    }
+
+    // Helper: Get data
+    rocksdb::Status Get(const std::string& key, std::string& value) const {
+        rocksdb::ReadOptions options;
+        return db_->Get(options, key, &value);
+    }
+
+    // Helper: Delete data
+    rocksdb::Status Delete(const std::string& key) {
+        if (in_batch_ && batch_) {
+            batch_->Delete(key);
+            return rocksdb::Status::OK();
+        } else {
+            rocksdb::WriteOptions options;
+            return db_->Delete(options, key);
+        }
+    }
+
+    // Helper: Check if key exists
+    bool Exists(const std::string& key) const {
+        std::string value;
+        rocksdb::Status s = Get(key, value);
+        return s.ok();
+    }
+};
+
+// Constructor
+BlockchainDB::BlockchainDB(const std::string& data_dir)
+    : impl_(std::make_unique<Impl>(data_dir))
+{}
+
+// Destructor
+BlockchainDB::~BlockchainDB() {
+    Close();
+}
+
+// Open database
+Result<void> BlockchainDB::Open() {
+    if (impl_->is_open_) {
+        return Result<void>::Error("Database already open");
+    }
+
+    // Configure RocksDB options
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    options.compression = rocksdb::kLZ4Compression;
+    options.max_open_files = 512;
+    options.write_buffer_size = 64 * 1024 * 1024; // 64 MB
+    options.max_write_buffer_number = 3;
+
+    // Configure block-based table options
+    rocksdb::BlockBasedTableOptions table_options;
+    table_options.block_cache = rocksdb::NewLRUCache(256 * 1024 * 1024); // 256 MB cache
+    table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
+    options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
+
+    // Open database
+    rocksdb::Status status = rocksdb::DB::Open(options, impl_->data_dir_, &impl_->db_);
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to open database: " + status.ToString());
+    }
+
+    impl_->is_open_ = true;
+    return Result<void>::Ok();
+}
+
+// Close database
+void BlockchainDB::Close() {
+    if (impl_->is_open_) {
+        if (impl_->batch_) {
+            delete impl_->batch_;
+            impl_->batch_ = nullptr;
+        }
+        if (impl_->db_) {
+            delete impl_->db_;
+            impl_->db_ = nullptr;
+        }
+        impl_->is_open_ = false;
+    }
+}
+
+// Check if open
+bool BlockchainDB::IsOpen() const {
+    return impl_->is_open_;
+}
+
+// ============================================================================
+// Block Operations
+// ============================================================================
+
+Result<void> BlockchainDB::StoreBlock(const Block& block) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Serialize block
+    auto serialized = block.Serialize();
+
+    // Store block data
+    std::string key = impl_->MakeKey(db::PREFIX_BLOCK, block.GetHash());
+    rocksdb::Status status = impl_->Put(key, serialized);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to store block: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<Block> BlockchainDB::GetBlock(const uint256& hash) const {
+    if (!impl_->is_open_) {
+        return Result<Block>::Error("Database not open");
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_BLOCK, hash);
+    std::string value;
+    rocksdb::Status status = impl_->Get(key, value);
+
+    if (!status.ok()) {
+        return Result<Block>::Error("Block not found: " + ToHex(hash));
+    }
+
+    // Deserialize block
+    std::vector<uint8_t> data(value.begin(), value.end());
+    return Block::Deserialize(data);
+}
+
+Result<Block> BlockchainDB::GetBlockByHeight(uint64_t height) const {
+    // First get the hash for this height
+    auto hash_result = GetBlockHash(height);
+    if (hash_result.IsError()) {
+        return Result<Block>::Error(hash_result.error);
+    }
+
+    // Then get the block
+    return GetBlock(*hash_result.value);
+}
+
+bool BlockchainDB::HasBlock(const uint256& hash) const {
+    if (!impl_->is_open_) {
+        return false;
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_BLOCK, hash);
+    return impl_->Exists(key);
+}
+
+Result<void> BlockchainDB::DeleteBlock(const uint256& hash) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Check if block exists first
+    std::string key = impl_->MakeKey(db::PREFIX_BLOCK, hash);
+    if (!impl_->Exists(key)) {
+        return Result<void>::Error("Block not found: " + ToHex(hash));
+    }
+
+    rocksdb::Status status = impl_->Delete(key);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to delete block: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+// ============================================================================
+// Block Index Operations
+// ============================================================================
+
+Result<void> BlockchainDB::StoreBlockIndex(const BlockIndex& index) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    auto serialized = index.Serialize();
+    std::string key = impl_->MakeKey(db::PREFIX_BLOCK_INDEX, index.hash);
+    rocksdb::Status status = impl_->Put(key, serialized);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to store block index: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<BlockIndex> BlockchainDB::GetBlockIndex(const uint256& hash) const {
+    if (!impl_->is_open_) {
+        return Result<BlockIndex>::Error("Database not open");
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_BLOCK_INDEX, hash);
+    std::string value;
+    rocksdb::Status status = impl_->Get(key, value);
+
+    if (!status.ok()) {
+        return Result<BlockIndex>::Error("Block index not found");
+    }
+
+    std::vector<uint8_t> data(value.begin(), value.end());
+    return BlockIndex::Deserialize(data);
+}
+
+Result<uint256> BlockchainDB::GetBlockHash(uint64_t height) const {
+    if (!impl_->is_open_) {
+        return Result<uint256>::Error("Database not open");
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_BLOCK_HEIGHT, height);
+    std::string value;
+    rocksdb::Status status = impl_->Get(key, value);
+
+    if (!status.ok()) {
+        return Result<uint256>::Error("Block hash not found for height " + std::to_string(height));
+    }
+
+    // Deserialize uint256
+    std::vector<uint8_t> data(value.begin(), value.end());
+    size_t pos = 0;
+    return DeserializeUint256(data, pos);
+}
+
+Result<void> BlockchainDB::StoreBlockHeight(uint64_t height, const uint256& hash) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_BLOCK_HEIGHT, height);
+    std::vector<uint8_t> value;
+    SerializeUint256(value, hash);
+    rocksdb::Status status = impl_->Put(key, value);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to store block height: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+// ============================================================================
+// Transaction Operations
+// ============================================================================
+
+Result<void> BlockchainDB::StoreTransaction(const Transaction& tx) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    auto serialized = tx.Serialize();
+    std::string key = impl_->MakeKey(db::PREFIX_TX, tx.GetHash());
+    rocksdb::Status status = impl_->Put(key, serialized);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to store transaction: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<Transaction> BlockchainDB::GetTransaction(const uint256& hash) const {
+    if (!impl_->is_open_) {
+        return Result<Transaction>::Error("Database not open");
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_TX, hash);
+    std::string value;
+    rocksdb::Status status = impl_->Get(key, value);
+
+    if (!status.ok()) {
+        return Result<Transaction>::Error("Transaction not found");
+    }
+
+    std::vector<uint8_t> data(value.begin(), value.end());
+    return Transaction::Deserialize(data);
+}
+
+bool BlockchainDB::HasTransaction(const uint256& hash) const {
+    if (!impl_->is_open_) {
+        return false;
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_TX, hash);
+    return impl_->Exists(key);
+}
+
+Result<void> BlockchainDB::DeleteTransaction(const uint256& hash) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Check if transaction exists first
+    std::string key = impl_->MakeKey(db::PREFIX_TX, hash);
+    if (!impl_->Exists(key)) {
+        return Result<void>::Error("Transaction not found: " + ToHex(hash));
+    }
+
+    rocksdb::Status status = impl_->Delete(key);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to delete transaction: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+// ============================================================================
+// UTXO Operations
+// ============================================================================
+
+Result<void> BlockchainDB::StoreUTXO(const OutPoint& outpoint, const TxOut& output) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    auto serialized = output.Serialize();
+    std::string key = impl_->MakeKey(db::PREFIX_UTXO, outpoint);
+    rocksdb::Status status = impl_->Put(key, serialized);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to store UTXO: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<TxOut> BlockchainDB::GetUTXO(const OutPoint& outpoint) const {
+    if (!impl_->is_open_) {
+        return Result<TxOut>::Error("Database not open");
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_UTXO, outpoint);
+    std::string value;
+    rocksdb::Status status = impl_->Get(key, value);
+
+    if (!status.ok()) {
+        return Result<TxOut>::Error("UTXO not found");
+    }
+
+    std::vector<uint8_t> data(value.begin(), value.end());
+    return TxOut::Deserialize(data);
+}
+
+bool BlockchainDB::HasUTXO(const OutPoint& outpoint) const {
+    if (!impl_->is_open_) {
+        return false;
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_UTXO, outpoint);
+    return impl_->Exists(key);
+}
+
+Result<void> BlockchainDB::DeleteUTXO(const OutPoint& outpoint) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Check if UTXO exists first
+    std::string key = impl_->MakeKey(db::PREFIX_UTXO, outpoint);
+    if (!impl_->Exists(key)) {
+        return Result<void>::Error("UTXO not found");
+    }
+
+    rocksdb::Status status = impl_->Delete(key);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to delete UTXO: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<std::vector<std::pair<OutPoint, TxOut>>> BlockchainDB::GetUTXOsForAddress(
+    const std::string& address) const {
+    // TODO: Implement address UTXO lookup (requires address index)
+    return Result<std::vector<std::pair<OutPoint, TxOut>>>::Error("Not implemented");
+}
+
+// ============================================================================
+// Chain State Operations
+// ============================================================================
+
+Result<void> BlockchainDB::StoreChainState(const ChainState& state) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    auto serialized = state.Serialize();
+    std::string key = impl_->MakeKey(db::PREFIX_CHAINSTATE);
+    rocksdb::Status status = impl_->Put(key, serialized);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to store chain state: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<ChainState> BlockchainDB::GetChainState() const {
+    if (!impl_->is_open_) {
+        return Result<ChainState>::Error("Database not open");
+    }
+
+    std::string key = impl_->MakeKey(db::PREFIX_CHAINSTATE);
+    std::string value;
+    rocksdb::Status status = impl_->Get(key, value);
+
+    if (!status.ok()) {
+        // Return empty chain state if not found (new database)
+        ChainState state;
+        state.best_height = 0;
+        state.total_transactions = 0;
+        state.utxo_count = 0;
+        state.total_supply = 0;
+        return Result<ChainState>::Ok(state);
+    }
+
+    std::vector<uint8_t> data(value.begin(), value.end());
+    return ChainState::Deserialize(data);
+}
+
+Result<void> BlockchainDB::UpdateBestBlock(const uint256& hash, uint64_t height) {
+    auto state_result = GetChainState();
+    if (state_result.IsError()) {
+        return Result<void>::Error("Failed to get chain state: " + state_result.error);
+    }
+
+    ChainState state = *state_result.value;
+    state.best_block_hash = hash;
+    state.best_height = height;
+
+    return StoreChainState(state);
+}
+
+// ============================================================================
+// Address Index Operations
+// ============================================================================
+
+Result<void> BlockchainDB::IndexTransaction(const Transaction& tx) {
+    // TODO: Implement transaction indexing
+    return Result<void>::Ok();
+}
+
+Result<std::vector<uint256>> BlockchainDB::GetTransactionsForAddress(
+    const std::string& address) const {
+    // TODO: Implement address transaction lookup
+    return Result<std::vector<uint256>>::Error("Not implemented");
+}
+
+// ============================================================================
+// Batch Operations
+// ============================================================================
+
+void BlockchainDB::BeginBatch() {
+    if (impl_->batch_) {
+        delete impl_->batch_;
+    }
+    impl_->batch_ = new rocksdb::WriteBatch();
+    impl_->in_batch_ = true;
+}
+
+Result<void> BlockchainDB::CommitBatch() {
+    if (!impl_->in_batch_ || !impl_->batch_) {
+        return Result<void>::Error("No active batch");
+    }
+
+    rocksdb::WriteOptions options;
+    rocksdb::Status status = impl_->db_->Write(options, impl_->batch_);
+
+    delete impl_->batch_;
+    impl_->batch_ = nullptr;
+    impl_->in_batch_ = false;
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to commit batch: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+void BlockchainDB::AbortBatch() {
+    if (impl_->batch_) {
+        delete impl_->batch_;
+        impl_->batch_ = nullptr;
+    }
+    impl_->in_batch_ = false;
+}
+
+// ============================================================================
+// Pruning
+// ============================================================================
+
+void BlockchainDB::EnablePruning(uint64_t target_size_gb) {
+    impl_->pruning_enabled_ = true;
+    impl_->pruning_target_size_ = target_size_gb * 1024 * 1024 * 1024;
+}
+
+Result<void> BlockchainDB::PruneBlocks(uint64_t keep_blocks) {
+    // TODO: Implement block pruning
+    return Result<void>::Error("Not implemented");
+}
+
+bool BlockchainDB::IsPruningEnabled() const {
+    return impl_->pruning_enabled_;
+}
+
+// ============================================================================
+// Database Stats
+// ============================================================================
+
+uint64_t BlockchainDB::GetDatabaseSize() const {
+    // TODO: Implement database size calculation
+    return 0;
+}
+
+uint64_t BlockchainDB::GetBlockCount() const {
+    auto state_result = GetChainState();
+    if (state_result.IsError()) {
+        return 0;
+    }
+    return state_result.value->best_height + 1;
+}
+
+uint64_t BlockchainDB::GetTransactionCount() const {
+    auto state_result = GetChainState();
+    if (state_result.IsError()) {
+        return 0;
+    }
+    return state_result.value->total_transactions;
+}
+
+uint64_t BlockchainDB::GetUTXOCount() const {
+    auto state_result = GetChainState();
+    if (state_result.IsError()) {
+        return 0;
+    }
+    return state_result.value->utxo_count;
+}
+
+// ============================================================================
+// Maintenance
+// ============================================================================
+
+Result<void> BlockchainDB::Compact() {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    rocksdb::CompactRangeOptions options;
+    rocksdb::Status status = impl_->db_->CompactRange(options, nullptr, nullptr);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to compact database: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<void> BlockchainDB::Verify() {
+    // TODO: Implement database verification
+    return Result<void>::Error("Not implemented");
+}
+
+Result<void> BlockchainDB::Backup(const std::string& backup_dir) {
+    // TODO: Implement database backup
+    return Result<void>::Error("Not implemented");
+}
+
+// ============================================================================
+// Mempool Implementation
+// ============================================================================
+
+struct MempoolEntry {
+    Transaction tx;
+    uint256 tx_hash;
+    uint64_t fee;
+    double fee_rate;
+    std::chrono::system_clock::time_point time_added;
+    size_t size;
+
+    MempoolEntry() : fee(0), fee_rate(0.0), size(0) {}
+
+    MempoolEntry(Transaction transaction, uint64_t tx_fee)
+        : tx(std::move(transaction))
+        , fee(tx_fee)
+        , time_added(std::chrono::system_clock::now())
+    {
+        tx_hash = tx.GetHash();
+        size = tx.GetSerializedSize();
+        fee_rate = static_cast<double>(fee) / static_cast<double>(size);
+    }
+
+    bool operator<(const MempoolEntry& other) const {
+        // Higher fee rate = higher priority
+        return fee_rate > other.fee_rate;
+    }
+};
+
+class Mempool::Impl {
+public:
+    std::unordered_map<uint256, MempoolEntry, uint256_hash> transactions;
+    std::unordered_map<OutPoint, uint256, OutPointHash> outpoint_to_tx;
+    mutable std::mutex mutex;
+    size_t total_size = 0;
+
+    static constexpr size_t MAX_MEMPOOL_SIZE = 100 * 1024 * 1024; // 100 MB
+};
+
+Mempool::Mempool() : impl_(std::make_unique<Impl>()) {}
+
+Mempool::~Mempool() = default;
+
+Result<void> Mempool::AddTransaction(const Transaction& tx) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    auto tx_hash = tx.GetHash();
+
+    // Check if already in mempool
+    if (impl_->transactions.find(tx_hash) != impl_->transactions.end()) {
+        return Result<void>::Error("Transaction already in mempool");
+    }
+
+    // Basic validation
+    if (tx.inputs.empty()) {
+        return Result<void>::Error("Transaction has no inputs");
+    }
+    if (tx.outputs.empty()) {
+        return Result<void>::Error("Transaction has no outputs");
+    }
+
+    // Check for conflicts
+    for (const auto& input : tx.inputs) {
+        OutPoint outpoint(input.prev_tx_hash, input.prev_tx_index);
+        if (impl_->outpoint_to_tx.find(outpoint) != impl_->outpoint_to_tx.end()) {
+            return Result<void>::Error("Transaction conflicts with mempool");
+        }
+    }
+
+    // Calculate fee (stub - would need UTXO set)
+    uint64_t fee = 1000; // TODO: Calculate actual fee
+
+    // Add to mempool
+    MempoolEntry entry(tx, fee);
+    impl_->total_size += entry.size;
+    impl_->transactions[tx_hash] = entry;
+
+    // Track outpoints
+    for (const auto& input : tx.inputs) {
+        OutPoint outpoint(input.prev_tx_hash, input.prev_tx_index);
+        impl_->outpoint_to_tx[outpoint] = tx_hash;
+    }
+
+    return Result<void>::Ok();
+}
+
+void Mempool::RemoveTransaction(const uint256& tx_hash) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    auto it = impl_->transactions.find(tx_hash);
+    if (it == impl_->transactions.end()) {
+        return;
+    }
+
+    impl_->total_size -= it->second.size;
+
+    for (const auto& input : it->second.tx.inputs) {
+        OutPoint outpoint(input.prev_tx_hash, input.prev_tx_index);
+        impl_->outpoint_to_tx.erase(outpoint);
+    }
+
+    impl_->transactions.erase(it);
+}
+
+std::optional<Transaction> Mempool::GetTransaction(const uint256& tx_hash) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    auto it = impl_->transactions.find(tx_hash);
+    if (it == impl_->transactions.end()) {
+        return std::nullopt;
+    }
+
+    return it->second.tx;
+}
+
+bool Mempool::HasTransaction(const uint256& tx_hash) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    return impl_->transactions.find(tx_hash) != impl_->transactions.end();
+}
+
+std::vector<Transaction> Mempool::GetAllTransactions() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::vector<Transaction> result;
+    result.reserve(impl_->transactions.size());
+
+    for (const auto& [hash, entry] : impl_->transactions) {
+        result.push_back(entry.tx);
+    }
+
+    return result;
+}
+
+std::vector<Transaction> Mempool::GetTransactionsForMining(size_t max_count) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::vector<MempoolEntry> sorted_entries;
+    sorted_entries.reserve(impl_->transactions.size());
+
+    for (const auto& [hash, entry] : impl_->transactions) {
+        sorted_entries.push_back(entry);
+    }
+
+    // Sort by fee rate (highest first)
+    std::sort(sorted_entries.begin(), sorted_entries.end());
+
+    // Extract transactions
+    std::vector<Transaction> result;
+    size_t count = (max_count > 0) ? std::min(max_count, sorted_entries.size())
+                                   : sorted_entries.size();
+    result.reserve(count);
+
+    for (size_t i = 0; i < count; i++) {
+        result.push_back(sorted_entries[i].tx);
+    }
+
+    return result;
+}
+
+void Mempool::RemoveBlockTransactions(const Block& block) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    for (const auto& tx : block.transactions) {
+        auto tx_hash = tx.GetHash();
+        auto it = impl_->transactions.find(tx_hash);
+        if (it == impl_->transactions.end()) {
+            continue;
+        }
+
+        impl_->total_size -= it->second.size;
+
+        for (const auto& input : it->second.tx.inputs) {
+            OutPoint outpoint(input.prev_tx_hash, input.prev_tx_index);
+            impl_->outpoint_to_tx.erase(outpoint);
+        }
+
+        impl_->transactions.erase(it);
+    }
+}
+
+size_t Mempool::GetSize() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    return impl_->transactions.size();
+}
+
+uint64_t Mempool::GetTotalFees() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    uint64_t total = 0;
+    for (const auto& [hash, entry] : impl_->transactions) {
+        total += entry.fee;
+    }
+
+    return total;
+}
+
+void Mempool::Clear() {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    impl_->transactions.clear();
+    impl_->outpoint_to_tx.clear();
+    impl_->total_size = 0;
+}
+
+void Mempool::LimitSize(size_t max_size) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    if (impl_->total_size <= max_size) {
+        return;
+    }
+
+    // Get transactions sorted by fee rate (lowest first)
+    std::vector<std::pair<uint256, MempoolEntry>> sorted_txs;
+    sorted_txs.reserve(impl_->transactions.size());
+
+    for (const auto& [hash, entry] : impl_->transactions) {
+        sorted_txs.push_back({hash, entry});
+    }
+
+    std::sort(sorted_txs.begin(), sorted_txs.end(),
+              [](const auto& a, const auto& b) {
+                  return a.second.fee_rate < b.second.fee_rate;
+              });
+
+    // Remove lowest fee transactions until under limit
+    for (const auto& [hash, entry] : sorted_txs) {
+        if (impl_->total_size <= max_size) {
+            break;
+        }
+
+        impl_->total_size -= entry.size;
+
+        for (const auto& input : entry.tx.inputs) {
+            OutPoint outpoint(input.prev_tx_hash, input.prev_tx_index);
+            impl_->outpoint_to_tx.erase(outpoint);
+        }
+
+        impl_->transactions.erase(hash);
+    }
+}
+
+} // namespace intcoin

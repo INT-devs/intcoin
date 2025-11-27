@@ -1,0 +1,68 @@
+# Test executables
+
+# Find RocksDB
+find_library(ROCKSDB_LIB rocksdb REQUIRED)
+find_path(ROCKSDB_INCLUDE_DIR rocksdb/db.h REQUIRED)
+
+include_directories(${ROCKSDB_INCLUDE_DIR})
+
+# Test: Crypto
+add_executable(test_crypto test_crypto.cpp)
+target_link_libraries(test_crypto intcoin_core)
+
+# Test: RandomX
+add_executable(test_randomx test_randomx.cpp)
+target_link_libraries(test_randomx intcoin_core ${ROCKSDB_LIB})
+
+# Test: Bech32
+add_executable(test_bech32 test_bech32.cpp)
+target_link_libraries(test_bech32 intcoin_core)
+
+# Test: Serialization
+add_executable(test_serialization test_serialization.cpp)
+target_link_libraries(test_serialization intcoin_core)
+
+# Test: Storage (RocksDB)
+add_executable(test_storage test_storage.cpp)
+target_link_libraries(test_storage intcoin_core ${ROCKSDB_LIB})
+
+# Test: Validation
+add_executable(test_validation test_validation.cpp)
+target_link_libraries(test_validation intcoin_core ${ROCKSDB_LIB})
+
+# Test: Genesis Block
+add_executable(test_genesis test_genesis.cpp)
+target_link_libraries(test_genesis intcoin_core)
+
+# Test: Network Protocol
+add_executable(test_network test_network.cpp)
+target_link_libraries(test_network intcoin_core)
+
+# Test: Machine Learning
+add_executable(test_ml test_ml.cpp)
+target_link_libraries(test_ml intcoin_core ${ROCKSDB_LIB})
+
+# Register tests with CTest
+add_test(NAME CryptoTest COMMAND test_crypto)
+add_test(NAME RandomXTest COMMAND test_randomx)
+add_test(NAME Bech32Test COMMAND test_bech32)
+add_test(NAME SerializationTest COMMAND test_serialization)
+add_test(NAME StorageTest COMMAND test_storage)
+add_test(NAME ValidationTest COMMAND test_validation)
+add_test(NAME GenesisTest COMMAND test_genesis)
+add_test(NAME NetworkTest COMMAND test_network)
+add_test(NAME MLTest COMMAND test_ml)
+
+# Install test executables (optional)
+install(TARGETS
+    test_crypto
+    test_randomx
+    test_bech32
+    test_serialization
+    test_storage
+    test_validation
+    test_genesis
+    test_network
+    test_ml
+    DESTINATION bin/tests
+)

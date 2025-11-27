@@ -347,15 +347,38 @@ Block CreateGenesisBlock() {
     BlockHeader header;
     header.version = 1;
     header.prev_block_hash = uint256(); // Zero hash
-    header.timestamp = 1735171200; // January 1, 2025 00:00:00 UTC
+    header.timestamp = 1732627080; // 26 November 2025 13:18:00 UTC
     header.bits = consensus::MIN_DIFFICULTY_BITS;
     header.nonce = 0;
 
-    // Create coinbase transaction
-    // TODO: Use actual genesis address
+    // Create coinbase transaction with genesis message
+    // Timestamp: 13:18, 26 November 2025
+    // Source: This Is Money
+    // Message: Financial markets in turmoil as Budget leak fiasco sends pound and gilts on rollercoaster ride
+    std::string genesis_message = "13:18, 26 November 2025 This Is Money, Financial markets in turmoil as Budget leak fiasco sends pound and gilts on rollercoaster ride";
+
+    Transaction coinbase;
+    coinbase.version = 1;
+
+    // Coinbase input with genesis message in script_sig
+    TxIn coinbase_input;
+    coinbase_input.prev_tx_hash = uint256(); // Zero hash
+    coinbase_input.prev_tx_index = 0xFFFFFFFF;
+    coinbase_input.sequence = 0xFFFFFFFF;
+
+    // Encode message into script_sig
+    std::vector<uint8_t> script_data(genesis_message.begin(), genesis_message.end());
+    coinbase_input.script_sig = Script(script_data);
+    coinbase.inputs.push_back(coinbase_input);
+
+    // Coinbase output to placeholder address
     PublicKey genesis_pubkey; // Placeholder
-    Transaction coinbase = CreateCoinbaseTransaction(
-        0, consensus::INITIAL_BLOCK_REWARD, genesis_pubkey);
+    uint256 pubkey_hash = PublicKeyToHash(genesis_pubkey);
+    Script script_pubkey = Script::CreateP2PKH(pubkey_hash);
+    TxOut coinbase_output(consensus::INITIAL_BLOCK_REWARD, script_pubkey);
+    coinbase.outputs.push_back(coinbase_output);
+
+    coinbase.locktime = 0;
 
     std::vector<Transaction> transactions;
     transactions.push_back(coinbase);

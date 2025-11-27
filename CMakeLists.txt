@@ -11,7 +11,7 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "INTcoin requires a 64-bit system")
 endif()
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -22,7 +22,7 @@ option(BUILD_DAEMON "Build intcoind daemon" ON)
 option(BUILD_CLI "Build intcoin-cli" ON)
 option(BUILD_MINER "Build miner" ON)
 option(BUILD_EXPLORER "Build block explorer" ON)
-option(ENABLE_LIGHTNING "Enable Lightning Network" ON)
+option(ENABLE_LIGHTNING "Enable Lightning Network" OFF)  # Deferred
 option(ENABLE_TOR "Enable Tor support" OFF)
 option(ENABLE_I2P "Enable I2P support" OFF)
 option(ENABLE_GPU_MINING "Enable GPU mining" OFF)
@@ -135,12 +135,29 @@ set(INTCOIN_CORE_SOURCES
     src/blockchain/block.cpp
     src/blockchain/transaction.cpp
     src/blockchain/script.cpp
+    src/blockchain/blockchain.cpp
+    src/blockchain/validation.cpp
+
+    # Storage
+    src/storage/storage.cpp
 
     # Cryptography
     src/crypto/crypto.cpp
 
     # Consensus
     src/consensus/consensus.cpp
+
+    # Network
+    src/network/network.cpp
+
+    # Machine Learning
+    src/ml/ml.cpp
+
+    # RPC Server
+    src/rpc/rpc.cpp
+
+    # Wallet
+    src/wallet/wallet.cpp
 )
 
 # Lightning Network sources (optional)
@@ -255,8 +272,7 @@ endif()
 # Tests
 if(BUILD_TESTS)
     enable_testing()
-    # TODO: Add tests subdirectory when CMakeLists.txt is created
-    # add_subdirectory(tests)
+    add_subdirectory(tests)
 endif()
 
 # Installation
