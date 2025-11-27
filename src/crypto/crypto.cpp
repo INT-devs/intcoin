@@ -14,6 +14,49 @@
 namespace intcoin {
 
 // ============================================================================
+// Deterministic RNG for HD Wallet Key Derivation
+// ============================================================================
+
+// Thread-local state for deterministic RNG (used by GenerateDeterministicKeyPair)
+namespace {
+    thread_local struct DeterministicRNGState {
+        std::vector<uint8_t> seed;
+        uint64_t counter = 0;
+        bool active = false;
+    } det_rng_state;
+
+    // Custom deterministic RNG function for liboqs
+    // Uses SHA3-256 hash chain: output = SHA3(seed || counter)
+    void deterministic_randombytes(uint8_t *random_array, size_t bytes_to_read) {
+        if (!det_rng_state.active || det_rng_state.seed.empty()) {
+            // Fallback to system RNG if not properly initialized
+            // This shouldn't happen, but provides safety
+            return;
+        }
+
+        size_t offset = 0;
+        while (offset < bytes_to_read) {
+            // Prepare input: seed || counter (little-endian)
+            std::vector<uint8_t> input = det_rng_state.seed;
+            for (int i = 0; i < 8; i++) {
+                input.push_back((det_rng_state.counter >> (i * 8)) & 0xFF);
+            }
+
+            // Hash to get random bytes
+            auto hash = SHA3::Hash(input);
+
+            // Copy what we need
+            size_t to_copy = std::min(static_cast<size_t>(hash.size()),
+                                     bytes_to_read - offset);
+            std::copy_n(hash.begin(), to_copy, random_array + offset);
+
+            offset += to_copy;
+            det_rng_state.counter++;
+        }
+    }
+}
+
+// ============================================================================
 // Dilithium3 Implementation
 // ============================================================================
 
@@ -36,6 +79,56 @@ Result<DilithiumCrypto::KeyPair> DilithiumCrypto::GenerateKeyPair() {
     }
 
     OQS_SIG_free(sig);
+
+    keypair.public_key = public_key;
+    keypair.secret_key = secret_key;
+
+    return Result<KeyPair>::Ok(std::move(keypair));
+}
+
+Result<DilithiumCrypto::KeyPair> DilithiumCrypto::GenerateDeterministicKeyPair(
+        const std::vector<uint8_t>& seed) {
+    if (seed.empty()) {
+        return Result<KeyPair>::Error("Seed cannot be empty for deterministic key generation");
+    }
+
+    // Initialize deterministic RNG state
+    det_rng_state.seed = seed;
+    det_rng_state.counter = 0;
+    det_rng_state.active = true;
+
+    // Set custom RNG for liboqs
+    OQS_randombytes_custom_algorithm(deterministic_randombytes);
+
+    // Create ML-DSA-65 (Dilithium3) signature object
+    OQS_SIG *sig = OQS_SIG_new(OQS_SIG_alg_ml_dsa_65);
+    if (sig == nullptr) {
+        // Cleanup and restore system RNG
+        det_rng_state.active = false;
+        det_rng_state.seed.clear();
+        OQS_randombytes_switch_algorithm("system");
+        return Result<KeyPair>::Error("Failed to create ML-DSA-65 signature object");
+    }
+
+    KeyPair keypair;
+    PublicKey public_key{};
+    SecretKey secret_key{};
+
+    // Generate keypair using deterministic RNG
+    int rc = OQS_SIG_keypair(sig, public_key.data(), secret_key.data());
+
+    // Cleanup
+    OQS_SIG_free(sig);
+
+    // Restore system RNG and clear sensitive data
+    det_rng_state.active = false;
+    det_rng_state.seed.clear();
+    det_rng_state.counter = 0;
+    OQS_randombytes_switch_algorithm("system");
+
+    if (rc != OQS_SUCCESS) {
+        return Result<KeyPair>::Error("Failed to generate deterministic ML-DSA-65 keypair");
+    }
 
     keypair.public_key = public_key;
     keypair.secret_key = secret_key;

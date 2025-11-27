@@ -485,18 +485,16 @@ Result<ExtendedKey> HDKeyDerivation::GenerateMaster(const std::vector<uint8_t>& 
     master.child_index = 0;
 
     // For quantum-resistant crypto (Dilithium3), we cannot derive public keys from private keys
-    // like in traditional ECDSA. We must generate complete keypairs.
+    // like in traditional ECDSA. We must generate complete keypairs deterministically.
     //
-    // TODO: Implement deterministic key generation for Dilithium3
-    // Current limitation: This generates random keypairs, not deterministic from seed
-    // A production implementation needs to:
-    // 1. Use HMAC output to seed liboqs RNG for deterministic generation
-    // 2. Or implement a custom key derivation function for post-quantum crypto
+    // Solution: Use HMAC output as seed for deterministic key generation
+    // DilithiumCrypto::GenerateDeterministicKeyPair() uses a custom RNG seeded with the HMAC
+    // This ensures the same seed always produces the same master key
     //
-    // BIP32 assumes ECDSA where pubkey = privkey * G (elliptic curve math)
-    // Dilithium3 doesn't have this property - keys are generated from random seeds
+    // Note: BIP32 assumes ECDSA where pubkey = privkey * G (elliptic curve math)
+    // Dilithium3 doesn't have this property - keys must be generated as complete pairs
 
-    auto keypair_result = DilithiumCrypto::GenerateKeyPair();
+    auto keypair_result = DilithiumCrypto::GenerateDeterministicKeyPair(hmac);
     if (!keypair_result.IsOk()) {
         return Result<ExtendedKey>::Error("Failed to generate master keypair: " + keypair_result.error);
     }
@@ -560,12 +558,12 @@ Result<ExtendedKey> HDKeyDerivation::DeriveChild(const ExtendedKey& parent,
     // Child private key (if parent has private key)
     if (parent.private_key.has_value()) {
         // For quantum-resistant keys (Dilithium3), we cannot derive public from private
-        // We must generate a complete keypair
+        // We must generate a complete keypair deterministically from the HMAC output
         //
-        // TODO: Use HMAC output to seed deterministic key generation
-        // Current implementation generates random keys (not deterministic)
+        // The HMAC output serves as the derivation material - same parent + index = same child
+        // This ensures deterministic key derivation for HD wallets with post-quantum crypto
 
-        auto keypair_result = DilithiumCrypto::GenerateKeyPair();
+        auto keypair_result = DilithiumCrypto::GenerateDeterministicKeyPair(hmac);
         if (!keypair_result.IsOk()) {
             return Result<ExtendedKey>::Error("Failed to generate child keypair: " + keypair_result.error);
         }

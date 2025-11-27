@@ -44,8 +44,12 @@ public:
         SecretKey secret_key;
     };
 
-    /// Generate new Dilithium3 key pair
+    /// Generate new Dilithium3 key pair (random)
     static Result<KeyPair> GenerateKeyPair();
+
+    /// Generate deterministic Dilithium3 key pair from seed (for HD wallet)
+    /// Uses seed to provide deterministic randomness to liboqs
+    static Result<KeyPair> GenerateDeterministicKeyPair(const std::vector<uint8_t>& seed);
 
     /// Sign message with Dilithium3
     static Result<Signature> Sign(const std::vector<uint8_t>& message,
