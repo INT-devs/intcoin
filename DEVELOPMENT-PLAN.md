@@ -4,7 +4,7 @@
 **Current Date**: December 2, 2025
 **Estimated Completion**: Q1 2026 (14 months)
 **Team Size Required**: 3-5 developers minimum
-**Current Progress**: ~87% (Phases 1-4 Complete, Phase 5 at 75%)
+**Current Progress**: ~88% (Phases 1-4 Complete, Phase 5 at 80%)
 
 ---
 
@@ -362,7 +362,7 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
 - All tests passing (9/9 - 100%)
 - Library size: 883 KB
 
-## 🔄 Phase 5: Wallet Backend (2 months) - **IN PROGRESS (75%)**
+## 🔄 Phase 5: Wallet Backend (2 months) - **IN PROGRESS (80%)**
 
 **Priority: HIGH**
 
@@ -371,7 +371,8 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
   - [x] Key derivation (deterministic post-quantum)
   - [x] Address generation (Bech32 with int1 prefix)
   - [x] BIP39 mnemonic support
-  - [ ] Transaction signing (next priority)
+  - [x] Transaction creation (coin selection, fee calculation)
+  - [x] Transaction signing (Dilithium3 signatures)
 
 - [x] **Wallet Database** - ✅ MOSTLY COMPLETE
   - [x] RocksDB backend structure
@@ -389,14 +390,27 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
   - [x] GetAddressBalance() - Per-address balance calculation
   - [x] ExtractAddressFromScript() - P2PKH and P2PK support
 
+- [x] **Transaction Management** - ✅ COMPLETE
+  - [x] CreateTransaction() - Build unsigned transactions
+  - [x] SignTransaction() - Sign with Dilithium3
+  - [x] Coin selection (greedy algorithm)
+  - [x] Fee estimation and calculation
+  - [x] Change output handling
+  - [ ] Advanced coin selection (Branch and Bound) - optional
+  - [ ] SIGHASH types - optional enhancement
+
 **Recent Progress (Dec 2, 2025)**:
+- ✅ Implemented complete transaction creation and signing
+- ✅ Added coin selection with fee estimation
+- ✅ Implemented Dilithium3 transaction signing
+- ✅ Added change output handling with dust threshold
 - ✅ Implemented complete UTXO scanning infrastructure
 - ✅ Added blockchain rescan functionality
 - ✅ Implemented balance tracking (confirmed + unconfirmed)
 - ✅ Created comprehensive wallet test suite (10/10 tests passing)
 - ✅ Fixed Dilithium3 constants (4032 bytes secret key, 3309 bytes signature)
 - ✅ Fixed wallet keypool index collision bug
-- 📝 Total: 611 lines of test code, 178 lines of wallet code added
+- 📝 Total: 611 lines of test code, 363 lines of wallet code added
 
 ## ⏳ Phase 6: Desktop Wallet (2 months)
 
