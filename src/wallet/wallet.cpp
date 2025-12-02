@@ -2053,8 +2053,9 @@ Result<void> Wallet::UpdateUTXOs(Blockchain& blockchain) {
         wallet_addresses.insert(addr.address);
     }
 
-    // Clear existing UTXOs (will be rebuilt from blockchain)
+    // Clear existing UTXOs and transactions (will be rebuilt from blockchain)
     impl_->utxos.clear();
+    impl_->transactions.clear();
 
     // Scan entire blockchain
     uint64_t height = blockchain.GetBestHeight();
@@ -2066,34 +2067,88 @@ Result<void> Wallet::UpdateUTXOs(Blockchain& blockchain) {
         }
 
         const Block& block = block_result.value.value();
+        uint64_t block_time = block.header.timestamp;
 
         // Process each transaction in the block
         for (size_t tx_idx = 0; tx_idx < block.transactions.size(); tx_idx++) {
             const Transaction& tx = block.transactions[tx_idx];
             uint256 txid = tx.GetHash();
+            bool is_coinbase = (tx_idx == 0);
+            bool is_wallet_tx = false;
 
-            // Remove spent UTXOs (process inputs)
+            // Calculate amounts received and sent
+            uint64_t amount_received = 0;
+            uint64_t amount_sent = 0;
+
+            // Check inputs (spent by us)
             for (const auto& input : tx.inputs) {
-                OutPoint prevout;
-                prevout.tx_hash = input.prev_tx_hash;
-                prevout.index = input.prev_tx_index;
-                impl_->utxos.erase(prevout);
+                if (!is_coinbase) {
+                    // Find the previous output to check if it was ours
+                    OutPoint prevout;
+                    prevout.tx_hash = input.prev_tx_hash;
+                    prevout.index = input.prev_tx_index;
+
+                    // Check if this was a wallet UTXO being spent
+                    auto utxo_it = impl_->utxos.find(prevout);
+                    if (utxo_it != impl_->utxos.end()) {
+                        amount_sent += utxo_it->second.value;
+                        is_wallet_tx = true;
+                        // Remove spent UTXO
+                        impl_->utxos.erase(prevout);
+                    }
+                }
             }
 
-            // Add new UTXOs (process outputs)
+            // Check outputs (received by us)
             for (size_t vout = 0; vout < tx.outputs.size(); vout++) {
                 const TxOut& output = tx.outputs[vout];
 
-                // Check if this output belongs to our wallet
                 // Extract address from script
                 std::string address = ExtractAddressFromScript(output.script_pubkey);
 
                 if (wallet_addresses.count(address) > 0) {
-                    // This output belongs to us - add to UTXOs
+                    // This output belongs to us
+                    amount_received += output.value;
+                    is_wallet_tx = true;
+
+                    // Add to UTXOs
                     OutPoint outpoint;
                     outpoint.tx_hash = txid;
                     outpoint.index = vout;
                     impl_->utxos[outpoint] = output;
+                }
+            }
+
+            // If this transaction involves our wallet, record it
+            if (is_wallet_tx) {
+                WalletTransaction wtx;
+                wtx.txid = txid;
+                wtx.tx = tx;
+                wtx.block_height = h;
+                wtx.timestamp = block_time;
+
+                // Calculate net amount (received - sent)
+                // For received transactions: amount_received > 0, amount_sent = 0
+                // For sent transactions: amount_sent > amount_received (or equal if change)
+                wtx.amount = static_cast<int64_t>(amount_received) - static_cast<int64_t>(amount_sent);
+
+                // Calculate fee (only for transactions we sent)
+                if (amount_sent > 0) {
+                    uint64_t total_output = 0;
+                    for (const auto& output : tx.outputs) {
+                        total_output += output.value;
+                    }
+                    wtx.fee = amount_sent - total_output;
+                } else {
+                    wtx.fee = 0;
+                }
+
+                wtx.is_coinbase = is_coinbase;
+
+                // Save to database
+                auto write_result = impl_->db->WriteTransaction(wtx);
+                if (write_result.IsOk()) {
+                    impl_->transactions.push_back(wtx);
                 }
             }
         }
