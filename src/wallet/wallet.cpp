@@ -14,6 +14,10 @@
 #include <cstring>
 #include <fstream>
 #include <chrono>
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
+#include <rocksdb/slice.h>
+#include <rocksdb/utilities/backup_engine.h>
 
 using namespace intcoin;
 
@@ -718,10 +722,256 @@ uint32_t WalletAddress::GetIndex() const {
 class WalletDB::Impl {
 public:
     std::string wallet_path;
-    std::unique_ptr<BlockchainDB> db;
+    std::unique_ptr<rocksdb::DB> db;
     bool is_open = false;
 
     explicit Impl(const std::string& path) : wallet_path(path) {}
+
+    // Helper: Serialize WalletAddress
+    std::vector<uint8_t> SerializeAddress(const WalletAddress& addr) {
+        std::vector<uint8_t> data;
+
+        // Address string (length-prefixed)
+        uint32_t addr_len = addr.address.size();
+        data.insert(data.end(), reinterpret_cast<uint8_t*>(&addr_len),
+                   reinterpret_cast<uint8_t*>(&addr_len) + sizeof(addr_len));
+        data.insert(data.end(), addr.address.begin(), addr.address.end());
+
+        // Public key (fixed size)
+        data.insert(data.end(), addr.public_key.begin(), addr.public_key.end());
+
+        // Derivation path (simplified - store as string)
+        std::string path_str = addr.path.ToString();
+        uint32_t path_len = path_str.size();
+        data.insert(data.end(), reinterpret_cast<uint8_t*>(&path_len),
+                   reinterpret_cast<uint8_t*>(&path_len) + sizeof(path_len));
+        data.insert(data.end(), path_str.begin(), path_str.end());
+
+        // Label (length-prefixed)
+        uint32_t label_len = addr.label.size();
+        data.insert(data.end(), reinterpret_cast<uint8_t*>(&label_len),
+                   reinterpret_cast<uint8_t*>(&label_len) + sizeof(label_len));
+        data.insert(data.end(), addr.label.begin(), addr.label.end());
+
+        // Timestamps
+        data.insert(data.end(), reinterpret_cast<const uint8_t*>(&addr.creation_time),
+                   reinterpret_cast<const uint8_t*>(&addr.creation_time) + sizeof(addr.creation_time));
+        data.insert(data.end(), reinterpret_cast<const uint8_t*>(&addr.last_used_time),
+                   reinterpret_cast<const uint8_t*>(&addr.last_used_time) + sizeof(addr.last_used_time));
+
+        // is_change flag
+        uint8_t is_change = addr.is_change ? 1 : 0;
+        data.push_back(is_change);
+
+        return data;
+    }
+
+    // Helper: Deserialize WalletAddress
+    Result<WalletAddress> DeserializeAddress(const std::vector<uint8_t>& data) {
+        if (data.size() < sizeof(uint32_t)) {
+            return Result<WalletAddress>::Error("Invalid address data");
+        }
+
+        WalletAddress addr;
+        size_t offset = 0;
+
+        // Address string
+        uint32_t addr_len;
+        std::memcpy(&addr_len, data.data() + offset, sizeof(addr_len));
+        offset += sizeof(addr_len);
+        if (offset + addr_len > data.size()) {
+            return Result<WalletAddress>::Error("Invalid address data (address)");
+        }
+        addr.address = std::string(data.begin() + offset, data.begin() + offset + addr_len);
+        offset += addr_len;
+
+        // Public key
+        if (offset + DILITHIUM3_PUBLICKEYBYTES > data.size()) {
+            return Result<WalletAddress>::Error("Invalid address data (pubkey)");
+        }
+        std::copy_n(data.begin() + offset, DILITHIUM3_PUBLICKEYBYTES, addr.public_key.begin());
+        offset += DILITHIUM3_PUBLICKEYBYTES;
+
+        // Derivation path
+        uint32_t path_len;
+        std::memcpy(&path_len, data.data() + offset, sizeof(path_len));
+        offset += sizeof(path_len);
+        if (offset + path_len > data.size()) {
+            return Result<WalletAddress>::Error("Invalid address data (path)");
+        }
+        std::string path_str(data.begin() + offset, data.begin() + offset + path_len);
+        auto path_result = DerivationPath::Parse(path_str);
+        if (!path_result.IsOk()) {
+            return Result<WalletAddress>::Error("Invalid derivation path");
+        }
+        addr.path = path_result.value.value();
+        offset += path_len;
+
+        // Label
+        uint32_t label_len;
+        std::memcpy(&label_len, data.data() + offset, sizeof(label_len));
+        offset += sizeof(label_len);
+        if (offset + label_len > data.size()) {
+            return Result<WalletAddress>::Error("Invalid address data (label)");
+        }
+        addr.label = std::string(data.begin() + offset, data.begin() + offset + label_len);
+        offset += label_len;
+
+        // Timestamps
+        if (offset + sizeof(uint64_t) * 2 + 1 > data.size()) {
+            return Result<WalletAddress>::Error("Invalid address data (timestamps)");
+        }
+        std::memcpy(&addr.creation_time, data.data() + offset, sizeof(uint64_t));
+        offset += sizeof(uint64_t);
+        std::memcpy(&addr.last_used_time, data.data() + offset, sizeof(uint64_t));
+        offset += sizeof(uint64_t);
+
+        // is_change flag
+        addr.is_change = (data[offset] != 0);
+
+        return Result<WalletAddress>::Ok(addr);
+    }
+
+    // Helper: Serialize WalletTransaction
+    std::vector<uint8_t> SerializeWalletTransaction(const WalletTransaction& wtx) {
+        std::vector<uint8_t> data;
+
+        // txid (32 bytes)
+        data.insert(data.end(), wtx.txid.begin(), wtx.txid.end());
+
+        // Transaction (serialize the full transaction)
+        auto tx_data = wtx.tx.Serialize();
+        uint32_t tx_len = tx_data.size();
+        data.insert(data.end(), reinterpret_cast<uint8_t*>(&tx_len),
+                   reinterpret_cast<uint8_t*>(&tx_len) + sizeof(tx_len));
+        data.insert(data.end(), tx_data.begin(), tx_data.end());
+
+        // block_height (8 bytes)
+        data.insert(data.end(), reinterpret_cast<const uint8_t*>(&wtx.block_height),
+                   reinterpret_cast<const uint8_t*>(&wtx.block_height) + sizeof(wtx.block_height));
+
+        // block_hash (32 bytes)
+        data.insert(data.end(), wtx.block_hash.begin(), wtx.block_hash.end());
+
+        // timestamp (8 bytes)
+        data.insert(data.end(), reinterpret_cast<const uint8_t*>(&wtx.timestamp),
+                   reinterpret_cast<const uint8_t*>(&wtx.timestamp) + sizeof(wtx.timestamp));
+
+        // amount (8 bytes, signed)
+        data.insert(data.end(), reinterpret_cast<const uint8_t*>(&wtx.amount),
+                   reinterpret_cast<const uint8_t*>(&wtx.amount) + sizeof(wtx.amount));
+
+        // fee (8 bytes)
+        data.insert(data.end(), reinterpret_cast<const uint8_t*>(&wtx.fee),
+                   reinterpret_cast<const uint8_t*>(&wtx.fee) + sizeof(wtx.fee));
+
+        // comment (length-prefixed string)
+        uint32_t comment_len = wtx.comment.size();
+        data.insert(data.end(), reinterpret_cast<uint8_t*>(&comment_len),
+                   reinterpret_cast<uint8_t*>(&comment_len) + sizeof(comment_len));
+        data.insert(data.end(), wtx.comment.begin(), wtx.comment.end());
+
+        // is_coinbase (1 byte)
+        uint8_t is_coinbase = wtx.is_coinbase ? 1 : 0;
+        data.push_back(is_coinbase);
+
+        return data;
+    }
+
+    // Helper: Deserialize WalletTransaction
+    Result<WalletTransaction> DeserializeWalletTransaction(const std::vector<uint8_t>& data) {
+        if (data.size() < 32) {
+            return Result<WalletTransaction>::Error("Invalid transaction data");
+        }
+
+        WalletTransaction wtx;
+        size_t offset = 0;
+
+        // txid (32 bytes)
+        std::copy_n(data.begin() + offset, 32, wtx.txid.begin());
+        offset += 32;
+
+        // Transaction
+        if (offset + sizeof(uint32_t) > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (tx length)");
+        }
+        uint32_t tx_len;
+        std::memcpy(&tx_len, data.data() + offset, sizeof(tx_len));
+        offset += sizeof(tx_len);
+
+        if (offset + tx_len > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (tx data)");
+        }
+        std::vector<uint8_t> tx_data(data.begin() + offset, data.begin() + offset + tx_len);
+        auto tx_result = Transaction::Deserialize(tx_data);
+        if (!tx_result.IsOk()) {
+            return Result<WalletTransaction>::Error("Failed to deserialize transaction");
+        }
+        wtx.tx = tx_result.value.value();
+        offset += tx_len;
+
+        // block_height (8 bytes)
+        if (offset + sizeof(uint64_t) > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (block_height)");
+        }
+        std::memcpy(&wtx.block_height, data.data() + offset, sizeof(uint64_t));
+        offset += sizeof(uint64_t);
+
+        // block_hash (32 bytes)
+        if (offset + 32 > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (block_hash)");
+        }
+        std::copy_n(data.begin() + offset, 32, wtx.block_hash.begin());
+        offset += 32;
+
+        // timestamp (8 bytes)
+        if (offset + sizeof(uint64_t) > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (timestamp)");
+        }
+        std::memcpy(&wtx.timestamp, data.data() + offset, sizeof(uint64_t));
+        offset += sizeof(uint64_t);
+
+        // amount (8 bytes, signed)
+        if (offset + sizeof(int64_t) > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (amount)");
+        }
+        std::memcpy(&wtx.amount, data.data() + offset, sizeof(int64_t));
+        offset += sizeof(int64_t);
+
+        // fee (8 bytes)
+        if (offset + sizeof(uint64_t) > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (fee)");
+        }
+        std::memcpy(&wtx.fee, data.data() + offset, sizeof(uint64_t));
+        offset += sizeof(uint64_t);
+
+        // comment (length-prefixed string)
+        if (offset + sizeof(uint32_t) > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (comment length)");
+        }
+        uint32_t comment_len;
+        std::memcpy(&comment_len, data.data() + offset, sizeof(comment_len));
+        offset += sizeof(comment_len);
+
+        if (offset + comment_len > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (comment)");
+        }
+        wtx.comment = std::string(data.begin() + offset, data.begin() + offset + comment_len);
+        offset += comment_len;
+
+        // is_coinbase (1 byte)
+        if (offset + 1 > data.size()) {
+            return Result<WalletTransaction>::Error("Invalid transaction data (is_coinbase)");
+        }
+        wtx.is_coinbase = (data[offset] != 0);
+
+        // Set txid from transaction if not already set
+        if (wtx.txid == uint256()) {
+            wtx.txid = wtx.tx.GetHash();
+        }
+
+        return Result<WalletTransaction>::Ok(wtx);
+    }
 };
 
 WalletDB::WalletDB(const std::string& wallet_path)
@@ -738,15 +988,19 @@ Result<void> WalletDB::Open() {
         return Result<void>::Error("Wallet database already open");
     }
 
-    // Create BlockchainDB with wallet path
-    // Note: We're using BlockchainDB as a generic key-value store for the wallet
-    impl_->db = std::make_unique<BlockchainDB>(impl_->wallet_path);
+    // Open RocksDB directly
+    rocksdb::Options options;
+    options.create_if_missing = true;
+    options.error_if_exists = false;
 
-    auto result = impl_->db->Open();
-    if (!result.IsOk()) {
-        return result;
+    rocksdb::DB* db_ptr = nullptr;
+    rocksdb::Status status = rocksdb::DB::Open(options, impl_->wallet_path, &db_ptr);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to open wallet database: " + status.ToString());
     }
 
+    impl_->db.reset(db_ptr);
     impl_->is_open = true;
     return Result<void>::Ok();
 }
@@ -756,9 +1010,8 @@ Result<void> WalletDB::Close() {
         return Result<void>::Error("Wallet database not open");
     }
 
-    // BlockchainDB::Close() returns void, not Result
-    impl_->db->Close();
-
+    // Close RocksDB
+    impl_->db.reset();
     impl_->is_open = false;
     return Result<void>::Ok();
 }
@@ -772,13 +1025,21 @@ Result<void> WalletDB::WriteAddress(const WalletAddress& addr) {
         return Result<void>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    // BlockchainDB doesn't have generic Put() method - need custom wallet DB
-    // Serialize address data
-    // std::vector<uint8_t> data;
-    // std::string key = "addr_" + addr.address;
+    // Serialize address
+    auto data = impl_->SerializeAddress(addr);
 
-    return Result<void>::Error("Not yet implemented - need custom wallet database");
+    // Store with key prefix "addr_"
+    std::string key = "addr_" + addr.address;
+    rocksdb::Slice key_slice(key);
+    rocksdb::Slice value_slice(reinterpret_cast<const char*>(data.data()), data.size());
+
+    rocksdb::Status status = impl_->db->Put(rocksdb::WriteOptions(), key_slice, value_slice);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to write address: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<WalletAddress> WalletDB::ReadAddress(const std::string& address) {
@@ -786,9 +1047,22 @@ Result<WalletAddress> WalletDB::ReadAddress(const std::string& address) {
         return Result<WalletAddress>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    // BlockchainDB doesn't have generic Get() method - need custom wallet DB
-    return Result<WalletAddress>::Error("Not yet implemented - need custom wallet database");
+    // Read from database
+    std::string key = "addr_" + address;
+    std::string value;
+    rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), key, &value);
+
+    if (status.IsNotFound()) {
+        return Result<WalletAddress>::Error("Address not found");
+    }
+
+    if (!status.ok()) {
+        return Result<WalletAddress>::Error("Failed to read address: " + status.ToString());
+    }
+
+    // Deserialize
+    std::vector<uint8_t> data(value.begin(), value.end());
+    return impl_->DeserializeAddress(data);
 }
 
 Result<std::vector<WalletAddress>> WalletDB::ReadAllAddresses() {
@@ -796,8 +1070,21 @@ Result<std::vector<WalletAddress>> WalletDB::ReadAllAddresses() {
         return Result<std::vector<WalletAddress>>::Error("Database not open");
     }
 
-    // TODO: Iterate through all addresses
+    // Iterate through all addresses with "addr_" prefix
     std::vector<WalletAddress> addresses;
+    std::unique_ptr<rocksdb::Iterator> it(impl_->db->NewIterator(rocksdb::ReadOptions()));
+
+    std::string prefix = "addr_";
+    for (it->Seek(prefix); it->Valid() && it->key().starts_with(prefix); it->Next()) {
+        std::string value_str = it->value().ToString();
+        std::vector<uint8_t> data(value_str.begin(), value_str.end());
+
+        auto addr_result = impl_->DeserializeAddress(data);
+        if (addr_result.IsOk()) {
+            addresses.push_back(addr_result.value.value());
+        }
+    }
+
     return Result<std::vector<WalletAddress>>::Ok(addresses);
 }
 
@@ -806,9 +1093,14 @@ Result<void> WalletDB::DeleteAddress(const std::string& address) {
         return Result<void>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    // BlockchainDB doesn't have generic Delete() method - need custom wallet DB
-    return Result<void>::Error("Not yet implemented - need custom wallet database");
+    std::string key = "addr_" + address;
+    rocksdb::Status status = impl_->db->Delete(rocksdb::WriteOptions(), key);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to delete address: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<void> WalletDB::WriteTransaction(const WalletTransaction& wtx) {
@@ -816,9 +1108,20 @@ Result<void> WalletDB::WriteTransaction(const WalletTransaction& wtx) {
         return Result<void>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    // BlockchainDB doesn't have generic Put() method - need custom wallet DB
-    return Result<void>::Error("Not yet implemented - need custom wallet database");
+    auto data = impl_->SerializeWalletTransaction(wtx);
+
+    // Use txid as hex string for the key
+    std::string key = "tx_" + wtx.txid.ToHex();
+    rocksdb::Slice key_slice(key);
+    rocksdb::Slice value_slice(reinterpret_cast<const char*>(data.data()), data.size());
+
+    rocksdb::Status status = impl_->db->Put(rocksdb::WriteOptions(), key_slice, value_slice);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to write transaction: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<WalletTransaction> WalletDB::ReadTransaction(const uint256& txid) {
@@ -826,9 +1129,20 @@ Result<WalletTransaction> WalletDB::ReadTransaction(const uint256& txid) {
         return Result<WalletTransaction>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    // BlockchainDB doesn't have generic Get() method - need custom wallet DB
-    return Result<WalletTransaction>::Error("Not yet implemented - need custom wallet database");
+    std::string key = "tx_" + txid.ToHex();
+    std::string value;
+    rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), key, &value);
+
+    if (status.IsNotFound()) {
+        return Result<WalletTransaction>::Error("Transaction not found");
+    }
+
+    if (!status.ok()) {
+        return Result<WalletTransaction>::Error("Failed to read transaction: " + status.ToString());
+    }
+
+    std::vector<uint8_t> data(value.begin(), value.end());
+    return impl_->DeserializeWalletTransaction(data);
 }
 
 Result<std::vector<WalletTransaction>> WalletDB::ReadAllTransactions() {
@@ -836,8 +1150,20 @@ Result<std::vector<WalletTransaction>> WalletDB::ReadAllTransactions() {
         return Result<std::vector<WalletTransaction>>::Error("Database not open");
     }
 
-    // TODO: Iterate through all transactions
     std::vector<WalletTransaction> transactions;
+    std::unique_ptr<rocksdb::Iterator> it(impl_->db->NewIterator(rocksdb::ReadOptions()));
+
+    std::string prefix = "tx_";
+    for (it->Seek(prefix); it->Valid() && it->key().starts_with(prefix); it->Next()) {
+        std::string value_str = it->value().ToString();
+        std::vector<uint8_t> data(value_str.begin(), value_str.end());
+
+        auto wtx_result = impl_->DeserializeWalletTransaction(data);
+        if (wtx_result.IsOk()) {
+            transactions.push_back(wtx_result.value.value());
+        }
+    }
+
     return Result<std::vector<WalletTransaction>>::Ok(transactions);
 }
 
@@ -846,8 +1172,14 @@ Result<void> WalletDB::DeleteTransaction(const uint256& txid) {
         return Result<void>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    return Result<void>::Error("Not yet implemented - need custom wallet database");
+    std::string key = "tx_" + txid.ToHex();
+    rocksdb::Status status = impl_->db->Delete(rocksdb::WriteOptions(), key);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to delete transaction: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<void> WalletDB::WriteMasterKey(const std::vector<uint8_t>& encrypted_seed) {
@@ -855,8 +1187,16 @@ Result<void> WalletDB::WriteMasterKey(const std::vector<uint8_t>& encrypted_seed
         return Result<void>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    return Result<void>::Error("Not yet implemented - need custom wallet database");
+    std::string key = "master_key";
+    rocksdb::Slice value_slice(reinterpret_cast<const char*>(encrypted_seed.data()),
+                               encrypted_seed.size());
+    rocksdb::Status status = impl_->db->Put(rocksdb::WriteOptions(), key, value_slice);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to write master key: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<std::vector<uint8_t>> WalletDB::ReadMasterKey() {
@@ -864,8 +1204,20 @@ Result<std::vector<uint8_t>> WalletDB::ReadMasterKey() {
         return Result<std::vector<uint8_t>>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    return Result<std::vector<uint8_t>>::Error("Not yet implemented - need custom wallet database");
+    std::string key = "master_key";
+    std::string value;
+    rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), key, &value);
+
+    if (status.IsNotFound()) {
+        return Result<std::vector<uint8_t>>::Error("Master key not found");
+    }
+
+    if (!status.ok()) {
+        return Result<std::vector<uint8_t>>::Error("Failed to read master key: " + status.ToString());
+    }
+
+    std::vector<uint8_t> seed(value.begin(), value.end());
+    return Result<std::vector<uint8_t>>::Ok(seed);
 }
 
 Result<void> WalletDB::WriteMetadata(const std::string& key, const std::string& value) {
@@ -873,8 +1225,14 @@ Result<void> WalletDB::WriteMetadata(const std::string& key, const std::string& 
         return Result<void>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    return Result<void>::Error("Not yet implemented - need custom wallet database");
+    std::string db_key = "meta_" + key;
+    rocksdb::Status status = impl_->db->Put(rocksdb::WriteOptions(), db_key, value);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to write metadata: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<std::string> WalletDB::ReadMetadata(const std::string& key) {
@@ -882,8 +1240,19 @@ Result<std::string> WalletDB::ReadMetadata(const std::string& key) {
         return Result<std::string>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    return Result<std::string>::Error("Not yet implemented - need custom wallet database");
+    std::string db_key = "meta_" + key;
+    std::string value;
+    rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), db_key, &value);
+
+    if (status.IsNotFound()) {
+        return Result<std::string>::Error("Metadata not found");
+    }
+
+    if (!status.ok()) {
+        return Result<std::string>::Error("Failed to read metadata: " + status.ToString());
+    }
+
+    return Result<std::string>::Ok(value);
 }
 
 Result<void> WalletDB::WriteLabel(const std::string& address, const std::string& label) {
@@ -891,8 +1260,14 @@ Result<void> WalletDB::WriteLabel(const std::string& address, const std::string&
         return Result<void>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    return Result<void>::Error("Not yet implemented - need custom wallet database");
+    std::string key = "label_" + address;
+    rocksdb::Status status = impl_->db->Put(rocksdb::WriteOptions(), key, label);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to write label: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<std::string> WalletDB::ReadLabel(const std::string& address) {
@@ -900,8 +1275,19 @@ Result<std::string> WalletDB::ReadLabel(const std::string& address) {
         return Result<std::string>::Error("Database not open");
     }
 
-    // TODO: Implement wallet database persistence
-    return Result<std::string>::Error("Not yet implemented - need custom wallet database");
+    std::string key = "label_" + address;
+    std::string value;
+    rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), key, &value);
+
+    if (status.IsNotFound()) {
+        return Result<std::string>::Ok("");  // Return empty string if no label
+    }
+
+    if (!status.ok()) {
+        return Result<std::string>::Error("Failed to read label: " + status.ToString());
+    }
+
+    return Result<std::string>::Ok(value);
 }
 
 Result<void> WalletDB::Backup(const std::string& backup_path) {
@@ -909,7 +1295,29 @@ Result<void> WalletDB::Backup(const std::string& backup_path) {
         return Result<void>::Error("Database not open");
     }
 
-    // TODO: Implement database backup
+    // Create backup engine
+    rocksdb::BackupEngine* backup_engine = nullptr;
+    rocksdb::BackupableDBOptions backup_options(backup_path);
+    backup_options.share_table_files = true;  // Deduplicate files
+
+    rocksdb::Status status = rocksdb::BackupEngine::Open(
+        rocksdb::Env::Default(),
+        backup_options,
+        &backup_engine
+    );
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to create backup engine: " + status.ToString());
+    }
+
+    std::unique_ptr<rocksdb::BackupEngine> backup_ptr(backup_engine);
+
+    // Create new backup
+    status = backup_ptr->CreateNewBackup(impl_->db.get());
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to create backup: " + status.ToString());
+    }
+
     return Result<void>::Ok();
 }
 

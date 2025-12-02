@@ -82,7 +82,6 @@ This directory contains comprehensive technical documentation for INTcoin develo
 
 - [Security Policy](SECURITY.md)
 - [Vulnerability Reporting](VULNERABILITY_REPORTING.md)
-- [Audit Reports](AUDITS.md) (Coming soon)
 
 ---
 

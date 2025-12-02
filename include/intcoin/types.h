@@ -119,6 +119,10 @@ struct Result {
     bool IsOk() const { return value.has_value(); }
     bool IsError() const { return !value.has_value(); }
 
+    /// Get the value (throws if error)
+    T& GetValue() { return value.value(); }
+    const T& GetValue() const { return value.value(); }
+
     static Result Ok(T v) {
         return Result{std::move(v), ""};
     }

@@ -197,10 +197,9 @@ Future-proof treasury holdings and payment systems for forward-thinking organiza
 - 🔄 Smart contract VM
 - 🔄 Cross-chain bridges (Bitcoin, Ethereum)
 
-### Phase 3: Testnet & Audit (Q2 - Q3 2025) 🎯
+### Phase 3: Testnet & Testing (Q2 - Q3 2025) 🎯
 - 🎯 Public testnet launch
-- 🎯 Security audit by third-party firm
-- 🎯 Bug bounty program
+- 🎯 Community testing and feedback
 - 🎯 Block explorer
 - 🎯 Mobile wallet development
 
@@ -306,7 +305,6 @@ INTcoin was designed quantum-resistant from the start, avoiding these migration 
 - **Codebase**: 50,000+ lines of C++23
 - **Test Coverage**: 400+ unit tests, fuzz testing, functional tests
 - **Contributors**: Open to community contributions
-- **Security Audits**: Planned for Q2 2025
 - **Network Status**: Testnet in development
 
 ---

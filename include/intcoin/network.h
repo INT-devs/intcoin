@@ -384,7 +384,7 @@ public:
         const std::string& dns_seed);
 
     /// Get hardcoded seed nodes
-    static std::vector<NetworkAddress> GetSeedNodes();
+    static std::vector<NetworkAddress> GetSeedNodes(bool testnet = false);
 
     /// Save peer addresses to disk
     static Result<void> SavePeerAddresses(

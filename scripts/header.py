@@ -90,7 +90,7 @@ def generate_copyright_header(file_path, page_title=None, content=''):
     # Build header lines
     header_lines = [
         f"Copyright (c) {year_range} {COPYRIGHT_HOLDER}",
-        f"SPDX-License-Identifier: {LICENSE_NAME}",
+        f"{LICENSE_NAME}",
         page_title
     ]
 
@@ -122,6 +122,26 @@ def generate_copyright_header(file_path, page_title=None, content=''):
         return header
 
     return None
+
+
+def is_third_party_file(content):
+    """Check if content is from a 3rd party integration"""
+    # Look for common 3rd party copyright holders in first 30 lines
+    lines = content.split('\n')[:30]
+    third_party_indicators = [
+        r'Copyright.*(?:liboqs|RandomX|RocksDB|Boost|Qt|OpenSSL)',
+        r'Licensed under.*(?:Apache|BSD|GPL|LGPL)',
+        r'(?:@author|@copyright).*(?!INTcoin)',
+        r'Copyright.*\d{4}.*(?!INTcoin Team)',  # Copyright with year but not INTcoin
+    ]
+
+    for line in lines:
+        for indicator in third_party_indicators:
+            if re.search(indicator, line, re.IGNORECASE):
+                # Double check it's not INTcoin
+                if not re.search(r'INTcoin.*Team', line, re.IGNORECASE):
+                    return True
+    return False
 
 
 def has_copyright_header(content):
@@ -171,6 +191,11 @@ def add_or_update_copyright(file_path, dry_run=False):
         # Read file content
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
+
+        # Skip 3rd party files
+        if is_third_party_file(content):
+            print(f"  → Skipping 3rd party file: {file_path}")
+            return False
 
         # Check if copyright exists
         if has_copyright_header(content):

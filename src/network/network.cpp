@@ -1488,17 +1488,23 @@ Result<std::vector<NetworkAddress>> PeerDiscovery::DNSSeedQuery(
     return Result<std::vector<NetworkAddress>>::Ok(addresses);
 }
 
-std::vector<NetworkAddress> PeerDiscovery::GetSeedNodes() {
+std::vector<NetworkAddress> PeerDiscovery::GetSeedNodes(bool testnet) {
     // Hardcoded seed nodes for INTcoin mainnet and testnet
     std::vector<NetworkAddress> seeds;
 
-    // Main seed nodes
-    seeds.emplace_back("51.155.97.192", network::MAINNET_P2P_PORT);
-    seeds.emplace_back("74.208.112.43", network::MAINNET_P2P_PORT);
+    if (testnet) {
+        // Testnet seed nodes
+        seeds.emplace_back("test-uk.international-coin.org", network::TESTNET_P2P_PORT);
+        seeds.emplace_back("test-us.international-coin.org", network::TESTNET_P2P_PORT);
+    } else {
+        // Mainnet seed nodes
+        seeds.emplace_back("seed-uk.international-coin.org", network::MAINNET_P2P_PORT);
+        seeds.emplace_back("seed-us.international-coin.org", network::MAINNET_P2P_PORT);
 
-    // Tor hidden service seed node
-    // Note: Tor addresses need special handling via SOCKS5 proxy
-    // seeds.emplace_back("2nrhdp7i4dricaf362hwnajj27lscbmimggvjetwjhuwgtdnfcurxzyd.onion", 9333);
+        // Tor hidden service seed node
+        // Note: Tor addresses need special handling via SOCKS5 proxy
+        // seeds.emplace_back("2nrhdp7i4dricaf362hwnajj27lscbmimggvjetwjhuwgtdnfcurxzyd.onion", 9333);
+    }
 
     return seeds;
 }

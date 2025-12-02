@@ -1,0 +1,411 @@
+# Contributing to INTcoin
+
+Thank you for your interest in contributing to INTcoin! This document provides guidelines and instructions for contributing to the project.
+
+---
+
+## 📜 Code of Conduct
+
+### Our Values
+
+- **Open and Inclusive**: Everyone is welcome to contribute, regardless of experience level
+- **Respectful**: Treat all contributors with respect and kindness
+- **Collaborative**: Work together to build the best quantum-resistant cryptocurrency
+- **Transparent**: All development happens in the open
+
+### Expected Behavior
+
+- Use welcoming and inclusive language
+- Be respectful of differing viewpoints and experiences
+- Accept constructive criticism gracefully
+- Focus on what is best for the community and project
+- Show empathy towards other community members
+
+---
+
+## 🚀 How to Contribute
+
+### Reporting Issues
+
+Found a bug or have a feature request? Please open an issue on GitLab:
+
+1. **Search existing issues** first to avoid duplicates
+2. **Use the issue templates** if available
+3. **Provide clear details**:
+   - For bugs: steps to reproduce, expected vs actual behavior, system info
+   - For features: clear description, use case, and benefits
+4. **Be responsive** to follow-up questions
+
+**Security Issues**: Please report security vulnerabilities privately to [security@international-coin.org](mailto:security@international-coin.org)
+
+### Suggesting Enhancements
+
+We welcome suggestions for new features and improvements:
+
+1. **Open a GitLab issue** with the `enhancement` label
+2. **Explain the problem** you're trying to solve
+3. **Describe your proposed solution**
+4. **Discuss alternatives** you've considered
+5. **Be open to feedback** from maintainers and community
+
+### Writing Code
+
+Ready to contribute code? Follow these steps:
+
+#### 1. Fork and Clone
+
+```bash
+# Fork the repository on GitLab
+# Clone your fork
+git clone https://gitlab.com/YOUR_USERNAME/crypto.git
+cd crypto
+
+# Add upstream remote
+git remote add upstream https://gitlab.com/intcoin/crypto.git
+```
+
+#### 2. Create a Branch
+
+```bash
+# Create a feature branch
+git checkout -b feature/your-feature-name
+
+# Or for bug fixes
+git checkout -b fix/bug-description
+```
+
+#### 3. Make Your Changes
+
+- **Follow the code style** (see below)
+- **Write tests** for new functionality
+- **Update documentation** as needed
+- **Keep commits atomic** (one logical change per commit)
+- **Write clear commit messages** (see below)
+
+#### 4. Test Your Changes
+
+```bash
+# Build the project
+mkdir build && cd build
+cmake ..
+make
+
+# Run all tests
+ctest --output-on-failure
+
+# Run specific test suites
+./tests/test_crypto
+./tests/test_randomx
+./tests/test_bech32
+```
+
+#### 5. Submit a Merge Request
+
+```bash
+# Push your branch
+git push origin feature/your-feature-name
+
+# Go to GitLab and create a Merge Request
+# Fill out the MR template
+# Link related issues
+```
+
+---
+
+## 💻 Development Guidelines
+
+### Code Style
+
+#### C++
+
+- **Standard**: C++23 (ISO/IEC 14882:2023)
+- **Style Guide**: Based on [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)
+- **Formatter**: Use `clang-format` (config provided in `.clang-format`)
+
+**Key Points**:
+- Use descriptive variable and function names
+- Prefer `snake_case` for variables and functions
+- Use `PascalCase` for class names
+- Add comments for complex logic
+- Use modern C++23 features appropriately
+- Avoid raw pointers; prefer smart pointers
+
+**Example**:
+```cpp
+// Good
+Result<BlockHeader> DeserializeBlockHeader(const std::vector<uint8_t>& data) {
+    if (data.size() < BLOCK_HEADER_SIZE) {
+        return Result<BlockHeader>::Error("Invalid header size");
+    }
+    // ... implementation
+}
+
+// Bad
+blockheader deserialize(std::vector<uint8_t> d) {
+    // ... implementation
+}
+```
+
+#### Python
+
+- **Standard**: Python 3.10+
+- **Style Guide**: [PEP 8](https://pep8.org/)
+- **Formatter**: Use `black` with default settings
+
+### Commit Messages
+
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Types**:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+
+**Examples**:
+```
+feat(wallet): add HD wallet key derivation
+
+Implements BIP32/BIP44 hierarchical deterministic wallet key
+derivation adapted for Dilithium3 post-quantum signatures.
+
+Closes #123
+```
+
+```
+fix(network): resolve peer connection timeout issue
+
+Fixes a race condition in peer handshake that caused connection
+timeouts under high load.
+
+Fixes #456
+```
+
+### Testing Requirements
+
+All code contributions must include appropriate tests:
+
+- **Unit Tests**: Test individual functions and classes
+- **Integration Tests**: Test component interactions
+- **Functional Tests**: Test end-to-end scenarios
+
+**Test Coverage**: Aim for **80%+ code coverage** on new code.
+
+**Test Location**:
+- Unit tests: `tests/test_*.cpp`
+- Integration tests: `tests/integration/`
+- Functional tests: `tests/functional/`
+
+### Documentation
+
+- **Code Comments**: Document complex algorithms and non-obvious behavior
+- **API Documentation**: Use Doxygen-style comments for public APIs
+- **User Documentation**: Update relevant docs in `docs/` folder
+- **Wiki**: Update wiki pages for significant changes
+
+**Doxygen Example**:
+```cpp
+/// Calculate the block reward for a given height
+/// @param height The block height
+/// @return The block reward in INTS (1 INT = 1,000,000 INTS)
+uint64_t GetBlockReward(uint64_t height);
+```
+
+---
+
+## 🔍 Code Review Process
+
+### What to Expect
+
+1. **Automated Checks**: CI/CD pipeline runs automatically
+   - Build verification
+   - Test execution
+   - Static analysis (clang-tidy, cppcheck)
+   - Code coverage check
+
+2. **Maintainer Review**: A maintainer will review your MR
+   - Code quality and style
+   - Test coverage
+   - Documentation completeness
+   - Adherence to project goals
+
+3. **Feedback**: You may receive requests for changes
+   - Be responsive to feedback
+   - Make requested changes promptly
+   - Ask questions if unclear
+
+4. **Approval and Merge**: Once approved, a maintainer will merge
+
+### Review Criteria
+
+- ✅ Builds successfully on all supported platforms
+- ✅ All tests pass (existing + new)
+- ✅ Code follows style guidelines
+- ✅ Adequate test coverage
+- ✅ Documentation updated
+- ✅ No unnecessary dependencies added
+- ✅ Performance impact considered
+
+---
+
+## 🏗️ Development Environment
+
+### Recommended Tools
+
+**IDE/Editor**:
+- Visual Studio Code (with C++ extensions)
+- CLion
+- Vim/Neovim (with coc.nvim or LSP)
+
+**Debugging**:
+- GDB (Linux/macOS)
+- LLDB (macOS)
+- Visual Studio Debugger (Windows)
+
+**Profiling**:
+- Valgrind (memory leaks, profiling)
+- Perf (Linux performance analysis)
+- Instruments (macOS)
+
+### Building from Source
+
+See [BUILD_STATUS.md](BUILD_STATUS.md) for complete build instructions.
+
+**Quick Start**:
+```bash
+# Install dependencies
+brew install cmake boost openssl rocksdb qt6 zeromq libevent
+
+# Build liboqs and RandomX (see BUILD_STATUS.md)
+
+# Build INTcoin
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+make -j$(nproc)
+```
+
+---
+
+## 📦 Submitting a Merge Request
+
+### Checklist
+
+Before submitting, ensure:
+
+- [ ] Code builds successfully on your machine
+- [ ] All tests pass locally
+- [ ] New functionality has tests
+- [ ] Documentation updated (if applicable)
+- [ ] Code follows style guidelines
+- [ ] Commit messages are clear and follow conventions
+- [ ] Branch is up-to-date with `main`
+- [ ] No merge conflicts
+
+### MR Template
+
+When creating a Merge Request, fill out the template:
+
+```markdown
+## Description
+[Clear description of what this MR does]
+
+## Related Issues
+Closes #XXX
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Testing
+[How you tested this change]
+
+## Checklist
+- [ ] Code builds successfully
+- [ ] All tests pass
+- [ ] New tests added
+- [ ] Documentation updated
+```
+
+---
+
+## 🎯 Areas for Contribution
+
+### Good First Issues
+
+New to the project? Look for issues labeled `good-first-issue`:
+
+- Documentation improvements
+- Test coverage additions
+- Small bug fixes
+- Code style cleanup
+
+### High Priority
+
+Need something challenging? Check `high-priority` labels:
+
+- Wallet implementation
+- Mining optimization
+- Network protocol enhancements
+- Performance improvements
+
+### Help Wanted
+
+Community expertise needed on `help-wanted` issues:
+
+- Cross-platform compatibility
+- Hardware wallet integration
+- Mobile wallet development
+- Security improvements
+
+---
+
+## 🤝 Community
+
+### Communication Channels
+
+- **GitLab Issues**: Technical discussions, bug reports, feature requests
+- **Email**: [team@international-coin.org](mailto:team@international-coin.org)
+- **Discord**: https://discord.gg/intcoin
+- **Telegram**: https://t.me/intcoin
+
+### Getting Help
+
+Need help with your contribution?
+
+1. **Check the docs**: [Documentation](docs/)
+2. **Search existing issues**: Someone may have asked before
+3. **Ask on Discord/Telegram**: Community is happy to help
+4. **Open a discussion issue**: Label it as `question`
+
+---
+
+## 📜 License
+
+By contributing to INTcoin, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+
+---
+
+## 🙏 Recognition
+
+All contributors are recognized in:
+
+- Release notes (see [RELEASE_NOTES_TEMPLATE.md](RELEASE_NOTES_TEMPLATE.md))
+- GitLab contributors page
+- Project README
+
+---
+
+**Thank you for contributing to INTcoin! Together, we're building the future of quantum-resistant cryptocurrency. 🚀**

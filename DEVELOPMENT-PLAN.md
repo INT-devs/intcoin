@@ -544,12 +544,6 @@ Add:
 - Protocol fuzzing
 - Crash detection
 
-### Security Audit
-
-- Third-party code review
-- Penetration testing
-- Vulnerability assessment
-
 ---
 
 ## 🚀 Deployment Strategy
@@ -558,7 +552,7 @@ Add:
 
 - Limited release
 - Developer testing
-- Bug bounty program
+- Community testing
 
 ### Mainnet Launch (Month 12)
 
@@ -581,15 +575,14 @@ Add:
 | AWS/Cloud hosting | $24,000 |
 | Development tools & licenses | $10,000 |
 | **Security** | |
-| Third-party security audit | $50,000 |
-| Bug bounty program | $25,000 |
+| Community security testing | $0 |
 | **Marketing** | |
 | Website & branding | $20,000 |
 | Community management | $30,000 |
 | **Legal** | |
 | Legal consultation | $25,000 |
-| **Contingency (20%)** | $167,000 |
-| **TOTAL** | **$1,001,000** |
+| **Contingency (20%)** | $151,800 |
+| **TOTAL** | **$910,800** |
 
 ---
 
@@ -649,7 +642,6 @@ Add:
 - **Mining Software** (Phase 7)
 - **Block Explorer** (Phase 8)
 - Fuzz testing
-- Security audit
 - Lightning Network (deferred to v2.0+)
 - Mobile/Web wallets (deferred to v2.0+)
 
@@ -730,8 +722,7 @@ Add:
 3. [ ] CPU miner (RandomX)
 4. [ ] Block explorer (backend + frontend)
 5. [ ] Integration testing
-6. [ ] Security audit
-7. [ ] Testnet launch
+6. [ ] Testnet launch
 
 ---
 
@@ -768,7 +759,6 @@ Add:
 - Wallet system (2 months)
 - Block explorer (2 months)
 - Mining software (1 month)
-- Security audit
 - Community building
 
 ---
@@ -789,7 +779,35 @@ Add:
 
 ---
 
-**Last Updated**: November 26, 2025 21:00 UTC
+## 📝 TODO Items from Codebase
+
+### RPC Server (src/rpc/rpc.cpp)
+- [ ] Implement proper HTTP Basic Auth verification (line 440)
+- [ ] Check if authenticated (line 482)
+- [ ] Calculate network hashrate (line 751)
+- [ ] Implement block template generation (line 757)
+- [ ] Implement block submission (line 762)
+- [ ] Implement mining to address (line 767)
+- [ ] Search in blocks for transactions (line 857)
+- [ ] Calculate confirmations for transactions (line 942)
+- [ ] Get block height for transactions (line 944)
+
+### Wallet (src/wallet/wallet.cpp)
+- [ ] Implement base58check serialization (line 613)
+- [ ] Implement base58check deserialization (line 619)
+- [ ] Validate checksum in deserialization (line 698)
+- [ ] Implement encryption using Kyber768 or AES-256 (line 1527)
+- [ ] Verify passphrase and decrypt master key (line 1547)
+- [ ] Verify old passphrase and re-encrypt with new passphrase (line 1584)
+- [ ] Calculate unconfirmed balance from mempool transactions (line 1695)
+- [ ] Calculate balance for specific address (line 1704)
+- [ ] Implement transaction creation (line 1735)
+- [ ] Implement transaction signing (line 1753)
+- [ ] Scan blockchain for UTXOs belonging to wallet addresses (line 1803)
+
+---
+
+**Last Updated**: December 2, 2025 21:00 UTC
 **Next Review**: December 2025
 **Current Status**: Phases 1-3 complete (75%), ready for RPC Server (Phase 4)
 **Build Status**: ✅ libintcoin_core.a + all tests passing (8/8, 100%)

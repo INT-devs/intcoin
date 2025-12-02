@@ -171,7 +171,6 @@ brew install i2pd            # Privacy (optional)
 - [ ] All tests passing
 - [ ] Documentation updated
 - [ ] Changelog updated
-- [ ] Security audit completed
 - [ ] Performance benchmarks acceptable
 - [ ] Builds on all supported platforms
 

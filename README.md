@@ -330,14 +330,14 @@ intcoin-lightning closechannel <channel_id>
 
 ### Mainnet
 
-- **P2P**: `seed.international-coin.org:2210`
+- **P2P**: `seed-uk.international-coin.org:2210`, `seed-us.international-coin.org:2210`
 - **RPC**: `rpc.international-coin.org:2211`
 - **Explorer**: `https://explorer.international-coin.org`
 - **Tor**: `intcoinxxx...onion:2210`
 
 ### Testnet
 
-- **P2P**: `testseed.international-coin.org:2212`
+- **P2P**: `test-uk.international-coin.org:2212`, `test-us.international-coin.org:2212`
 - **RPC**: `testrpc.international-coin.org:2213`
 - **Explorer**: `https://testnet-explorer.international-coin.org`
 
@@ -352,12 +352,6 @@ Found a security vulnerability? Please report it privately to:
 - **GPG Key**: [Download](https://international-coin.org/security.asc)
 
 **Do not** create public GitHub/GitLab issues for security vulnerabilities.
-
-### Security Audits
-
-- [ ] **Cryptography**: Pending third-party audit
-- [ ] **Consensus**: Pending third-party audit
-- [ ] **Network**: Pending third-party audit
 
 ---
 

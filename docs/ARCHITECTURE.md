@@ -253,7 +253,7 @@ public:
 
 ### Peer Discovery
 
-1. **DNS Seeding**: Query `seed.international-coin.org`
+1. **DNS Seeding**: Query `seed-uk.international-coin.org`, `seed-us.international-coin.org` (mainnet) or `test-uk.international-coin.org`, `test-us.international-coin.org` (testnet)
 2. **Hardcoded Seeds**: Fallback seed nodes
 3. **Peer Exchange**: Share peer addresses
 4. **Tor/I2P**: Hidden service support

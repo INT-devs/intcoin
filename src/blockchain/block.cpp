@@ -43,7 +43,7 @@ Result<BlockHeader> BlockHeader::Deserialize(const std::vector<uint8_t>& data) {
     if (version_result.IsError()) {
         return Result<BlockHeader>::Error("Failed to deserialize version: " + version_result.error);
     }
-    header.version = *version_result.value;
+    header.version = version_result.GetValue();
 
     // Deserialize prev_block_hash (32 bytes)
     auto prev_hash_result = DeserializeUint256(data, pos);
