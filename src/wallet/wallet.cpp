@@ -1804,13 +1804,99 @@ Result<Transaction> Wallet::CreateTransaction(const std::vector<Recipient>& reci
         return Result<Transaction>::Error("Wallet is locked");
     }
 
-    // TODO: Implement transaction creation
-    // - Select UTXOs (coin selection)
-    // - Create inputs and outputs
-    // - Calculate fee
-    // - Add change output if needed
+    // Validate recipients
+    if (recipients.empty()) {
+        return Result<Transaction>::Error("No recipients specified");
+    }
 
-    return Result<Transaction>::Error("Not implemented yet");
+    // Calculate total output amount
+    uint64_t total_output = 0;
+    for (const auto& recipient : recipients) {
+        if (recipient.amount == 0) {
+            return Result<Transaction>::Error("Recipient amount cannot be zero");
+        }
+        total_output += recipient.amount;
+    }
+
+    // Estimate fee (simplified: fee_rate per KB * estimated size)
+    // Rough estimate: 200 bytes per input, 100 bytes per output, 100 bytes overhead
+    size_t estimated_inputs = std::min(impl_->utxos.size(), size_t(10)); // Estimate max 10 inputs
+    size_t estimated_size = 100 + (estimated_inputs * 200) + ((recipients.size() + 1) * 100);
+    uint64_t estimated_fee = (fee_rate * estimated_size) / 1000;
+
+    // Select UTXOs (simple greedy algorithm)
+    std::vector<std::pair<OutPoint, TxOut>> selected_utxos;
+    uint64_t selected_amount = 0;
+    uint64_t target_amount = total_output + estimated_fee;
+
+    for (const auto& [outpoint, txout] : impl_->utxos) {
+        selected_utxos.push_back({outpoint, txout});
+        selected_amount += txout.value;
+
+        if (selected_amount >= target_amount) {
+            break;
+        }
+    }
+
+    // Check if we have enough funds
+    if (selected_amount < target_amount) {
+        return Result<Transaction>::Error("Insufficient funds");
+    }
+
+    // Calculate change
+    uint64_t change_amount = selected_amount - total_output - estimated_fee;
+    const uint64_t DUST_THRESHOLD = 546; // Minimum output value
+
+    // Create transaction
+    Transaction tx;
+    tx.version = 1;
+    tx.locktime = 0;
+
+    // Create inputs
+    for (const auto& [outpoint, txout] : selected_utxos) {
+        TxIn input;
+        input.prev_tx_hash = outpoint.tx_hash;
+        input.prev_tx_index = outpoint.index;
+        // script_sig will be filled in SignTransaction()
+        input.sequence = 0xFFFFFFFF;
+        tx.inputs.push_back(input);
+    }
+
+    // Create outputs for recipients
+    for (const auto& recipient : recipients) {
+        // Decode recipient address to get pubkey hash
+        auto decode_result = AddressEncoder::DecodeAddress(recipient.address);
+        if (!decode_result.IsOk()) {
+            return Result<Transaction>::Error("Invalid recipient address: " + recipient.address);
+        }
+
+        TxOut output;
+        output.value = recipient.amount;
+        output.script_pubkey = Script::CreateP2PKH(decode_result.value.value());
+        tx.outputs.push_back(output);
+    }
+
+    // Add change output if above dust threshold
+    if (change_amount >= DUST_THRESHOLD) {
+        // Generate change address
+        auto change_addr_result = GetNewChangeAddress();
+        if (!change_addr_result.IsOk()) {
+            return Result<Transaction>::Error("Failed to generate change address: " + change_addr_result.error);
+        }
+
+        std::string change_address = change_addr_result.value.value();
+        auto decode_result = AddressEncoder::DecodeAddress(change_address);
+        if (!decode_result.IsOk()) {
+            return Result<Transaction>::Error("Failed to decode change address");
+        }
+
+        TxOut change_output;
+        change_output.value = change_amount;
+        change_output.script_pubkey = Script::CreateP2PKH(decode_result.value.value());
+        tx.outputs.push_back(change_output);
+    }
+
+    return Result<Transaction>::Ok(tx);
 }
 
 Result<Transaction> Wallet::SignTransaction(const Transaction& tx) {
@@ -1822,11 +1908,100 @@ Result<Transaction> Wallet::SignTransaction(const Transaction& tx) {
         return Result<Transaction>::Error("Wallet is locked");
     }
 
-    // TODO: Implement transaction signing
-    // - For each input, find corresponding private key
-    // - Sign transaction with Dilithium3
+    // Create a copy of the transaction to sign
+    Transaction signed_tx = tx;
 
-    return Result<Transaction>::Error("Not implemented yet");
+    // Sign each input
+    for (size_t i = 0; i < signed_tx.inputs.size(); i++) {
+        TxIn& input = signed_tx.inputs[i];
+
+        // Find the UTXO being spent
+        OutPoint prevout;
+        prevout.tx_hash = input.prev_tx_hash;
+        prevout.index = input.prev_tx_index;
+
+        auto utxo_it = impl_->utxos.find(prevout);
+        if (utxo_it == impl_->utxos.end()) {
+            return Result<Transaction>::Error("UTXO not found for input " + std::to_string(i));
+        }
+
+        const TxOut& prev_output = utxo_it->second;
+
+        // Extract address from the previous output script
+        std::string address = ExtractAddressFromScript(prev_output.script_pubkey);
+        if (address.empty()) {
+            return Result<Transaction>::Error("Could not extract address from UTXO script");
+        }
+
+        // Find the wallet address
+        WalletAddress* wallet_addr = nullptr;
+        for (auto& addr : impl_->addresses) {
+            if (addr.address == address) {
+                wallet_addr = &addr;
+                break;
+            }
+        }
+
+        if (!wallet_addr) {
+            return Result<Transaction>::Error("Address not found in wallet: " + address);
+        }
+
+        // Derive the key for this address using its path
+        auto key_result = HDKeyDerivation::DerivePath(impl_->master_key, wallet_addr->path);
+        if (!key_result.IsOk()) {
+            return Result<Transaction>::Error("Failed to derive key: " + key_result.error);
+        }
+
+        ExtendedKey derived_key = key_result.value.value();
+        if (!derived_key.private_key.has_value()) {
+            return Result<Transaction>::Error("Derived key has no private key");
+        }
+
+        // Get public key for verification
+        if (!derived_key.public_key.has_value()) {
+            return Result<Transaction>::Error("Derived key has no public key");
+        }
+
+        const SecretKey& secret_key = derived_key.private_key.value();
+        const PublicKey& public_key = derived_key.public_key.value();
+
+        // Create transaction hash for signing
+        // For now, we'll sign the entire transaction (simplified)
+        // In production, this should be more sophisticated (e.g., SIGHASH types)
+        uint256 tx_hash = signed_tx.GetHash();
+
+        // Sign with Dilithium3
+        auto sign_result = DilithiumCrypto::SignHash(tx_hash, secret_key);
+        if (!sign_result.IsOk()) {
+            return Result<Transaction>::Error("Failed to sign transaction: " + sign_result.error);
+        }
+
+        Signature signature = sign_result.value.value();
+
+        // Create script_sig (P2PKH: <signature> <pubkey>)
+        // For now, use a simplified format: OP_PUSHDATA + length + data
+        std::vector<uint8_t> script_data;
+
+        // Add signature
+        script_data.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+        uint32_t sig_len = signature.size();
+        script_data.insert(script_data.end(),
+                          reinterpret_cast<uint8_t*>(&sig_len),
+                          reinterpret_cast<uint8_t*>(&sig_len) + sizeof(sig_len));
+        script_data.insert(script_data.end(), signature.begin(), signature.end());
+
+        // Add public key
+        script_data.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+        uint32_t pk_len = public_key.size();
+        script_data.insert(script_data.end(),
+                          reinterpret_cast<uint8_t*>(&pk_len),
+                          reinterpret_cast<uint8_t*>(&pk_len) + sizeof(pk_len));
+        script_data.insert(script_data.end(), public_key.begin(), public_key.end());
+
+        input.script_sig = Script(script_data);
+    }
+
+    return Result<Transaction>::Ok(signed_tx);
 }
 
 Result<uint256> Wallet::SendTransaction(const Transaction& tx, Blockchain& blockchain) {
