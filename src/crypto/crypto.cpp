@@ -8,6 +8,7 @@
 #include "intcoin/util.h"
 #include <cstring>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <stdexcept>
 #include <oqs/oqs.h>
 
@@ -622,6 +623,28 @@ std::string PublicKeyHashToAddress(const uint256& pubkey_hash) {
 std::string PublicKeyToAddress(const PublicKey& pubkey) {
     uint256 hash = PublicKeyToHash(pubkey);
     return PublicKeyHashToAddress(hash);
+}
+
+// ============================================================================
+// Random Number Generation
+// ============================================================================
+
+std::vector<uint8_t> RandomGenerator::GetRandomBytes(size_t count) {
+    std::vector<uint8_t> bytes(count);
+
+    // Use OpenSSL's CSPRNG (RAND_bytes)
+    if (RAND_bytes(bytes.data(), static_cast<int>(count)) != 1) {
+        throw std::runtime_error("Failed to generate random bytes");
+    }
+
+    return bytes;
+}
+
+uint256 RandomGenerator::GetRandomUint256() {
+    auto bytes = GetRandomBytes(32);
+    uint256 result;
+    std::copy(bytes.begin(), bytes.end(), result.begin());
+    return result;
 }
 
 } // namespace intcoin

@@ -42,6 +42,10 @@ target_link_libraries(test_network intcoin_core)
 add_executable(test_ml test_ml.cpp)
 target_link_libraries(test_ml intcoin_core ${ROCKSDB_LIB})
 
+# Test: Wallet (HD wallet, BIP39, BIP44)
+add_executable(test_wallet test_wallet.cpp)
+target_link_libraries(test_wallet intcoin_core ${ROCKSDB_LIB})
+
 # Register tests with CTest
 add_test(NAME CryptoTest COMMAND test_crypto)
 add_test(NAME RandomXTest COMMAND test_randomx)
@@ -52,6 +56,7 @@ add_test(NAME ValidationTest COMMAND test_validation)
 add_test(NAME GenesisTest COMMAND test_genesis)
 add_test(NAME NetworkTest COMMAND test_network)
 add_test(NAME MLTest COMMAND test_ml)
+add_test(NAME WalletTest COMMAND test_wallet)
 
 # Install test executables (optional)
 install(TARGETS
@@ -64,5 +69,6 @@ install(TARGETS
     test_genesis
     test_network
     test_ml
+    test_wallet
     DESTINATION bin/tests
 )

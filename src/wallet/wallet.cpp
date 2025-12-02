@@ -1445,6 +1445,9 @@ Result<void> Wallet::Create(const std::vector<std::string>& mnemonic,
         impl_->addresses.push_back(addr_result.value.value());
     }
 
+    // Update next index to be after the keypool
+    impl_->next_receive_index = impl_->config.keypool_size;
+
     impl_->is_loaded = true;
     impl_->is_locked = false;
 

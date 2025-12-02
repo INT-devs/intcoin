@@ -18,10 +18,10 @@ namespace intcoin {
 // Constants (liboqs PQC algorithm sizes)
 // ============================================================================
 
-// Dilithium3 (NIST Security Level 3)
+// Dilithium3 (NIST Security Level 3 / ML-DSA-65)
 constexpr size_t DILITHIUM3_PUBLICKEYBYTES = 1952;
-constexpr size_t DILITHIUM3_SECRETKEYBYTES = 4000;
-constexpr size_t DILITHIUM3_BYTES = 3293;
+constexpr size_t DILITHIUM3_SECRETKEYBYTES = 4032;
+constexpr size_t DILITHIUM3_BYTES = 3309;
 
 // Kyber768 (NIST Security Level 3)
 constexpr size_t KYBER768_PUBLICKEYBYTES = 1184;
