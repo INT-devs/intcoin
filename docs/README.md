@@ -1,8 +1,8 @@
 # INTcoin Technical Documentation
 
 **Version**: 1.0.0-alpha
-**Last Updated**: November 26, 2025
-**Status**: 30% Complete
+**Last Updated**: December 2, 2025
+**Status**: 85% Complete
 
 This directory contains comprehensive technical documentation for INTcoin developers and contributors.
 
@@ -25,7 +25,8 @@ This directory contains comprehensive technical documentation for INTcoin develo
 6. [**Blockchain**](BLOCKCHAIN.md) - Blockchain state management
 7. [**Network**](NETWORK.md) - P2P networking protocol
 8. [**Storage**](STORAGE.md) - RocksDB persistence layer
-9. [**RPC**](RPC.md) - JSON-RPC API documentation
+9. [**Wallet**](WALLET.md) - HD wallet with BIP32/39/44 and Dilithium3 ✅ **NEW**
+10. [**RPC**](RPC.md) - JSON-RPC API documentation
 
 ### Build & Testing
 - [**Building from Source**](BUILDING.md) - Complete build instructions
@@ -57,24 +58,32 @@ This directory contains comprehensive technical documentation for INTcoin develo
 
 ## 📊 Project Status
 
-### ✅ Completed (30%)
-- ✅ Project structure and build system
+### ✅ Completed (85%)
+- ✅ Project structure and build system (CMake 4.2.0, C++23)
 - ✅ Post-quantum cryptography (Dilithium3 + Kyber768 + SHA3-256)
-- ✅ RandomX Proof-of-Work
-- ✅ Bech32 address encoding
-- ✅ Comprehensive test suites (19/19 passing)
+- ✅ RandomX Proof-of-Work integration
+- ✅ Bech32 address encoding ('int1' prefix)
+- ✅ Digishield V3 difficulty adjustment
+- ✅ Transaction/block serialization
+- ✅ RocksDB storage layer (UTXO model, mempool)
+- ✅ P2P networking protocol (1,200+ lines)
+- ✅ RPC server (32+ methods, zero external JSON dependencies)
+- ✅ Blockchain core (~15,000 lines)
+- ✅ Comprehensive test suites (9/9 passing - 100%)
+- ✅ HD wallet backend (BIP32/39/44 adapted for Dilithium3)
+- ✅ Wallet database (RocksDB persistence)
 
-### 🔄 In Progress
-- 🔄 Digishield V3 difficulty adjustment
-- 🔄 Transaction/block serialization
-- 🔄 Documentation expansion
+### 🔄 In Progress (70% complete)
+- 🔄 Wallet transaction signing
+- 🔄 UTXO scanning and balance tracking
+- 🔄 Wallet encryption (Kyber768/AES-256)
+- 🔄 Documentation completion
 
-### ⏳ Planned
-- ⏳ RocksDB integration
-- ⏳ UTXO model
-- ⏳ P2P networking
-- ⏳ RPC server
-- ⏳ Wallet implementation
+### ⏳ Planned (15% remaining)
+- ⏳ Desktop wallet (Qt GUI)
+- ⏳ CPU miner (RandomX)
+- ⏳ Block explorer
+- ⏳ Additional integration tests
 
 ---
 
