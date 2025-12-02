@@ -14,6 +14,7 @@
 #include <cstring>
 #include <fstream>
 #include <chrono>
+#include <set>
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice.h>
@@ -290,6 +291,39 @@ static const std::vector<std::string> BIP39_WORDLIST = {
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+// Extract address from script (used for UTXO scanning)
+static std::string ExtractAddressFromScript(const Script& script) {
+    // Try P2PKH (most common)
+    if (script.IsP2PKH()) {
+        auto hash_opt = script.GetP2PKHHash();
+        if (hash_opt.has_value()) {
+            // Encode pubkey hash as Bech32 address
+            auto result = AddressEncoder::EncodeAddress(hash_opt.value());
+            if (result.IsOk()) {
+                return result.value.value();
+            }
+        }
+    }
+
+    // Try P2PK
+    if (script.IsP2PK()) {
+        auto pubkey_opt = script.GetP2PKPublicKey();
+        if (pubkey_opt.has_value()) {
+            // Hash the public key and encode as Bech32 address
+            const PublicKey& pubkey = pubkey_opt.value();
+            std::vector<uint8_t> pubkey_vec(pubkey.begin(), pubkey.end());
+            uint256 pubkey_hash = SHA3::Hash(pubkey_vec);
+            auto result = AddressEncoder::EncodeAddress(pubkey_hash);
+            if (result.IsOk()) {
+                return result.value.value();
+            }
+        }
+    }
+
+    // Unknown script type - return empty string
+    return "";
+}
 
 // HMAC-SHA256 for BIP32 key derivation (using SHA3-256)
 static std::vector<uint8_t> HMAC_SHA256(const std::vector<uint8_t>& key,
@@ -1695,8 +1729,32 @@ Result<uint64_t> Wallet::GetUnconfirmedBalance() const {
         return Result<uint64_t>::Error("Wallet not loaded");
     }
 
-    // TODO: Calculate unconfirmed balance from mempool transactions
-    return Result<uint64_t>::Ok(0);
+    // Calculate balance from unconfirmed transactions (block_height == 0)
+    uint64_t unconfirmed_balance = 0;
+
+    for (const auto& wtx : impl_->transactions) {
+        if (wtx.block_height == 0) {
+            // Check outputs for our addresses
+            for (const auto& output : wtx.tx.outputs) {
+                std::string addr = ExtractAddressFromScript(output.script_pubkey);
+
+                // Check if this address belongs to us
+                bool is_ours = false;
+                for (const auto& wallet_addr : impl_->addresses) {
+                    if (wallet_addr.address == addr) {
+                        is_ours = true;
+                        break;
+                    }
+                }
+
+                if (is_ours) {
+                    unconfirmed_balance += output.value;
+                }
+            }
+        }
+    }
+
+    return Result<uint64_t>::Ok(unconfirmed_balance);
 }
 
 Result<uint64_t> Wallet::GetAddressBalance(const std::string& address) const {
@@ -1704,8 +1762,19 @@ Result<uint64_t> Wallet::GetAddressBalance(const std::string& address) const {
         return Result<uint64_t>::Error("Wallet not loaded");
     }
 
-    // TODO: Calculate balance for specific address
-    return Result<uint64_t>::Ok(0);
+    // Calculate balance for specific address from UTXOs
+    uint64_t balance = 0;
+
+    for (const auto& [outpoint, txout] : impl_->utxos) {
+        // Extract address from script
+        std::string utxo_address = ExtractAddressFromScript(txout.script_pubkey);
+
+        if (utxo_address == address) {
+            balance += txout.value;
+        }
+    }
+
+    return Result<uint64_t>::Ok(balance);
 }
 
 Result<std::vector<WalletTransaction>> Wallet::GetTransactions() const {
@@ -1803,7 +1872,58 @@ Result<void> Wallet::UpdateUTXOs(Blockchain& blockchain) {
         return Result<void>::Error("Wallet not loaded");
     }
 
-    // TODO: Scan blockchain for UTXOs belonging to wallet addresses
+    // Create a set of wallet addresses for fast lookup
+    std::set<std::string> wallet_addresses;
+    for (const auto& addr : impl_->addresses) {
+        wallet_addresses.insert(addr.address);
+    }
+
+    // Clear existing UTXOs (will be rebuilt from blockchain)
+    impl_->utxos.clear();
+
+    // Scan entire blockchain
+    uint64_t height = blockchain.GetBestHeight();
+
+    for (uint64_t h = 0; h <= height; h++) {
+        auto block_result = blockchain.GetBlockByHeight(h);
+        if (!block_result.IsOk()) {
+            continue;  // Skip if block not found
+        }
+
+        const Block& block = block_result.value.value();
+
+        // Process each transaction in the block
+        for (size_t tx_idx = 0; tx_idx < block.transactions.size(); tx_idx++) {
+            const Transaction& tx = block.transactions[tx_idx];
+            uint256 txid = tx.GetHash();
+
+            // Remove spent UTXOs (process inputs)
+            for (const auto& input : tx.inputs) {
+                OutPoint prevout;
+                prevout.tx_hash = input.prev_tx_hash;
+                prevout.index = input.prev_tx_index;
+                impl_->utxos.erase(prevout);
+            }
+
+            // Add new UTXOs (process outputs)
+            for (size_t vout = 0; vout < tx.outputs.size(); vout++) {
+                const TxOut& output = tx.outputs[vout];
+
+                // Check if this output belongs to our wallet
+                // Extract address from script
+                std::string address = ExtractAddressFromScript(output.script_pubkey);
+
+                if (wallet_addresses.count(address) > 0) {
+                    // This output belongs to us - add to UTXOs
+                    OutPoint outpoint;
+                    outpoint.tx_hash = txid;
+                    outpoint.index = vout;
+                    impl_->utxos[outpoint] = output;
+                }
+            }
+        }
+    }
+
     return Result<void>::Ok();
 }
 
@@ -1837,7 +1957,59 @@ Result<void> Wallet::Rescan(Blockchain& blockchain, uint64_t start_height) {
         return Result<void>::Error("Wallet not loaded");
     }
 
-    // TODO: Rescan blockchain for wallet transactions
+    // Create a set of wallet addresses for fast lookup
+    std::set<std::string> wallet_addresses;
+    for (const auto& addr : impl_->addresses) {
+        wallet_addresses.insert(addr.address);
+    }
+
+    // For correctness, clear and rebuild UTXOs from genesis
+    // A proper implementation would track block heights per UTXO
+    // and only remove/update those affected by the rescan range
+    impl_->utxos.clear();
+
+    // Scan from start_height to current height
+    uint64_t height = blockchain.GetBestHeight();
+
+    for (uint64_t h = start_height; h <= height; h++) {
+        auto block_result = blockchain.GetBlockByHeight(h);
+        if (!block_result.IsOk()) {
+            continue;  // Skip if block not found
+        }
+
+        const Block& block = block_result.value.value();
+
+        // Process each transaction in the block
+        for (size_t tx_idx = 0; tx_idx < block.transactions.size(); tx_idx++) {
+            const Transaction& tx = block.transactions[tx_idx];
+            uint256 txid = tx.GetHash();
+
+            // Remove spent UTXOs (process inputs)
+            for (const auto& input : tx.inputs) {
+                OutPoint prevout;
+                prevout.tx_hash = input.prev_tx_hash;
+                prevout.index = input.prev_tx_index;
+                impl_->utxos.erase(prevout);
+            }
+
+            // Add new UTXOs (process outputs)
+            for (size_t vout = 0; vout < tx.outputs.size(); vout++) {
+                const TxOut& output = tx.outputs[vout];
+
+                // Extract address from script
+                std::string address = ExtractAddressFromScript(output.script_pubkey);
+
+                if (wallet_addresses.count(address) > 0) {
+                    // This output belongs to us - add to UTXOs
+                    OutPoint outpoint;
+                    outpoint.tx_hash = txid;
+                    outpoint.index = vout;
+                    impl_->utxos[outpoint] = output;
+                }
+            }
+        }
+    }
+
     return Result<void>::Ok();
 }
 
