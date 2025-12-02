@@ -1490,16 +1490,18 @@ Result<std::vector<NetworkAddress>> PeerDiscovery::DNSSeedQuery(
 
 std::vector<NetworkAddress> PeerDiscovery::GetSeedNodes(bool testnet) {
     // Hardcoded seed nodes for INTcoin mainnet and testnet
+    // DNS: seed-uk.international-coin.org, seed-us.international-coin.org (mainnet)
+    //      test-uk.international-coin.org, test-us.international-coin.org (testnet)
     std::vector<NetworkAddress> seeds;
 
     if (testnet) {
-        // Testnet seed nodes
-        seeds.emplace_back("test-uk.international-coin.org", network::TESTNET_P2P_PORT);
-        seeds.emplace_back("test-us.international-coin.org", network::TESTNET_P2P_PORT);
+        // Testnet seed nodes (IPs for seed resolution testing)
+        seeds.emplace_back("192.168.100.2", network::TESTNET_P2P_PORT);  // test-uk.international-coin.org
+        seeds.emplace_back("192.168.100.3", network::TESTNET_P2P_PORT);  // test-us.international-coin.org
     } else {
-        // Mainnet seed nodes
-        seeds.emplace_back("seed-uk.international-coin.org", network::MAINNET_P2P_PORT);
-        seeds.emplace_back("seed-us.international-coin.org", network::MAINNET_P2P_PORT);
+        // Mainnet seed nodes (IPs for seed resolution testing)
+        seeds.emplace_back("51.155.97.192", network::MAINNET_P2P_PORT);  // seed-uk.international-coin.org
+        seeds.emplace_back("74.208.112.43", network::MAINNET_P2P_PORT);  // seed-us.international-coin.org
 
         // Tor hidden service seed node
         // Note: Tor addresses need special handling via SOCKS5 proxy

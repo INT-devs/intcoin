@@ -1111,7 +1111,7 @@ Result<void> WalletDB::WriteTransaction(const WalletTransaction& wtx) {
     auto data = impl_->SerializeWalletTransaction(wtx);
 
     // Use txid as hex string for the key
-    std::string key = "tx_" + wtx.txid.ToHex();
+    std::string key = "tx_" + ToHex(wtx.txid);
     rocksdb::Slice key_slice(key);
     rocksdb::Slice value_slice(reinterpret_cast<const char*>(data.data()), data.size());
 
@@ -1129,7 +1129,7 @@ Result<WalletTransaction> WalletDB::ReadTransaction(const uint256& txid) {
         return Result<WalletTransaction>::Error("Database not open");
     }
 
-    std::string key = "tx_" + txid.ToHex();
+    std::string key = "tx_" + ToHex(txid);
     std::string value;
     rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), key, &value);
 
@@ -1172,7 +1172,7 @@ Result<void> WalletDB::DeleteTransaction(const uint256& txid) {
         return Result<void>::Error("Database not open");
     }
 
-    std::string key = "tx_" + txid.ToHex();
+    std::string key = "tx_" + ToHex(txid);
     rocksdb::Status status = impl_->db->Delete(rocksdb::WriteOptions(), key);
 
     if (!status.ok()) {
@@ -1297,7 +1297,7 @@ Result<void> WalletDB::Backup(const std::string& backup_path) {
 
     // Create backup engine
     rocksdb::BackupEngine* backup_engine = nullptr;
-    rocksdb::BackupableDBOptions backup_options(backup_path);
+    rocksdb::BackupEngineOptions backup_options(backup_path);
     backup_options.share_table_files = true;  // Deduplicate files
 
     rocksdb::Status status = rocksdb::BackupEngine::Open(

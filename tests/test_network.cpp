@@ -141,6 +141,8 @@ void test_seed_nodes() {
     assert(seeds.size() >= 2);
 
     // Verify the hardcoded seed nodes
+    // DNS: seed-uk.international-coin.org -> 51.155.97.192
+    //      seed-us.international-coin.org -> 74.208.112.43
     bool found_51 = false;
     bool found_74 = false;
 
