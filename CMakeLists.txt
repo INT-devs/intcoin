@@ -158,6 +158,9 @@ set(INTCOIN_CORE_SOURCES
 
     # Wallet
     src/wallet/wallet.cpp
+
+    # Mining
+    src/mining/mining.cpp
 )
 
 # Lightning Network sources (optional)
@@ -229,14 +232,15 @@ if(BUILD_CLI)
 endif()
 
 # intcoin-miner
-# if(BUILD_MINER)
-#     add_executable(intcoin-miner
-#         src/miner/miner.cpp
-#         src/miner/randomx_miner.cpp
-#     )
-#     target_link_libraries(intcoin-miner intcoin_core)
-#     install(TARGETS intcoin-miner DESTINATION bin)
-# endif()
+if(BUILD_MINER)
+    find_library(ROCKSDB_LIB rocksdb REQUIRED)
+
+    add_executable(intcoin-miner
+        src/miner/intcoin-miner.cpp
+    )
+    target_link_libraries(intcoin-miner intcoin_core ${ROCKSDB_LIB})
+    install(TARGETS intcoin-miner DESTINATION bin)
+endif()
 
 # Qt Wallet
 # if(BUILD_WALLET_QT)

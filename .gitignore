@@ -46,6 +46,7 @@ Testing/
 # Executables (Unix-style without extension)
 intcoind
 intcoin-cli
+intcoin-miner
 tests/test_*
 
 # Logs
