@@ -161,6 +161,9 @@ set(INTCOIN_CORE_SOURCES
 
     # Mining
     src/mining/mining.cpp
+
+    # Block Explorer
+    src/explorer/explorer.cpp
 )
 
 # Lightning Network sources (optional)

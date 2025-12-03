@@ -41,6 +41,9 @@
 // Mining
 #include "mining.h"
 
+// Block Explorer
+#include "explorer.h"
+
 // Version information
 #define INTCOIN_VERSION_MAJOR 1
 #define INTCOIN_VERSION_MINOR 0
