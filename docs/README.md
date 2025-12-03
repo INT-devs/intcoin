@@ -2,7 +2,7 @@
 
 **Version**: 1.0.0-alpha
 **Last Updated**: December 2, 2025
-**Status**: 85% Complete
+**Status**: 90% Complete
 
 This directory contains comprehensive technical documentation for INTcoin developers and contributors.
 
@@ -58,7 +58,7 @@ This directory contains comprehensive technical documentation for INTcoin develo
 
 ## 📊 Project Status
 
-### ✅ Completed (87%)
+### ✅ Completed (90%)
 - ✅ Project structure and build system (CMake 4.2.0, C++23)
 - ✅ Post-quantum cryptography (Dilithium3 + Kyber768 + SHA3-256)
 - ✅ RandomX Proof-of-Work integration
@@ -70,19 +70,20 @@ This directory contains comprehensive technical documentation for INTcoin develo
 - ✅ RPC server (32+ methods, zero external JSON dependencies)
 - ✅ Blockchain core (~15,000 lines)
 - ✅ Comprehensive test suites (10/10 passing - 100%)
-- ✅ HD wallet backend (BIP32/39/44 adapted for Dilithium3)
-- ✅ Wallet database (RocksDB persistence)
-- ✅ UTXO scanning and balance tracking
+- ✅ **HD wallet backend (BIP32/39/44 adapted for Dilithium3)** ✨ **COMPLETE**
+- ✅ **Wallet database (RocksDB persistence)** ✨ **COMPLETE**
+- ✅ **UTXO scanning and balance tracking** ✨ **COMPLETE**
+- ✅ **Transaction creation and signing** ✨ **NEW**
+- ✅ **Transaction history indexing** ✨ **NEW**
 
-### 🔄 In Progress (75% complete)
-- 🔄 Wallet transaction signing
-- 🔄 Wallet encryption (Kyber768/AES-256)
+### 🔄 In Progress (0% - Phase 6 Starting)
 - 🔄 Documentation completion
 
-### ⏳ Planned (13% remaining)
+### ⏳ Planned (10% remaining)
 - ⏳ Desktop wallet (Qt GUI)
 - ⏳ CPU miner (RandomX)
 - ⏳ Block explorer
+- ⏳ Wallet encryption (Kyber768/AES-256) - optional enhancement
 - ⏳ Additional integration tests
 
 ---

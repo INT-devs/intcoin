@@ -4,7 +4,7 @@
 **Current Date**: December 2, 2025
 **Estimated Completion**: Q1 2026 (14 months)
 **Team Size Required**: 3-5 developers minimum
-**Current Progress**: ~88% (Phases 1-4 Complete, Phase 5 at 80%)
+**Current Progress**: ~90% (Phases 1-5 Complete, Phase 6 next)
 
 ---
 
@@ -362,7 +362,7 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
 - All tests passing (9/9 - 100%)
 - Library size: 883 KB
 
-## 🔄 Phase 5: Wallet Backend (2 months) - **IN PROGRESS (80%)**
+## ✅ Phase 5: Wallet Backend (2 months) - **COMPLETE (100%)**
 
 **Priority: HIGH**
 
@@ -374,16 +374,16 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
   - [x] Transaction creation (coin selection, fee calculation)
   - [x] Transaction signing (Dilithium3 signatures)
 
-- [x] **Wallet Database** - ✅ MOSTLY COMPLETE
+- [x] **Wallet Database** - ✅ COMPLETE
   - [x] RocksDB backend structure
   - [x] Address storage with metadata
   - [x] Transaction serialization/deserialization
   - [x] Balance tracking (UTXO scanning implemented)
   - [x] Label management
-  - [ ] Transaction history indexing (needs completion)
+  - [x] Transaction history indexing ✅ **NEW**
 
 - [x] **UTXO Management** - ✅ COMPLETE
-  - [x] UpdateUTXOs() - Full blockchain UTXO scan
+  - [x] UpdateUTXOs() - Full blockchain UTXO scan with transaction history
   - [x] Rescan() - Rescan from specific height
   - [x] GetBalance() - Calculate confirmed balance
   - [x] GetUnconfirmedBalance() - Track pending transactions
@@ -396,10 +396,25 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
   - [x] Coin selection (greedy algorithm)
   - [x] Fee estimation and calculation
   - [x] Change output handling
-  - [ ] Advanced coin selection (Branch and Bound) - optional
+  - [ ] Advanced coin selection (Branch and Bound) - optional enhancement
   - [ ] SIGHASH types - optional enhancement
 
+- [x] **Transaction History** - ✅ COMPLETE ✨ **NEW**
+  - [x] Track all wallet-relevant transactions
+  - [x] Calculate net amounts (received - sent)
+  - [x] Compute transaction fees
+  - [x] Record block height and timestamp
+  - [x] Identify coinbase transactions
+  - [x] Database persistence (WriteTransaction)
+  - [x] GetTransactions() and GetTransaction() methods
+
 **Recent Progress (Dec 2, 2025)**:
+- ✅ **Transaction history indexing** ✨ **LATEST**
+  * Enhanced UpdateUTXOs() to track transaction history
+  * Calculates net amounts (received - sent) for each transaction
+  * Computes fees for outgoing transactions
+  * Records block height, timestamp, and coinbase status
+  * 113 lines added to UpdateUTXOs() method
 - ✅ Implemented complete transaction creation and signing
 - ✅ Added coin selection with fee estimation
 - ✅ Implemented Dilithium3 transaction signing
@@ -410,7 +425,7 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
 - ✅ Created comprehensive wallet test suite (10/10 tests passing)
 - ✅ Fixed Dilithium3 constants (4032 bytes secret key, 3309 bytes signature)
 - ✅ Fixed wallet keypool index collision bug
-- 📝 Total: 611 lines of test code, 363 lines of wallet code added
+- 📝 Total: 611 lines of test code, 476 lines of wallet code added
 
 ## ⏳ Phase 6: Desktop Wallet (2 months)
 
