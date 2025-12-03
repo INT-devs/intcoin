@@ -30,6 +30,11 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile
+CPackConfig.cmake
+CPackSourceConfig.cmake
+CTestTestfile.cmake
+Testing/
+.qt/
 
 # Compiled files
 *.o
@@ -37,6 +42,11 @@ Makefile
 *.so
 *.dylib
 *.exe
+
+# Executables (Unix-style without extension)
+intcoind
+intcoin-cli
+tests/test_*
 
 # Logs
 *.log
