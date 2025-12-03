@@ -164,18 +164,10 @@ set(INTCOIN_CORE_SOURCES
 
     # Block Explorer
     src/explorer/explorer.cpp
-)
 
-# Lightning Network sources (optional)
-# TODO: Uncomment when Lightning Network implementation is added
-# if(ENABLE_LIGHTNING)
-#     list(APPEND INTCOIN_CORE_SOURCES
-#         src/lightning/channel.cpp
-#         src/lightning/payment.cpp
-#         src/lightning/routing.cpp
-#         src/lightning/invoice.cpp
-#     )
-# endif()
+    # Lightning Network
+    src/lightning/lightning.cpp
+)
 
 # Core library
 add_library(intcoin_core STATIC ${INTCOIN_CORE_SOURCES})

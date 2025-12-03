@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2025 INTcoin Team (Neil Adamson)
- * SPDX-License-Identifier: MIT License
+ * MIT License
  * INTcoin Core - Master Include Header
  */
 
@@ -43,6 +43,9 @@
 
 // Block Explorer
 #include "explorer.h"
+
+// Lightning Network
+#include "lightning.h"
 
 // Version information
 #define INTCOIN_VERSION_MAJOR 1
