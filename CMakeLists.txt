@@ -206,15 +206,18 @@ if(EVENT_LIB)
     target_link_libraries(intcoin_core ${EVENT_LIB})
 endif()
 
-# TODO: Executables will be added as they are implemented
 # intcoind daemon
-# if(BUILD_DAEMON)
-#     add_executable(intcoind
-#         src/daemon/intcoind.cpp
-#     )
-#     target_link_libraries(intcoind intcoin_core)
-#     install(TARGETS intcoind DESTINATION bin)
-# endif()
+if(BUILD_DAEMON)
+    # Find RocksDB (same way as tests)
+    find_library(ROCKSDB_LIB rocksdb REQUIRED)
+
+    add_executable(intcoind
+        src/daemon/intcoind.cpp
+    )
+    target_link_libraries(intcoind intcoin_core ${ROCKSDB_LIB})
+
+    install(TARGETS intcoind DESTINATION bin)
+endif()
 
 # intcoin-cli
 # if(BUILD_CLI)
