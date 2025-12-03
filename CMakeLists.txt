@@ -220,13 +220,13 @@ if(BUILD_DAEMON)
 endif()
 
 # intcoin-cli
-# if(BUILD_CLI)
-#     add_executable(intcoin-cli
-#         src/cli/intcoin-cli.cpp
-#     )
-#     target_link_libraries(intcoin-cli intcoin_core)
-#     install(TARGETS intcoin-cli DESTINATION bin)
-# endif()
+if(BUILD_CLI)
+    add_executable(intcoin-cli
+        src/cli/intcoin-cli.cpp
+    )
+    target_link_libraries(intcoin-cli intcoin_core)
+    install(TARGETS intcoin-cli DESTINATION bin)
+endif()
 
 # intcoin-miner
 # if(BUILD_MINER)
