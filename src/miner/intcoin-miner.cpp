@@ -222,8 +222,8 @@ int main(int argc, char* argv[]) {
     // Setup callbacks
     manager.SetBlockFoundCallback([&](const Block& block) {
         std::cout << "\n*** BLOCK FOUND! ***\n";
-        std::cout << "Block Hash: " << ToHex(block.GetHash().data, 32) << "\n";
-        std::cout << "Height: " << block.header.height << "\n";
+        std::cout << "Block Hash: " << ToHex(block.GetHash()) << "\n";
+        std::cout << "Height: " << (blockchain ? blockchain->GetBestHeight() + 1 : 0) << "\n";
         std::cout << "Nonce: " << block.header.nonce << "\n\n";
 
         // Submit block to blockchain
@@ -291,7 +291,7 @@ int main(int argc, char* argv[]) {
     std::cout << "Press Ctrl+C to stop\n";
     std::cout << "========================================\n\n";
 
-    auto start_result = blockchain ? manager.Start(*blockchain) : Result<void>::Err("No blockchain");
+    auto start_result = blockchain ? manager.Start(*blockchain) : Result<void>::Error("No blockchain");
 
     if (!start_result.IsOk() && !config.pool_mining) {
         std::cerr << "ERROR: Failed to start mining: " << start_result.error << "\n";

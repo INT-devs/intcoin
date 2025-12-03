@@ -4,10 +4,13 @@
 
 #include "intcoin/mining.h"
 #include "intcoin/util.h"
+#include "intcoin/crypto.h"
+#include "intcoin/consensus.h"
 #include <chrono>
 #include <thread>
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -73,12 +76,11 @@ Transaction BuildCoinbaseTransaction(
 ) {
     Transaction tx;
     tx.version = 1;
-    tx.timestamp = std::time(nullptr);
 
     // Coinbase input
     TxIn coinbase_in;
-    coinbase_in.prevout.hash = uint256{}; // Null hash
-    coinbase_in.prevout.n = 0xFFFFFFFF; // Special index for coinbase
+    coinbase_in.prev_tx_hash = uint256{}; // Null hash
+    coinbase_in.prev_tx_index = 0xFFFFFFFF; // Special index for coinbase
 
     // Build coinbase script: height + message
     std::vector<uint8_t> script_data;
@@ -93,7 +95,7 @@ Transaction BuildCoinbaseTransaction(
         script_data.insert(script_data.end(), message.begin(), message.end());
     }
 
-    coinbase_in.script_sig = script_data;
+    coinbase_in.script_sig = Script(script_data);
     coinbase_in.sequence = 0xFFFFFFFF;
 
     tx.inputs.push_back(coinbase_in);
@@ -103,20 +105,20 @@ Transaction BuildCoinbaseTransaction(
     coinbase_out.value = block_reward;
 
     // Decode mining address and create script
-    auto decode_result = DecodeBech32Address(mining_address);
+    auto decode_result = AddressEncoder::DecodeAddress(mining_address);
     if (decode_result.IsOk()) {
-        auto [hrp, pubkey_hash] = decode_result.value.value();
+        uint256 pubkey_hash = decode_result.GetValue();
 
         // P2PKH script: OP_DUP OP_HASH160 <pubkeyhash> OP_EQUALVERIFY OP_CHECKSIG
-        std::vector<uint8_t> script;
-        script.push_back(0x76); // OP_DUP
-        script.push_back(0xA9); // OP_HASH160
-        script.push_back(static_cast<uint8_t>(pubkey_hash.size()));
-        script.insert(script.end(), pubkey_hash.begin(), pubkey_hash.end());
-        script.push_back(0x88); // OP_EQUALVERIFY
-        script.push_back(0xAC); // OP_CHECKSIG
+        std::vector<uint8_t> script_bytes;
+        script_bytes.push_back(0x76); // OP_DUP
+        script_bytes.push_back(0xA9); // OP_HASH160
+        script_bytes.push_back(32); // pubkey_hash is 32 bytes
+        script_bytes.insert(script_bytes.end(), pubkey_hash.begin(), pubkey_hash.end());
+        script_bytes.push_back(0x88); // OP_EQUALVERIFY
+        script_bytes.push_back(0xAC); // OP_CHECKSIG
 
-        coinbase_out.script_pubkey = script;
+        coinbase_out.script_pubkey = Script(script_bytes);
     }
 
     tx.outputs.push_back(coinbase_out);
@@ -225,20 +227,20 @@ bool MinerThread::TrySolveBlock(const MiningJob& job, uint32_t nonce_start, uint
 
         header.nonce = nonce;
 
-        // Serialize header
+        // Serialize header (up to nonce: 4+32+32+8+4+8 = 88 bytes)
         std::vector<uint8_t> header_data;
-        header_data.resize(80);
+        header_data.resize(88);
         // Simplified serialization (real implementation would use proper serialization)
         std::memcpy(header_data.data(), &header.version, 4);
-        std::memcpy(header_data.data() + 4, header.prev_block.data, 32);
-        std::memcpy(header_data.data() + 36, header.merkle_root.data, 32);
-        std::memcpy(header_data.data() + 68, &header.timestamp, 4);
-        std::memcpy(header_data.data() + 72, &header.bits, 4);
-        std::memcpy(header_data.data() + 76, &header.nonce, 4);
+        std::memcpy(header_data.data() + 4, header.prev_block_hash.data(), 32);
+        std::memcpy(header_data.data() + 36, header.merkle_root.data(), 32);
+        std::memcpy(header_data.data() + 68, &header.timestamp, 8);
+        std::memcpy(header_data.data() + 76, &header.bits, 4);
+        std::memcpy(header_data.data() + 80, &header.nonce, 8);
 
         // Calculate RandomX hash
         uint256 hash;
-        randomx_calculate_hash(vm_, header_data.data(), header_data.size(), hash.data);
+        randomx_calculate_hash(vm_, header_data.data(), header_data.size(), hash.data());
 
         // Check if hash meets target
         if (CheckHash(hash, job.target)) {
@@ -283,27 +285,27 @@ MiningManager::~MiningManager() {
 
 Result<void> MiningManager::Start(Blockchain& blockchain) {
     if (mining_.load()) {
-        return Result<void>::Err("Mining already started");
+        return Result<void>::Error("Mining already started");
     }
 
     blockchain_ = &blockchain;
 
     // Initialize RandomX
-    // Get key from genesis block
-    auto genesis_result = blockchain_->GetBlock(0);
+    // Get key from genesis block (use height 0)
+    auto genesis_result = blockchain_->GetBlockByHeight(0);
     if (!genesis_result.IsOk()) {
-        return Result<void>::Err("Failed to get genesis block");
+        return Result<void>::Error("Failed to get genesis block");
     }
 
-    Block genesis = genesis_result.value.value();
+    Block genesis = genesis_result.GetValue();
     uint256 key = genesis.GetHash();
 
     cache_ = randomx_alloc_cache(RANDOMX_FLAG_DEFAULT);
     if (!cache_) {
-        return Result<void>::Err("Failed to allocate RandomX cache");
+        return Result<void>::Error("Failed to allocate RandomX cache");
     }
 
-    randomx_init_cache(cache_, key.data(), sizeof(key.data));
+    randomx_init_cache(cache_, key.data(), key.size());
 
     // Create mining threads
     for (uint32_t i = 0; i < config_.thread_count; ++i) {
@@ -403,20 +405,29 @@ void MiningManager::UpdateJob() {
     // Create block template
     BlockHeader header;
     header.version = 1;
-    header.prev_block = prev_hash;
+    header.prev_block_hash = prev_hash;
     header.timestamp = std::time(nullptr);
-    header.bits = blockchain_->GetNextWorkRequired();
+
+    // Get difficulty target from last block
+    auto last_block_result = blockchain_->GetBlockByHeight(blockchain_->GetBestHeight());
+    if (last_block_result.IsOk()) {
+        BlockHeader last_header = last_block_result.GetValue().header;
+        header.bits = DifficultyCalculator::GetNextWorkRequired(last_header, *blockchain_);
+    } else {
+        header.bits = consensus::MIN_DIFFICULTY_BITS; // Fallback
+    }
+
     header.nonce = 0;
 
     // Build merkle root (just coinbase for now)
     std::vector<uint256> tx_hashes;
     tx_hashes.push_back(coinbase.GetHash());
-    header.merkle_root = BuildMerkleRoot(tx_hashes);
+    header.merkle_root = CalculateMerkleRoot(tx_hashes);
 
     // Create mining job
     MiningJob job;
     job.header = header;
-    job.target = CompactToTarget(header.bits);
+    job.target = DifficultyCalculator::CompactToTarget(header.bits);
     job.height = height;
     job.job_id = std::to_string(height);
 
@@ -501,14 +512,14 @@ Result<void> StratumClient::Connect() {
     // Create socket
     socket_ = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_ < 0) {
-        return Result<void>::Err("Failed to create socket");
+        return Result<void>::Error("Failed to create socket");
     }
 
     // Resolve hostname
     struct hostent* host = gethostbyname(config_.pool_host.c_str());
     if (!host) {
         close(socket_);
-        return Result<void>::Err("Failed to resolve hostname");
+        return Result<void>::Error("Failed to resolve hostname");
     }
 
     // Connect
@@ -519,7 +530,7 @@ Result<void> StratumClient::Connect() {
 
     if (connect(socket_, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         close(socket_);
-        return Result<void>::Err("Failed to connect to pool");
+        return Result<void>::Error("Failed to connect to pool");
     }
 
     connected_.store(true);
@@ -549,7 +560,7 @@ void StratumClient::Disconnect() {
 
 Result<void> StratumClient::Subscribe() {
     if (!connected_.load()) {
-        return Result<void>::Err("Not connected");
+        return Result<void>::Error("Not connected");
     }
 
     // Send subscribe message (simplified JSON-RPC)
@@ -564,7 +575,7 @@ Result<void> StratumClient::Subscribe() {
 
 Result<void> StratumClient::Authorize() {
     if (!subscribed_.load()) {
-        return Result<void>::Err("Not subscribed");
+        return Result<void>::Error("Not subscribed");
     }
 
     // Send authorize message
@@ -581,14 +592,12 @@ Result<void> StratumClient::Authorize() {
 
 Result<void> StratumClient::SubmitShare(const MiningResult& result, const std::string& job_id) {
     if (!authorized_.load()) {
-        return Result<void>::Err("Not authorized");
+        return Result<void>::Error("Not authorized");
     }
 
     // Build submit message (simplified)
-    std::string nonce_hex = ToHex(std::vector<uint8_t>(
-        reinterpret_cast<const uint8_t*>(&result.nonce),
-        reinterpret_cast<const uint8_t*>(&result.nonce) + 4
-    ));
+    char nonce_hex[17];
+    snprintf(nonce_hex, sizeof(nonce_hex), "%08x", result.nonce);
 
     std::string message = "{\"id\":" + std::to_string(message_id_++) +
                           ",\"method\":\"mining.submit\",\"params\":[\"" +

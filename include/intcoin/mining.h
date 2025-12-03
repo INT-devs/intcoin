@@ -172,10 +172,10 @@ private:
     std::atomic<bool> stop_requested_{false};
 
     MiningJob current_job_;
-    std::mutex job_mutex_;
+    mutable std::mutex job_mutex_;
 
     MiningStats stats_;
-    std::mutex stats_mutex_;
+    mutable std::mutex stats_mutex_;
 
     std::unique_ptr<std::thread> stats_thread_;
     std::unique_ptr<std::thread> job_update_thread_;
@@ -245,14 +245,14 @@ private:
     std::mutex socket_mutex_;
 
     MiningJob current_job_;
-    std::mutex job_mutex_;
+    mutable std::mutex job_mutex_;
 
     JobCallback job_callback_;
     AcceptCallback accept_callback_;
 
     std::string session_id_;
-    uint64_t extra_nonce1_ = 0;
-    uint32_t extra_nonce2_size_ = 0;
+    [[maybe_unused]] uint64_t extra_nonce1_ = 0;
+    [[maybe_unused]] uint32_t extra_nonce2_size_ = 0;
     uint32_t message_id_ = 1;
 };
 
