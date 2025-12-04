@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2025 INTcoin Team (Neil Adamson)
- * SPDX-License-Identifier: MIT License
+ * MIT License
  * Blockchain Synchronization Manager
  */
 
