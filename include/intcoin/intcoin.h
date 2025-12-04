@@ -41,6 +41,9 @@
 // Mining
 #include "mining.h"
 
+// Mining Pool
+#include "pool.h"
+
 // Block Explorer
 #include "explorer.h"
 
