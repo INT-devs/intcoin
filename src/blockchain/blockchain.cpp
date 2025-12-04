@@ -30,6 +30,9 @@ public:
     ChainState chain_state_;
     bool chain_state_loaded_ = false;
 
+    // Mempool
+    std::unique_ptr<Mempool> mempool_;
+
     // Callbacks
     std::vector<BlockCallback> block_callbacks_;
     std::vector<TransactionCallback> tx_callbacks_;
@@ -230,6 +233,9 @@ Result<void> Blockchain::Initialize() {
         return utxo_result;
     }
 
+    // Initialize mempool
+    impl_->mempool_ = std::make_unique<Mempool>();
+
     return Result<void>::Ok();
 }
 
@@ -347,9 +353,21 @@ Result<void> Blockchain::AddBlock(const Block& block) {
         return commit_result;
     }
 
+    // Remove confirmed transactions from mempool
+    if (impl_->mempool_) {
+        impl_->mempool_->RemoveBlockTransactions(block);
+    }
+
     // Notify callbacks
     for (const auto& callback : impl_->block_callbacks_) {
         callback(block);
+    }
+
+    // Notify transaction callbacks for each transaction in the block
+    for (const auto& tx : block.transactions) {
+        for (const auto& callback : impl_->tx_callbacks_) {
+            callback(tx);
+        }
     }
 
     return Result<void>::Ok();
@@ -566,13 +584,65 @@ bool Blockchain::HasTransaction(const uint256& tx_hash) const {
 }
 
 uint64_t Blockchain::GetTransactionConfirmations(const uint256& tx_hash) const {
-    // TODO: Implement transaction confirmations
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Get transaction from database
+    auto tx_result = impl_->db_->GetTransaction(tx_hash);
+    if (tx_result.IsError()) {
+        return 0; // Transaction not found = 0 confirmations
+    }
+
+    // Find which block contains this transaction
+    // We need to look up the transaction's block hash from the database
+    // For now, we'll search through recent blocks (this is inefficient but works)
+    uint64_t current_height = impl_->chain_state_.best_height;
+
+    // Search backwards from current height
+    for (uint64_t height = current_height; height > 0 && (current_height - height) < 1000; --height) {
+        auto block_result = impl_->db_->GetBlockByHeight(height);
+        if (block_result.IsOk()) {
+            const auto& block = block_result.value;
+            // Check if transaction is in this block
+            for (const auto& tx : block->transactions) {
+                if (tx.GetHash() == tx_hash) {
+                    // Found the transaction in this block
+                    return current_height - height + 1;
+                }
+            }
+        }
+    }
+
+    // Transaction exists but not in any block (in mempool)
     return 0;
 }
 
 Result<Block> Blockchain::GetTransactionBlock(const uint256& tx_hash) const {
-    // TODO: Implement transaction block lookup
-    return Result<Block>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Get transaction from database
+    auto tx_result = impl_->db_->GetTransaction(tx_hash);
+    if (tx_result.IsError()) {
+        return Result<Block>::Error("Transaction not found");
+    }
+
+    // Search for the block containing this transaction
+    uint64_t current_height = impl_->chain_state_.best_height;
+
+    // Search backwards from current height
+    for (uint64_t height = current_height; height > 0 && (current_height - height) < 1000; --height) {
+        auto block_result = impl_->db_->GetBlockByHeight(height);
+        if (block_result.IsOk()) {
+            const auto& block = block_result.value;
+            // Check if transaction is in this block
+            for (const auto& tx : block->transactions) {
+                if (tx.GetHash() == tx_hash) {
+                    return Result<Block>::Ok(*block);
+                }
+            }
+        }
+    }
+
+    return Result<Block>::Error("Transaction block not found");
 }
 
 // ------------------------------------------------------------------------
@@ -675,18 +745,38 @@ Result<Blockchain::BlockStats> Blockchain::GetBlockStatsByHeight(uint64_t height
 // ------------------------------------------------------------------------
 
 Mempool& Blockchain::GetMempool() {
-    // TODO: Implement Mempool properly
-    throw std::runtime_error("Mempool not yet implemented");
+    if (!impl_->mempool_) {
+        throw std::runtime_error("Mempool not initialized - call Initialize() first");
+    }
+    return *impl_->mempool_;
 }
 
 const Mempool& Blockchain::GetMempool() const {
-    // TODO: Implement Mempool properly
-    throw std::runtime_error("Mempool not yet implemented");
+    if (!impl_->mempool_) {
+        throw std::runtime_error("Mempool not initialized - call Initialize() first");
+    }
+    return *impl_->mempool_;
 }
 
 Result<void> Blockchain::AddToMempool(const Transaction& tx) {
-    // TODO: Implement mempool addition
-    return Result<void>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    if (!impl_->mempool_) {
+        return Result<void>::Error("Mempool not initialized");
+    }
+
+    // Add transaction to mempool
+    auto add_result = impl_->mempool_->AddTransaction(tx);
+    if (add_result.IsError()) {
+        return add_result;
+    }
+
+    // Notify transaction callbacks
+    for (const auto& callback : impl_->tx_callbacks_) {
+        callback(tx);
+    }
+
+    return Result<void>::Ok();
 }
 
 // ------------------------------------------------------------------------
