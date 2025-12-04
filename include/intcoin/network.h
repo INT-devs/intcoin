@@ -252,6 +252,15 @@ public:
     /// Ban score (misbehavior)
     int ban_score;
 
+    /// Peer reputation score (0-100, higher is better)
+    int reputation_score;
+
+    /// Message rate limit (messages per second)
+    double message_rate;
+
+    /// Last message timestamps for rate limiting
+    std::vector<std::chrono::system_clock::time_point> recent_messages;
+
     /// Send message to peer
     Result<void> SendMessage(const NetworkMessage& msg);
 
@@ -269,6 +278,21 @@ public:
 
     /// Increase ban score
     void IncreaseBanScore(int points);
+
+    /// Decrease ban score (reward good behavior)
+    void DecreaseBanScore(int points);
+
+    /// Update reputation score
+    void UpdateReputation(int delta);
+
+    /// Check if rate limited
+    bool IsRateLimited() const;
+
+    /// Record message for rate limiting
+    void RecordMessage();
+
+    /// Get reputation level (0-5, higher is better)
+    int GetReputationLevel() const;
 };
 
 // ============================================================================
@@ -325,6 +349,65 @@ public:
     /// Broadcast new transaction to all peers (sends INV message)
     void BroadcastTransaction(const uint256& tx_hash);
 
+    // ------------------------------------------------------------------------
+    // Network Security
+    // ------------------------------------------------------------------------
+
+    /// Enable/disable rate limiting
+    void SetRateLimiting(bool enabled);
+
+    /// Set rate limit (messages per second per peer)
+    void SetRateLimit(double messages_per_second);
+
+    /// Check if peer is rate limited
+    bool IsPeerRateLimited(uint64_t peer_id) const;
+
+    /// Get peer reputation
+    int GetPeerReputation(uint64_t peer_id) const;
+
+    /// Update peer reputation
+    void UpdatePeerReputation(uint64_t peer_id, int delta);
+
+    /// Get trusted peers (reputation >= 80)
+    std::vector<uint64_t> GetTrustedPeers() const;
+
+    /// Get suspicious peers (reputation < 40)
+    std::vector<uint64_t> GetSuspiciousPeers() const;
+
+    /// Auto-ban suspicious peers
+    void AutoBanSuspiciousPeers();
+
+    // ------------------------------------------------------------------------
+    // DDoS Protection
+    // ------------------------------------------------------------------------
+
+    /// Check for DoS attack
+    bool IsUnderDoSAttack() const;
+
+    /// Get connection rate (connections per minute)
+    double GetConnectionRate() const;
+
+    /// Get message rate (messages per second)
+    double GetMessageRate() const;
+
+    /// Enable/disable connection throttling
+    void SetConnectionThrottling(bool enabled);
+
+    /// Set max connections per IP
+    void SetMaxConnectionsPerIP(size_t max);
+
+    /// Block IP address
+    void BlockIP(const std::string& ip, std::chrono::seconds duration);
+
+    /// Unblock IP address
+    void UnblockIP(const std::string& ip);
+
+    /// Check if IP is blocked
+    bool IsIPBlocked(const std::string& ip) const;
+
+    /// Get blocked IPs
+    std::vector<std::string> GetBlockedIPs() const;
+
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;
@@ -378,6 +461,192 @@ public:
     /// Handle PONG message
     static Result<void> HandlePong(Peer& peer,
                                   const std::vector<uint8_t>& payload);
+};
+
+// ============================================================================
+// Peer Reputation Manager
+// ============================================================================
+
+class PeerReputationManager {
+public:
+    /// Constructor
+    PeerReputationManager();
+
+    /// Update peer reputation
+    void UpdateReputation(uint64_t peer_id, int delta);
+
+    /// Get peer reputation
+    int GetReputation(uint64_t peer_id) const;
+
+    /// Get reputation level (0-5)
+    int GetReputationLevel(uint64_t peer_id) const;
+
+    /// Record good behavior
+    void RecordGoodBehavior(uint64_t peer_id);
+
+    /// Record bad behavior
+    void RecordBadBehavior(uint64_t peer_id);
+
+    /// Get trusted peers
+    std::vector<uint64_t> GetTrustedPeers() const;
+
+    /// Get suspicious peers
+    std::vector<uint64_t> GetSuspiciousPeers() const;
+
+    /// Clear reputation for peer
+    void ClearReputation(uint64_t peer_id);
+
+    /// Get all reputations
+    std::map<uint64_t, int> GetAllReputations() const;
+
+private:
+    std::map<uint64_t, int> reputations_;
+    mutable std::mutex mutex_;
+};
+
+// ============================================================================
+// Rate Limiter
+// ============================================================================
+
+class RateLimiter {
+public:
+    /// Constructor
+    RateLimiter(double max_rate);  // max_rate = messages per second
+
+    /// Check if action is allowed
+    bool AllowAction(uint64_t id);
+
+    /// Record action
+    void RecordAction(uint64_t id);
+
+    /// Get current rate
+    double GetRate(uint64_t id) const;
+
+    /// Check if rate limited
+    bool IsRateLimited(uint64_t id) const;
+
+    /// Set max rate
+    void SetMaxRate(double max_rate);
+
+    /// Clear history for ID
+    void Clear(uint64_t id);
+
+    /// Clear all
+    void ClearAll();
+
+private:
+    double max_rate_;
+    std::map<uint64_t, std::vector<std::chrono::system_clock::time_point>> actions_;
+    mutable std::mutex mutex_;
+};
+
+// ============================================================================
+// IP Blocker
+// ============================================================================
+
+class IPBlocker {
+public:
+    /// Constructor
+    IPBlocker();
+
+    /// Block IP
+    void BlockIP(const std::string& ip, std::chrono::seconds duration);
+
+    /// Unblock IP
+    void UnblockIP(const std::string& ip);
+
+    /// Check if blocked
+    bool IsBlocked(const std::string& ip) const;
+
+    /// Get blocked IPs
+    std::vector<std::string> GetBlockedIPs() const;
+
+    /// Clean expired blocks
+    void CleanExpired();
+
+    /// Clear all blocks
+    void ClearAll();
+
+private:
+    struct BlockInfo {
+        std::chrono::system_clock::time_point block_time;
+        std::chrono::seconds duration;
+    };
+
+    std::map<std::string, BlockInfo> blocked_ips_;
+    mutable std::mutex mutex_;
+};
+
+// ============================================================================
+// Connection Throttler
+// ============================================================================
+
+class ConnectionThrottler {
+public:
+    /// Constructor
+    ConnectionThrottler(size_t max_per_ip, std::chrono::seconds window);
+
+    /// Check if connection allowed
+    bool AllowConnection(const std::string& ip);
+
+    /// Record connection
+    void RecordConnection(const std::string& ip);
+
+    /// Get connection count for IP
+    size_t GetConnectionCount(const std::string& ip) const;
+
+    /// Set max connections per IP
+    void SetMaxPerIP(size_t max);
+
+    /// Clean old connections
+    void CleanOld();
+
+    /// Clear all
+    void ClearAll();
+
+private:
+    size_t max_per_ip_;
+    std::chrono::seconds window_;
+    std::map<std::string, std::vector<std::chrono::system_clock::time_point>> connections_;
+    mutable std::mutex mutex_;
+};
+
+// ============================================================================
+// DoS Detector
+// ============================================================================
+
+class DoSDetector {
+public:
+    /// Constructor
+    DoSDetector();
+
+    /// Record connection attempt
+    void RecordConnection();
+
+    /// Record message
+    void RecordMessage();
+
+    /// Check if under attack
+    bool IsUnderAttack() const;
+
+    /// Get connection rate (per minute)
+    double GetConnectionRate() const;
+
+    /// Get message rate (per second)
+    double GetMessageRate() const;
+
+    /// Set attack thresholds
+    void SetThresholds(double max_conn_rate, double max_msg_rate);
+
+    /// Reset statistics
+    void Reset();
+
+private:
+    std::vector<std::chrono::system_clock::time_point> connections_;
+    std::vector<std::chrono::system_clock::time_point> messages_;
+    double max_connection_rate_;  // per minute
+    double max_message_rate_;     // per second
+    mutable std::mutex mutex_;
 };
 
 // ============================================================================
