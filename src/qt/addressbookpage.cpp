@@ -11,6 +11,9 @@
 #include <QClipboard>
 #include <QApplication>
 #include <QHeaderView>
+#include <QInputDialog>
+#include <QTableWidgetItem>
+#include <QDateTime>
 
 namespace intcoin {
 namespace qt {
@@ -20,6 +23,7 @@ AddressBookPage::AddressBookPage(wallet::Wallet* wallet, QWidget *parent)
     , wallet_(wallet)
 {
     setupUi();
+    updateAddressList();
 }
 
 AddressBookPage::~AddressBookPage() {}
@@ -67,18 +71,96 @@ void AddressBookPage::setupUi() {
 }
 
 void AddressBookPage::addAddress() {
-    QMessageBox::information(this, tr("Add Address"),
-        tr("Add address not yet implemented."));
+    if (!wallet_) {
+        QMessageBox::critical(this, tr("Error"), tr("Wallet not loaded."));
+        return;
+    }
+
+    // Prompt for label
+    bool ok;
+    QString label = QInputDialog::getText(this, tr("New Address"),
+        tr("Enter a label for the new address:"), QLineEdit::Normal,
+        tr("Address %1").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss")), &ok);
+
+    if (!ok || label.isEmpty()) {
+        return;
+    }
+
+    // Generate new address
+    auto addressResult = wallet_->GetNewAddress(label.toStdString());
+    if (!addressResult.IsOk()) {
+        QMessageBox::critical(this, tr("Address Generation Error"),
+            tr("Failed to generate new address: %1").arg(QString::fromStdString(addressResult.error)));
+        return;
+    }
+
+    QString newAddress = QString::fromStdString(addressResult.GetValue());
+
+    // Refresh address list
+    updateAddressList();
+
+    QMessageBox::information(this, tr("Address Added"),
+        tr("New address generated:\n\n%1\n\nLabel: %2").arg(newAddress, label));
 }
 
 void AddressBookPage::editAddress() {
-    QMessageBox::information(this, tr("Edit Address"),
-        tr("Edit address not yet implemented."));
+    if (!wallet_) {
+        QMessageBox::critical(this, tr("Error"), tr("Wallet not loaded."));
+        return;
+    }
+
+    int currentRow = addressTable_->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, tr("No Selection"),
+            tr("Please select an address to edit."));
+        return;
+    }
+
+    QString address = addressTable_->item(currentRow, 1)->text();
+    QString currentLabel = addressTable_->item(currentRow, 0)->text();
+
+    // Prompt for new label
+    bool ok;
+    QString newLabel = QInputDialog::getText(this, tr("Edit Address Label"),
+        tr("Enter a new label for address:\n%1").arg(address),
+        QLineEdit::Normal, currentLabel, &ok);
+
+    if (!ok || newLabel.isEmpty()) {
+        return;
+    }
+
+    // Update label in wallet
+    auto result = wallet_->SetAddressLabel(address.toStdString(), newLabel.toStdString());
+    if (!result.IsOk()) {
+        QMessageBox::critical(this, tr("Edit Error"),
+            tr("Failed to update address label: %1").arg(QString::fromStdString(result.error)));
+        return;
+    }
+
+    // Refresh address list
+    updateAddressList();
+
+    QMessageBox::information(this, tr("Label Updated"),
+        tr("Address label updated successfully."));
 }
 
 void AddressBookPage::deleteAddress() {
-    QMessageBox::information(this, tr("Delete Address"),
-        tr("Delete address not yet implemented."));
+    int currentRow = addressTable_->currentRow();
+    if (currentRow < 0) {
+        QMessageBox::warning(this, tr("No Selection"),
+            tr("Please select an address to delete."));
+        return;
+    }
+
+    QString address = addressTable_->item(currentRow, 1)->text();
+
+    // Show warning about HD wallet addresses
+    QMessageBox::warning(this, tr("Cannot Delete Address"),
+        tr("Addresses in an HD (Hierarchical Deterministic) wallet cannot be deleted.\n\n"
+           "All addresses are derived from your wallet seed and remain part of your wallet "
+           "even if removed from the list. The address will still be monitored for incoming transactions.\n\n"
+           "Address: %1\n\n"
+           "You can edit the label to mark it as unused if desired.").arg(address));
 }
 
 void AddressBookPage::copyAddress() {
@@ -92,8 +174,46 @@ void AddressBookPage::copyAddress() {
 }
 
 void AddressBookPage::updateAddressList() {
+    if (!wallet_) {
+        return;
+    }
+
     addressTable_->setRowCount(0);
-    // TODO: Load addresses from wallet
+
+    // Get search filter
+    QString searchText = searchEdit_->text().toLower();
+
+    // Load addresses from wallet
+    auto addressesResult = wallet_->GetAddresses();
+    if (!addressesResult.IsOk()) {
+        return;
+    }
+
+    const auto& addresses = addressesResult.GetValue();
+
+    // Filter addresses by search text
+    std::vector<wallet::WalletAddress> filteredAddresses;
+    for (const auto& addr : addresses) {
+        if (searchText.isEmpty() ||
+            QString::fromStdString(addr.label).toLower().contains(searchText) ||
+            QString::fromStdString(addr.address).toLower().contains(searchText)) {
+            filteredAddresses.push_back(addr);
+        }
+    }
+
+    addressTable_->setRowCount(filteredAddresses.size());
+
+    for (size_t i = 0; i < filteredAddresses.size(); ++i) {
+        const auto& addr = filteredAddresses[i];
+
+        // Label column
+        QTableWidgetItem* labelItem = new QTableWidgetItem(QString::fromStdString(addr.label));
+        addressTable_->setItem(i, 0, labelItem);
+
+        // Address column
+        QTableWidgetItem* addressItem = new QTableWidgetItem(QString::fromStdString(addr.address));
+        addressTable_->setItem(i, 1, addressItem);
+    }
 }
 
 } // namespace qt
