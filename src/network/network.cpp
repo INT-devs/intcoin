@@ -5,6 +5,7 @@
  */
 
 #include "intcoin/network.h"
+#include "intcoin/blockchain.h"
 #include "intcoin/crypto.h"
 #include "intcoin/util.h"
 #include <sstream>
@@ -841,18 +842,29 @@ Result<void> P2PNode::DiscoverPeers() {
         all_peers.push_back(seed);
     }
 
-    // 3. Optional: DNS seed discovery (can be enabled later)
-    // std::vector<std::string> dns_seeds = {
-    //     "seed.intcoin.network",
-    //     "seed2.intcoin.network"
-    // };
-    // for (const auto& dns_seed : dns_seeds) {
-    //     auto dns_result = PeerDiscovery::DNSSeedQuery(dns_seed);
-    //     if (dns_result.IsOk()) {
-    //         auto dns_peers = dns_result.value.value();
-    //         all_peers.insert(all_peers.end(), dns_peers.begin(), dns_peers.end());
-    //     }
-    // }
+    // 3. DNS seed discovery (enabled)
+    std::vector<std::string> dns_seeds;
+    if (impl_->network_magic == network::MAINNET_MAGIC) {
+        // Mainnet P2P DNS seeds
+        dns_seeds = {
+            "seed-uk.international-coin.org",
+            "seed-us.international-coin.org"
+        };
+    } else {
+        // Testnet P2P DNS seeds
+        dns_seeds = {
+            "test-uk.international-coin.org",
+            "test-us.international-coin.org"
+        };
+    }
+
+    for (const auto& dns_seed : dns_seeds) {
+        auto dns_result = PeerDiscovery::DNSSeedQuery(dns_seed);
+        if (dns_result.IsOk()) {
+            auto dns_peers = dns_result.value.value();
+            all_peers.insert(all_peers.end(), dns_peers.begin(), dns_peers.end());
+        }
+    }
 
     // 4. Connect to discovered peers
     for (const auto& peer : all_peers) {
@@ -1203,13 +1215,19 @@ Result<void> MessageHandler::HandleInv(Peer& peer,
 }
 
 Result<void> MessageHandler::HandleGetData(Peer& peer,
-                                          const std::vector<uint8_t>& payload) {
+                                          const std::vector<uint8_t>& payload,
+                                          Blockchain* blockchain) {
     // GETDATA message format (same as INV):
     // - count (varint): number of inventory items
     // - inventory[] (count * InvVector): requested items
 
     if (payload.empty()) {
         return Result<void>::Error("Empty GETDATA payload");
+    }
+
+    // If blockchain not provided, we can't serve data
+    if (!blockchain) {
+        return Result<void>::Error("Blockchain not available");
     }
 
     size_t pos = 0;
@@ -1222,7 +1240,10 @@ Result<void> MessageHandler::HandleGetData(Peer& peer,
         return Result<void>::Error("GETDATA message contains too many items");
     }
 
-    // Parse each requested item
+    // Collect items not found for batch NOTFOUND response
+    std::vector<InvVector> not_found_items;
+
+    // Parse and serve each requested item
     for (uint8_t i = 0; i < count; i++) {
         if (pos + 36 > payload.size()) {
             peer.IncreaseBanScore(5);
@@ -1243,31 +1264,76 @@ Result<void> MessageHandler::HandleGetData(Peer& peer,
         auto inv = result.value.value();
 
         if (inv.type == InvType::BLOCK) {
-            // TODO: Lookup block in blockchain database
-            // For now, send NOTFOUND
-            InvVector notfound = inv;
-            std::vector<uint8_t> notfound_payload;
-            notfound_payload.push_back(1); // count
-            auto serialized = notfound.Serialize();
-            notfound_payload.insert(notfound_payload.end(),
-                                  serialized.begin(), serialized.end());
+            // Look up block in blockchain
+            auto block_result = blockchain->GetBlock(inv.hash);
+            if (block_result.IsOk()) {
+                // Serialize and send block
+                auto block = block_result.value.value();
+                auto block_payload = block.Serialize();
 
-            NetworkMessage msg(network::MAINNET_MAGIC, "notfound", notfound_payload);
-            peer.SendMessage(msg);
+                NetworkMessage block_msg(network::MAINNET_MAGIC, "block", block_payload);
+                auto send_result = peer.SendMessage(block_msg);
+                if (send_result.IsError()) {
+                    // Failed to send, but don't fail the whole handler
+                    continue;
+                }
+            } else {
+                // Block not found
+                not_found_items.push_back(inv);
+            }
 
         } else if (inv.type == InvType::TX) {
-            // TODO: Lookup transaction in mempool or blockchain
-            // For now, send NOTFOUND
-            InvVector notfound = inv;
-            std::vector<uint8_t> notfound_payload;
-            notfound_payload.push_back(1); // count
-            auto serialized = notfound.Serialize();
+            // First check mempool for unconfirmed transactions
+            bool found = false;
+            auto& mempool = blockchain->GetMempool();
+            auto mempool_txs = mempool.GetAllTransactions();
+
+            for (const auto& tx : mempool_txs) {
+                if (tx.GetHash() == inv.hash) {
+                    // Found in mempool - send it
+                    auto tx_payload = tx.Serialize();
+                    NetworkMessage tx_msg(network::MAINNET_MAGIC, "tx", tx_payload);
+                    auto send_result = peer.SendMessage(tx_msg);
+                    if (send_result.IsOk()) {
+                        found = true;
+                    }
+                    break;
+                }
+            }
+
+            // If not in mempool, check blockchain
+            if (!found) {
+                auto tx_result = blockchain->GetTransaction(inv.hash);
+                if (tx_result.IsOk()) {
+                    // Found in blockchain - send it
+                    auto tx = tx_result.value.value();
+                    auto tx_payload = tx.Serialize();
+                    NetworkMessage tx_msg(network::MAINNET_MAGIC, "tx", tx_payload);
+                    auto send_result = peer.SendMessage(tx_msg);
+                    if (send_result.IsError()) {
+                        continue;
+                    }
+                } else {
+                    // Transaction not found anywhere
+                    not_found_items.push_back(inv);
+                }
+            }
+        }
+    }
+
+    // Send NOTFOUND message for items we couldn't find (batch)
+    if (!not_found_items.empty()) {
+        std::vector<uint8_t> notfound_payload;
+        notfound_payload.push_back(static_cast<uint8_t>(not_found_items.size()));
+
+        for (const auto& inv : not_found_items) {
+            auto serialized = inv.Serialize();
             notfound_payload.insert(notfound_payload.end(),
                                   serialized.begin(), serialized.end());
-
-            NetworkMessage msg(network::MAINNET_MAGIC, "notfound", notfound_payload);
-            peer.SendMessage(msg);
         }
+
+        NetworkMessage notfound_msg(network::MAINNET_MAGIC, "notfound", notfound_payload);
+        peer.SendMessage(notfound_msg);
     }
 
     return Result<void>::Ok();

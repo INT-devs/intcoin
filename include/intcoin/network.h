@@ -346,7 +346,8 @@ public:
 
     /// Handle GETDATA message
     static Result<void> HandleGetData(Peer& peer,
-                                     const std::vector<uint8_t>& payload);
+                                     const std::vector<uint8_t>& payload,
+                                     class Blockchain* blockchain);
 
     /// Handle BLOCK message
     static Result<void> HandleBlock(Peer& peer,
