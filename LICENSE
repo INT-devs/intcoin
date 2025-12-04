@@ -1,6 +1,11 @@
 MIT License
 
 Copyright (c) 2025 INTcoin Team (Neil Adamson)
+All rights reserved.
+
+================================================================================
+INTcoin Core - Quantum-Resistant Cryptocurrency
+================================================================================
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +24,124 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+================================================================================
+Third-Party Software and Acknowledgments
+================================================================================
+
+This software includes or links to the following third-party components,
+each with their own licensing terms:
+
+1. liboqs (Open Quantum Safe)
+   - License: MIT License
+   - URL: https://github.com/open-quantum-safe/liboqs
+   - Used for: Post-quantum cryptography (Dilithium3, Kyber768)
+   - Copyright: Open Quantum Safe Project Contributors
+
+2. RandomX
+   - License: BSD 3-Clause License
+   - URL: https://github.com/tevador/RandomX
+   - Used for: ASIC-resistant proof-of-work algorithm
+   - Copyright: tevador and RandomX contributors
+
+3. RocksDB
+   - License: Apache License 2.0
+   - URL: https://github.com/facebook/rocksdb
+   - Used for: High-performance blockchain database storage
+   - Copyright: Facebook, Inc. and its affiliates
+
+4. Qt Framework
+   - License: LGPL v3 / GPL v3 / Commercial
+   - URL: https://www.qt.io/
+   - Used for: Cross-platform desktop wallet GUI
+   - Copyright: The Qt Company Ltd.
+
+5. OpenSSL
+   - License: Apache License 2.0
+   - URL: https://www.openssl.org/
+   - Used for: SHA3-256 cryptographic hashing
+   - Copyright: OpenSSL Software Foundation
+
+6. Boost C++ Libraries
+   - License: Boost Software License 1.0
+   - URL: https://www.boost.org/
+   - Used for: Utility libraries and threading
+   - Copyright: Boost contributors
+
+================================================================================
+Network Specifications
+================================================================================
+
+INTcoin Network:
+- Total Supply: 221 Trillion INT
+- Block Time: 2 minutes (120 seconds)
+- Mainnet P2P Port: 2210
+- Mainnet RPC Port: 2211
+- Lightning Network: Ports 2213-2214
+- Address Format: Bech32 with 'int1' prefix
+
+Post-Quantum Cryptography:
+- Digital Signatures: NIST Dilithium Level 3 (FIPS 204)
+- Key Encapsulation: NIST Kyber-768 (FIPS 203)
+- Hash Function: SHA3-256 (FIPS 202)
+
+================================================================================
+Patent Notice
+================================================================================
+
+To the best of our knowledge, this software does not infringe upon any patents.
+The post-quantum cryptographic algorithms used (Dilithium3, Kyber768) are
+NIST-standardized and free to use under their respective licenses.
+
+================================================================================
+Warranty Disclaimer
+================================================================================
+
+THIS SOFTWARE IS EXPERIMENTAL AND PROVIDED FOR RESEARCH AND DEVELOPMENT
+PURPOSES. USERS SHOULD BE AWARE THAT:
+
+1. Cryptocurrency involves financial risk. Users are solely responsible for
+   any financial decisions made using this software.
+
+2. Post-quantum cryptography implementations are based on NIST standards but
+   may require updates as the field evolves.
+
+3. The Lightning Network implementation is in foundation stage and may not be
+   suitable for production use without further development.
+
+4. This software has not undergone a third-party security audit. Use at your
+   own risk for production deployments.
+
+================================================================================
+Export Compliance
+================================================================================
+
+This software may be subject to export control regulations. Users are
+responsible for complying with all applicable export control laws and
+regulations in their jurisdiction.
+
+================================================================================
+Contact Information
+================================================================================
+
+Project: INTcoin Core
+Website: https://international-coin.org
+Email: team@international-coin.org
+Security: security@international-coin.org (for vulnerability reports)
+GitLab: https://gitlab.com/intcoin/crypto
+
+For commercial licensing inquiries, please contact: license@international-coin.org
+
+================================================================================
+Contribution Agreement
+================================================================================
+
+By contributing to this project, you agree that your contributions will be
+licensed under the same MIT License that covers the project. You also represent
+that you have the right to make such contributions and that they do not
+infringe upon any third-party rights.
+
+================================================================================
+
+Last Updated: December 4, 2025
+Version: 1.0.0-alpha

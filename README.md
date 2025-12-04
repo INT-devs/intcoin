@@ -1,10 +1,30 @@
 # INTcoin Core
 
-**Version**: 1.0.0-alpha
+<div align="center">
+
+![Version](https://img.shields.io/badge/version-1.0.0--alpha-blue?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+![Build](https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge)
+![Tests](https://img.shields.io/badge/tests-10%2F10%20passing-success?style=for-the-badge)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20FreeBSD-lightgrey?style=for-the-badge)
+
+![Language](https://img.shields.io/badge/C%2B%2B-23-00599C?style=flat-square&logo=cplusplus)
+![CMake](https://img.shields.io/badge/CMake-4.2+-064F8C?style=flat-square&logo=cmake)
+![Qt](https://img.shields.io/badge/Qt-6.8-41CD52?style=flat-square&logo=qt)
+![RocksDB](https://img.shields.io/badge/RocksDB-10.7-blue?style=flat-square)
+![OpenSSL](https://img.shields.io/badge/OpenSSL-3.5.4-red?style=flat-square&logo=openssl)
+
+![Quantum Resistant](https://img.shields.io/badge/quantum-resistant-purple?style=flat-square)
+![ASIC Resistant](https://img.shields.io/badge/ASIC-resistant-orange?style=flat-square)
+![Lightning Network](https://img.shields.io/badge/Lightning-enabled-yellow?style=flat-square&logo=lightning)
+
+</div>
+
+---
+
 **Network**: INTCOIN (INT)
 **Total Supply**: 221 Trillion INT
-**License**: MIT
-**Build Status**: ✅ **Phases 1-2 Complete - Qt Wallet & Blockchain Integration** (95%)
+**Progress**: ✅ **Phases 1-10 Complete** (95%)
 **Last Updated**: December 4, 2025
 
 ---
@@ -80,9 +100,14 @@ intcoin/
 │   ├── storage/            # RocksDB persistence
 │   ├── rpc/                # JSON-RPC server
 │   ├── lightning/          # Lightning Network implementation
+│   ├── qt/                 # Qt6 desktop wallet GUI
+│   ├── daemon/             # intcoind daemon
+│   ├── cli/                # intcoin-cli RPC client
+│   ├── miner/              # CPU miner
+│   ├── explorer/           # Block explorer backend
 │   ├── util/               # Utility functions
 │   └── core/               # Core initialization
-├── include/intcoin/        # Public header files (✅ Complete - 11 headers)
+├── include/intcoin/        # Public header files (✅ Complete - 25+ headers)
 ├── tests/                  # Test suites (✅ 10/10 passing - 100%)
 │   ├── test_crypto.cpp     # Cryptography tests (✅ 5/5 passing)
 │   ├── test_randomx.cpp    # RandomX PoW tests (✅ 6/6 passing)
@@ -91,15 +116,12 @@ intcoin/
 │   ├── test_storage.cpp    # Storage tests (✅ 10/10 passing)
 │   ├── test_validation.cpp # Validation tests (✅ 7/7 passing)
 │   ├── test_genesis.cpp    # Genesis block tests (✅ passing)
-│   ├── test_network.cpp    # Network tests (✅ 8/8 passing)
+│   ├── test_network.cpp    # Network tests (✅ 10/10 passing)
 │   ├── test_ml.cpp         # Machine learning tests (✅ 8/8 passing)
 │   └── test_wallet.cpp     # Wallet tests (✅ 12/12 passing)
-├── build/                  # Build artifacts
-├── wiki/                   # Developer and user documentation
-│   ├── Developers/         # Technical documentation
-│   └── Users/              # User guides
+├── docs/                   # Project documentation
 ├── branding/               # Brand assets and guidelines
-└── scripts/                # Build and utility scripts (header.py)
+└── scripts/                # Build and installation scripts
 ```
 
 ---
@@ -357,14 +379,11 @@ make coverage
 
 ## 📚 Documentation
 
-- [BUILD_STATUS.md](BUILD_STATUS.md) - Detailed build status and progress
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture overview
-- [DEVELOPMENT-PLAN.md](DEVELOPMENT-PLAN.md) - Complete development roadmap
-- [Wiki - Developer Docs](wiki/Developers/Home.md) - Technical documentation
-- [Wiki - User Guides](wiki/Users/Home.md) - User documentation
-- [Current Progress](wiki/Developers/Current-Progress.md) - Latest development status
-- [Build System Guide](wiki/Developers/Build-System.md) - Build instructions
-- [API Overview](wiki/Developers/API-Overview.md) - API documentation
+- [IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) - Current implementation status
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture overview
+- [DEVELOPMENT-PLAN.md](docs/DEVELOPMENT-PLAN.md) - Complete development roadmap
+- [API_REFERENCE.md](docs/API_REFERENCE.md) - API documentation
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
 
 ---
 
