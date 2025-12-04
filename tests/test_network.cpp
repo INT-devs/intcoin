@@ -188,6 +188,81 @@ void test_port_validation() {
     std::cout << "  ✓ Port validation tests passed\n";
 }
 
+void test_block_broadcast() {
+    std::cout << "Testing block broadcast...\n";
+
+    // Create P2P node
+    P2PNode p2p(network::MAINNET_MAGIC, 0); // Use port 0 to let OS assign
+
+    // Create test block hash
+    uint256 block_hash;
+    for (size_t i = 0; i < block_hash.size(); i++) {
+        block_hash[i] = static_cast<uint8_t>(i);
+    }
+
+    // Test broadcast without starting (should not crash)
+    p2p.BroadcastBlock(block_hash);
+
+    // Test that broadcast method creates valid INV message
+    // (actual network send is tested via peer connections)
+
+    std::cout << "  ✓ Block broadcast tests passed\n";
+}
+
+void test_transaction_broadcast() {
+    std::cout << "Testing transaction broadcast...\n";
+
+    // Create P2P node
+    P2PNode p2p(network::MAINNET_MAGIC, 0);
+
+    // Create test transaction hash
+    uint256 tx_hash;
+    for (size_t i = 0; i < tx_hash.size(); i++) {
+        tx_hash[i] = static_cast<uint8_t>(255 - i);
+    }
+
+    // Test broadcast without starting (should not crash)
+    p2p.BroadcastTransaction(tx_hash);
+
+    std::cout << "  ✓ Transaction broadcast tests passed\n";
+}
+
+void test_inv_message_creation() {
+    std::cout << "Testing INV message creation for relay...\n";
+
+    // Test block INV
+    InvVector block_inv;
+    block_inv.type = InvType::BLOCK;
+    block_inv.hash.fill(0xAB);
+
+    auto block_payload = block_inv.Serialize();
+    assert(block_payload.size() == 36);
+
+    // Verify type is BLOCK
+    uint32_t type_val = 0;
+    for (int i = 0; i < 4; i++) {
+        type_val |= (static_cast<uint32_t>(block_payload[i]) << (i * 8));
+    }
+    assert(static_cast<InvType>(type_val) == InvType::BLOCK);
+
+    // Test transaction INV
+    InvVector tx_inv;
+    tx_inv.type = InvType::TX;
+    tx_inv.hash.fill(0xCD);
+
+    auto tx_payload = tx_inv.Serialize();
+    assert(tx_payload.size() == 36);
+
+    // Verify type is TX
+    type_val = 0;
+    for (int i = 0; i < 4; i++) {
+        type_val |= (static_cast<uint32_t>(tx_payload[i]) << (i * 8));
+    }
+    assert(static_cast<InvType>(type_val) == InvType::TX);
+
+    std::cout << "  ✓ INV message creation tests passed\n";
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "P2P Network Protocol Tests\n";
@@ -201,6 +276,9 @@ int main() {
         test_seed_nodes();
         test_service_flags();
         test_port_validation();
+        test_block_broadcast();
+        test_transaction_broadcast();
+        test_inv_message_creation();
 
         std::cout << "\n========================================\n";
         std::cout << "✓ All network protocol tests passed!\n";

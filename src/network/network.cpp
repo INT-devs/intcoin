@@ -889,6 +889,40 @@ Result<void> P2PNode::DiscoverPeers() {
     return Result<void>::Ok();
 }
 
+void P2PNode::BroadcastBlock(const uint256& block_hash) {
+    // Create INV message for the new block
+    InvVector inv;
+    inv.type = InvType::BLOCK;
+    inv.hash = block_hash;
+
+    // Serialize INV vector
+    std::vector<uint8_t> inv_payload;
+    inv_payload.push_back(1); // count = 1
+    auto serialized = inv.Serialize();
+    inv_payload.insert(inv_payload.end(), serialized.begin(), serialized.end());
+
+    // Create and broadcast INV message
+    NetworkMessage inv_msg(impl_->network_magic, "inv", inv_payload);
+    BroadcastMessage(inv_msg);
+}
+
+void P2PNode::BroadcastTransaction(const uint256& tx_hash) {
+    // Create INV message for the new transaction
+    InvVector inv;
+    inv.type = InvType::TX;
+    inv.hash = tx_hash;
+
+    // Serialize INV vector
+    std::vector<uint8_t> inv_payload;
+    inv_payload.push_back(1); // count = 1
+    auto serialized = inv.Serialize();
+    inv_payload.insert(inv_payload.end(), serialized.begin(), serialized.end());
+
+    // Create and broadcast INV message
+    NetworkMessage inv_msg(impl_->network_magic, "inv", inv_payload);
+    BroadcastMessage(inv_msg);
+}
+
 // ============================================================================
 // MessageHandler Implementation
 // ============================================================================

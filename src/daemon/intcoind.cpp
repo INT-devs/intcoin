@@ -124,6 +124,21 @@ int main(int argc, char* argv[]) {
 
     std::cout << "✓ P2P network started on port " << p2p_port << "\n\n";
 
+    // Register blockchain callbacks for P2P relay
+    std::cout << "Registering P2P relay callbacks...\n";
+
+    // Block relay: broadcast new blocks to peers
+    blockchain.RegisterBlockCallback([&p2p_node](const Block& block) {
+        p2p_node.BroadcastBlock(block.GetHash());
+    });
+
+    // Transaction relay: broadcast new transactions to peers
+    blockchain.RegisterTransactionCallback([&p2p_node](const Transaction& tx) {
+        p2p_node.BroadcastTransaction(tx.GetHash());
+    });
+
+    std::cout << "✓ P2P relay callbacks registered\n\n";
+
     // Initialize RPC server
     std::cout << "Starting RPC server...\n";
     rpc::RPCConfig rpc_config;

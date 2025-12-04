@@ -77,6 +77,17 @@ int main(int argc, char *argv[]) {
         if (!startResult.IsOk()) {
             // Non-fatal - can run without network
             qWarning() << "Warning: Failed to start P2P network";
+        } else {
+            // Register blockchain callbacks for P2P relay
+            // Block relay: broadcast new blocks to peers
+            blockchain->RegisterBlockCallback([p2p_ptr = p2p.get()](const intcoin::Block& block) {
+                p2p_ptr->BroadcastBlock(block.GetHash());
+            });
+
+            // Transaction relay: broadcast new transactions to peers
+            blockchain->RegisterTransactionCallback([p2p_ptr = p2p.get()](const intcoin::Transaction& tx) {
+                p2p_ptr->BroadcastTransaction(tx.GetHash());
+            });
         }
 
         // Create and show main window with actual instances

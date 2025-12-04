@@ -319,6 +319,12 @@ public:
     /// Discover peers
     Result<void> DiscoverPeers();
 
+    /// Broadcast new block to all peers (sends INV message)
+    void BroadcastBlock(const uint256& block_hash);
+
+    /// Broadcast new transaction to all peers (sends INV message)
+    void BroadcastTransaction(const uint256& tx_hash);
+
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;
