@@ -238,27 +238,37 @@ if(BUILD_MINER)
 endif()
 
 # Qt Wallet
-# if(BUILD_WALLET_QT)
-#     set(CMAKE_AUTOMOC ON)
-#     set(CMAKE_AUTORCC ON)
-#     set(CMAKE_AUTOUIC ON)
-#
-#     add_executable(intcoin-qt
-#         desktop-wallet/src/main.cpp
-#         desktop-wallet/src/mainwindow.cpp
-#         desktop-wallet/src/sendcoins.cpp
-#         desktop-wallet/src/receivecoins.cpp
-#         desktop-wallet/src/transactions.cpp
-#     )
-#     target_link_libraries(intcoin-qt
-#         intcoin_core
-#         Qt6::Core
-#         Qt6::Widgets
-#         Qt6::Network
-#         Qt6::Gui
-#     )
-#     install(TARGETS intcoin-qt DESTINATION bin)
-# endif()
+if(BUILD_WALLET_QT)
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTORCC ON)
+    set(CMAKE_AUTOUIC ON)
+
+    add_executable(intcoin-qt
+        src/qt/intcoin-qt.cpp
+        src/qt/mainwindow.cpp
+        src/qt/overviewpage.cpp
+        src/qt/sendcoinspage.cpp
+        src/qt/receivecoinspage.cpp
+        src/qt/transactionspage.cpp
+        src/qt/addressbookpage.cpp
+        src/qt/settingspage.cpp
+        include/intcoin/qt/mainwindow.h
+        include/intcoin/qt/overviewpage.h
+        include/intcoin/qt/sendcoinspage.h
+        include/intcoin/qt/receivecoinspage.h
+        include/intcoin/qt/transactionspage.h
+        include/intcoin/qt/addressbookpage.h
+        include/intcoin/qt/settingspage.h
+    )
+    target_link_libraries(intcoin-qt
+        intcoin_core
+        Qt6::Core
+        Qt6::Widgets
+        Qt6::Network
+        Qt6::Gui
+    )
+    install(TARGETS intcoin-qt DESTINATION bin)
+endif()
 
 # Block Explorer
 # if(BUILD_EXPLORER)

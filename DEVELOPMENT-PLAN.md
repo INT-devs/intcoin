@@ -719,8 +719,6 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
   - [ ] Payment routing
   - [ ] Watchtower
 
-  Find all TODO items in the code base and then create a 10 year project roadmap and include the outstanding todo items.
-
 #### Phase 10: Mobile Wallets (2-3 months)
 
 **Priority: LOW (Can be deferred)**
