@@ -36,7 +36,7 @@ target_link_libraries(test_genesis intcoin_core)
 
 # Test: Network Protocol
 add_executable(test_network test_network.cpp)
-target_link_libraries(test_network intcoin_core)
+target_link_libraries(test_network intcoin_core ${ROCKSDB_LIB})
 
 # Test: Machine Learning
 add_executable(test_ml test_ml.cpp)
