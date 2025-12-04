@@ -14,6 +14,7 @@
 #include <QLabel>
 
 namespace intcoin {
+    class Blockchain;
     namespace wallet {
         class Wallet;
     }
@@ -26,7 +27,7 @@ class SendCoinsPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit SendCoinsPage(wallet::Wallet* wallet, QWidget *parent = nullptr);
+    explicit SendCoinsPage(wallet::Wallet* wallet, Blockchain* blockchain, QWidget *parent = nullptr);
     ~SendCoinsPage();
 
 public slots:
@@ -42,6 +43,7 @@ private:
     bool validateAmount(double amount);
 
     wallet::Wallet* wallet_;
+    Blockchain* blockchain_;
 
     // Input fields
     QLineEdit* addressEdit_;

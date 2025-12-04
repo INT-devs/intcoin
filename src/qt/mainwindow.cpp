@@ -189,7 +189,7 @@ void MainWindow::createPages() {
     setCentralWidget(centralStack_);
 
     overviewPage_ = new OverviewPage(wallet_, blockchain_, centralStack_);
-    sendCoinsPage_ = new SendCoinsPage(wallet_, centralStack_);
+    sendCoinsPage_ = new SendCoinsPage(wallet_, blockchain_, centralStack_);
     receiveCoinsPage_ = new ReceiveCoinsPage(wallet_, centralStack_);
     transactionsPage_ = new TransactionsPage(wallet_, centralStack_);
     addressBookPage_ = new AddressBookPage(wallet_, centralStack_);

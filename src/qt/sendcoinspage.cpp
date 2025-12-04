@@ -3,6 +3,7 @@
 
 #include "intcoin/qt/sendcoinspage.h"
 #include "intcoin/wallet.h"
+#include "intcoin/blockchain.h"
 #include "intcoin/util.h"
 
 #include <QVBoxLayout>
@@ -16,9 +17,10 @@
 namespace intcoin {
 namespace qt {
 
-SendCoinsPage::SendCoinsPage(wallet::Wallet* wallet, QWidget *parent)
+SendCoinsPage::SendCoinsPage(wallet::Wallet* wallet, Blockchain* blockchain, QWidget *parent)
     : QWidget(parent)
     , wallet_(wallet)
+    , blockchain_(blockchain)
 {
     setupUi();
 }
@@ -140,11 +142,29 @@ void SendCoinsPage::sendCoins() {
         return;
     }
 
-    // TODO: Broadcast transaction to network
-    // This requires blockchain/p2p access which SendCoinsPage doesn't currently have
-    // For now, just confirm transaction was created successfully
-    QMessageBox::information(this, tr("Send Coins"),
-        tr("Transaction sending not yet implemented."));
+    // Broadcast transaction to blockchain
+    if (!blockchain_) {
+        QMessageBox::critical(this, tr("Error"),
+            tr("Blockchain not available for broadcasting."));
+        return;
+    }
+
+    auto broadcastResult = wallet_->SendTransaction(signResult.GetValue(), *blockchain_);
+    if (!broadcastResult.IsOk()) {
+        QMessageBox::critical(this, tr("Broadcast Error"),
+            tr("Failed to broadcast transaction: %1").arg(QString::fromStdString(broadcastResult.error)));
+        return;
+    }
+
+    // Get transaction ID
+    QString txid = QString::fromStdString(ToHex(broadcastResult.GetValue()));
+
+    // Clear fields after successful send
+    clearFields();
+
+    QMessageBox::information(this, tr("Transaction Sent"),
+        tr("Transaction successfully broadcast to the network!\n\nTransaction ID:\n%1\n\n"
+           "The transaction will be confirmed once it is included in a block.").arg(txid));
 }
 
 void SendCoinsPage::clearFields() {
