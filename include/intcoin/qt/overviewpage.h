@@ -12,8 +12,10 @@
 #include <QListWidget>
 
 namespace intcoin {
-    class Wallet;
     class Blockchain;
+    namespace wallet {
+        class Wallet;
+    }
 }
 
 namespace intcoin {
@@ -23,7 +25,7 @@ class OverviewPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit OverviewPage(Wallet* wallet, Blockchain* blockchain, QWidget *parent = nullptr);
+    explicit OverviewPage(wallet::Wallet* wallet, Blockchain* blockchain, QWidget *parent = nullptr);
     ~OverviewPage();
 
 public slots:
@@ -33,7 +35,7 @@ public slots:
 private:
     void setupUi();
 
-    Wallet* wallet_;
+    wallet::Wallet* wallet_;
     Blockchain* blockchain_;
 
     // Balance display

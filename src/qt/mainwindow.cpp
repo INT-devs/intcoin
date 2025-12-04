@@ -23,7 +23,7 @@
 namespace intcoin {
 namespace qt {
 
-MainWindow::MainWindow(Wallet* wallet, Blockchain* blockchain, P2PNode* p2p, QWidget *parent)
+MainWindow::MainWindow(wallet::Wallet* wallet, Blockchain* blockchain, P2PNode* p2p, QWidget *parent)
     : QMainWindow(parent)
     , wallet_(wallet)
     , blockchain_(blockchain)
@@ -254,22 +254,26 @@ void MainWindow::updateStatus() {
     }
 
     // Update connections count
-    // TODO: Get actual connection count from P2P network
-    int connections = 0; // p2p_->GetConnectionCount();
+    size_t connections = p2p_->GetPeerCount();
     connectionsLabel_->setText(tr("Connections: %1").arg(connections));
 
     // Update block count
-    // TODO: Get actual block height from blockchain
-    uint64_t blockHeight = 0; // blockchain_->GetHeight();
+    uint64_t blockHeight = blockchain_->GetBestHeight();
     blocksLabel_->setText(tr("Blocks: %1").arg(blockHeight));
 
     // Update sync status
-    // TODO: Determine if we're syncing
-    bool syncing = false;
+    // TODO: Determine if we're syncing (compare local height with network height)
+    bool syncing = (connections > 0 && blockHeight < 100); // Simplified check
     if (syncing) {
         syncLabel_->setText(tr("Synchronizing..."));
     } else {
         syncLabel_->setText(tr("Up to date"));
+    }
+
+    // Update balance on Overview page if visible
+    if (overviewPage_ && centralStack_->currentWidget() == overviewPage_) {
+        overviewPage_->updateBalance();
+        overviewPage_->updateRecentTransactions();
     }
 }
 

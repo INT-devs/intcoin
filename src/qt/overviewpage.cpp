@@ -10,16 +10,20 @@
 #include <QHBoxLayout>
 #include <QGroupBox>
 #include <QFont>
+#include <algorithm>
+#include <cmath>
 
 namespace intcoin {
 namespace qt {
 
-OverviewPage::OverviewPage(Wallet* wallet, Blockchain* blockchain, QWidget *parent)
+OverviewPage::OverviewPage(wallet::Wallet* wallet, Blockchain* blockchain, QWidget *parent)
     : QWidget(parent)
     , wallet_(wallet)
     , blockchain_(blockchain)
 {
     setupUi();
+    updateBalance();
+    updateRecentTransactions();
 }
 
 OverviewPage::~OverviewPage() {}
@@ -82,11 +86,17 @@ void OverviewPage::updateBalance() {
         return;
     }
 
-    // TODO: Get actual balance from wallet
-    uint64_t availableBalance = 0; // wallet_->GetBalance();
-    uint64_t pendingBalance = 0;   // wallet_->GetPendingBalance();
+    // Get actual balance from wallet
+    auto balanceResult = wallet_->GetBalance();
+    uint64_t availableBalance = balanceResult.IsOk() ? balanceResult.GetValue() : 0;
+
+    auto unconfirmedResult = wallet_->GetUnconfirmedBalance();
+    uint64_t pendingBalance = unconfirmedResult.IsOk() ? unconfirmedResult.GetValue() : 0;
+
     uint64_t totalBalance = availableBalance + pendingBalance;
 
+    // Convert from INTS (smallest unit) to INT (display unit)
+    // 1 INT = 1,000,000 INTS
     availableBalanceValue_->setText(QString::number(IntsToInt(availableBalance), 'f', 6) + " INT");
     pendingBalanceValue_->setText(QString::number(IntsToInt(pendingBalance), 'f', 6) + " INT");
     totalBalanceValue_->setText(QString::number(IntsToInt(totalBalance), 'f', 6) + " INT");
@@ -99,9 +109,32 @@ void OverviewPage::updateRecentTransactions() {
 
     recentTransactionsList_->clear();
 
-    // TODO: Get recent transactions from wallet
-    // For now, show placeholder
-    recentTransactionsList_->addItem(tr("No recent transactions"));
+    // Get recent transactions from wallet
+    auto txsResult = wallet_->GetTransactions();
+    if (!txsResult.IsOk() || txsResult.GetValue().empty()) {
+        recentTransactionsList_->addItem(tr("No recent transactions"));
+        return;
+    }
+
+    // Show up to 10 most recent transactions
+    const auto& transactions = txsResult.GetValue();
+    size_t count = std::min<size_t>(10, transactions.size());
+
+    for (size_t i = 0; i < count; ++i) {
+        const auto& wtx = transactions[i];
+
+        // Format transaction item
+        QString type = wtx.amount >= 0 ? tr("Received") : tr("Sent");
+        QString amount = QString::number(std::abs(IntsToInt(wtx.amount)), 'f', 6) + " INT";
+        QString status = wtx.IsConfirmed() ? tr("Confirmed") : tr("Pending");
+
+        QString item = QString("%1: %2 (%3)")
+            .arg(type)
+            .arg(amount)
+            .arg(status);
+
+        recentTransactionsList_->addItem(item);
+    }
 }
 
 } // namespace qt

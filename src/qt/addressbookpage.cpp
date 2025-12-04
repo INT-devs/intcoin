@@ -15,7 +15,7 @@
 namespace intcoin {
 namespace qt {
 
-AddressBookPage::AddressBookPage(Wallet* wallet, QWidget *parent)
+AddressBookPage::AddressBookPage(wallet::Wallet* wallet, QWidget *parent)
     : QWidget(parent)
     , wallet_(wallet)
 {

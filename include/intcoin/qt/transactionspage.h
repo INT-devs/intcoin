@@ -14,7 +14,9 @@
 #include <QPushButton>
 
 namespace intcoin {
-    class Wallet;
+    namespace wallet {
+        class Wallet;
+    }
 }
 
 namespace intcoin {
@@ -24,7 +26,7 @@ class TransactionsPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit TransactionsPage(Wallet* wallet, QWidget *parent = nullptr);
+    explicit TransactionsPage(wallet::Wallet* wallet, QWidget *parent = nullptr);
     ~TransactionsPage();
 
 public slots:
@@ -36,7 +38,7 @@ public slots:
 private:
     void setupUi();
 
-    Wallet* wallet_;
+    wallet::Wallet* wallet_;
 
     // Filter options
     QComboBox* typeFilter_;

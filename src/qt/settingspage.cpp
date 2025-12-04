@@ -16,7 +16,7 @@
 namespace intcoin {
 namespace qt {
 
-SettingsPage::SettingsPage(Wallet* wallet, QWidget *parent)
+SettingsPage::SettingsPage(wallet::Wallet* wallet, QWidget *parent)
     : QWidget(parent)
     , wallet_(wallet)
 {

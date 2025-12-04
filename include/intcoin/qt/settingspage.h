@@ -16,7 +16,9 @@
 #include <QPushButton>
 
 namespace intcoin {
-    class Wallet;
+    namespace wallet {
+        class Wallet;
+    }
 }
 
 namespace intcoin {
@@ -26,7 +28,7 @@ class SettingsPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit SettingsPage(Wallet* wallet, QWidget *parent = nullptr);
+    explicit SettingsPage(wallet::Wallet* wallet, QWidget *parent = nullptr);
     ~SettingsPage();
 
 public slots:
@@ -38,7 +40,7 @@ private:
     void setupUi();
     void loadSettings();
 
-    Wallet* wallet_;
+    wallet::Wallet* wallet_;
 
     QTabWidget* tabWidget_;
 

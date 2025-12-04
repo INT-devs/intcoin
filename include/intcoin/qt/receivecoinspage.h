@@ -15,7 +15,9 @@
 #include <QTableWidget>
 
 namespace intcoin {
-    class Wallet;
+    namespace wallet {
+        class Wallet;
+    }
 }
 
 namespace intcoin {
@@ -25,7 +27,7 @@ class ReceiveCoinsPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit ReceiveCoinsPage(Wallet* wallet, QWidget *parent = nullptr);
+    explicit ReceiveCoinsPage(wallet::Wallet* wallet, QWidget *parent = nullptr);
     ~ReceiveCoinsPage();
 
 public slots:
@@ -37,7 +39,7 @@ public slots:
 private:
     void setupUi();
 
-    Wallet* wallet_;
+    wallet::Wallet* wallet_;
 
     // Current receive address
     QLineEdit* currentAddressEdit_;

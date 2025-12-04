@@ -3,6 +3,7 @@
 
 #include "intcoin/qt/sendcoinspage.h"
 #include "intcoin/wallet.h"
+#include "intcoin/util.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -15,7 +16,7 @@
 namespace intcoin {
 namespace qt {
 
-SendCoinsPage::SendCoinsPage(Wallet* wallet, QWidget *parent)
+SendCoinsPage::SendCoinsPage(wallet::Wallet* wallet, QWidget *parent)
     : QWidget(parent)
     , wallet_(wallet)
 {
@@ -95,8 +96,14 @@ void SendCoinsPage::setupUi() {
 }
 
 void SendCoinsPage::sendCoins() {
+    if (!wallet_) {
+        QMessageBox::critical(this, tr("Error"), tr("Wallet not loaded."));
+        return;
+    }
+
     QString address = addressEdit_->text();
     double amount = amountSpinBox_->value();
+    double feeRate = feeSpinBox_->value();
 
     if (!validateAddress(address)) {
         QMessageBox::warning(this, tr("Invalid Address"),
@@ -110,7 +117,32 @@ void SendCoinsPage::sendCoins() {
         return;
     }
 
-    // TODO: Actually send the transaction
+    // Convert amount from INT to INTS (smallest unit)
+    uint64_t amountInts = IntToInts(amount);
+    uint64_t feeRateInts = feeRate > 0 ? IntToInts(feeRate) : 0;
+
+    // Create transaction recipient
+    std::vector<intcoin::wallet::Wallet::Recipient> recipients;
+    recipients.push_back({address.toStdString(), amountInts});
+
+    // Create and sign transaction
+    auto txResult = wallet_->CreateTransaction(recipients, feeRateInts, labelEdit_->text().toStdString());
+    if (!txResult.IsOk()) {
+        QMessageBox::critical(this, tr("Transaction Error"),
+            tr("Failed to create transaction: %1").arg(QString::fromStdString(txResult.error)));
+        return;
+    }
+
+    auto signResult = wallet_->SignTransaction(txResult.GetValue());
+    if (!signResult.IsOk()) {
+        QMessageBox::critical(this, tr("Signing Error"),
+            tr("Failed to sign transaction: %1").arg(QString::fromStdString(signResult.error)));
+        return;
+    }
+
+    // TODO: Broadcast transaction to network
+    // This requires blockchain/p2p access which SendCoinsPage doesn't currently have
+    // For now, just confirm transaction was created successfully
     QMessageBox::information(this, tr("Send Coins"),
         tr("Transaction sending not yet implemented."));
 }

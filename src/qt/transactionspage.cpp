@@ -15,7 +15,7 @@
 namespace intcoin {
 namespace qt {
 
-TransactionsPage::TransactionsPage(Wallet* wallet, QWidget *parent)
+TransactionsPage::TransactionsPage(wallet::Wallet* wallet, QWidget *parent)
     : QWidget(parent)
     , wallet_(wallet)
 {

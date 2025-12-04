@@ -13,9 +13,11 @@
 #include <memory>
 
 namespace intcoin {
-    class Wallet;
     class Blockchain;
     class P2PNode;
+    namespace wallet {
+        class Wallet;
+    }
 }
 
 QT_BEGIN_NAMESPACE
@@ -38,7 +40,7 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(Wallet* wallet, Blockchain* blockchain, P2PNode* p2p, QWidget *parent = nullptr);
+    explicit MainWindow(wallet::Wallet* wallet, Blockchain* blockchain, P2PNode* p2p, QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:
@@ -65,7 +67,7 @@ private:
     void createPages();
 
     // Wallet and blockchain
-    Wallet* wallet_;
+    wallet::Wallet* wallet_;
     Blockchain* blockchain_;
     P2PNode* p2p_;
 

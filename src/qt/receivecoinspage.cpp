@@ -16,7 +16,7 @@
 namespace intcoin {
 namespace qt {
 
-ReceiveCoinsPage::ReceiveCoinsPage(Wallet* wallet, QWidget *parent)
+ReceiveCoinsPage::ReceiveCoinsPage(wallet::Wallet* wallet, QWidget *parent)
     : QWidget(parent)
     , wallet_(wallet)
 {

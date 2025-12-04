@@ -243,6 +243,9 @@ if(BUILD_WALLET_QT)
     set(CMAKE_AUTORCC ON)
     set(CMAKE_AUTOUIC ON)
 
+    # Find RocksDB for Qt wallet
+    find_library(ROCKSDB_LIB rocksdb REQUIRED)
+
     add_executable(intcoin-qt
         src/qt/intcoin-qt.cpp
         src/qt/mainwindow.cpp
@@ -262,6 +265,7 @@ if(BUILD_WALLET_QT)
     )
     target_link_libraries(intcoin-qt
         intcoin_core
+        ${ROCKSDB_LIB}
         Qt6::Core
         Qt6::Widgets
         Qt6::Network

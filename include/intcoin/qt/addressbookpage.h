@@ -13,7 +13,9 @@
 #include <QLineEdit>
 
 namespace intcoin {
-    class Wallet;
+    namespace wallet {
+        class Wallet;
+    }
 }
 
 namespace intcoin {
@@ -23,7 +25,7 @@ class AddressBookPage : public QWidget {
     Q_OBJECT
 
 public:
-    explicit AddressBookPage(Wallet* wallet, QWidget *parent = nullptr);
+    explicit AddressBookPage(wallet::Wallet* wallet, QWidget *parent = nullptr);
     ~AddressBookPage();
 
 public slots:
@@ -36,7 +38,7 @@ public slots:
 private:
     void setupUi();
 
-    Wallet* wallet_;
+    wallet::Wallet* wallet_;
 
     // Search
     QLineEdit* searchEdit_;
