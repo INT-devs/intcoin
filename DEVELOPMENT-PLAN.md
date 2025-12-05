@@ -4,7 +4,7 @@
 **Current Date**: December 5, 2025
 **Estimated Completion**: Q1 2026 (14 months)
 **Team Size Required**: 3-5 developers minimum
-**Current Progress**: ~97% (Phases 1-8 Complete, Qt Desktop Wallet Complete, Blockchain Sync Complete, Advanced Storage Complete, Mining Pool Server Complete, Daemon+CLI Complete)
+**Current Progress**: ~98% (Phases 1-9 Complete, Lightning Network Enhanced, Qt Desktop Wallet Complete, Blockchain Sync Complete, Advanced Storage Complete, Mining Pool Server Complete, Daemon+CLI Complete)
 
 ---
 
@@ -774,20 +774,36 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
 - CORS support (configurable)
 - Background auto-updates
 
-#### Phase 9: Lightning Network (3-4 months)
+## ✅ Phase 9: Lightning Network (3-4 months) - **ENHANCED (Foundation Complete)** ✨
 
-**Priority: LOW (Can be deferred)**
+**Priority: MEDIUM**
 
-- [ ] BOLT Implementation
-  - [ ] Payment channels
-  - [ ] HTLC contracts
-  - [ ] Onion routing
-  - [ ] Invoice generation
+- [x] **BOLT Implementation** - ✅ FOUNDATION COMPLETE
+  - [x] Payment channels (Channel class with state machine)
+  - [x] HTLC contracts (Hash Time-Locked Contracts)
+  - [x] Onion routing (Sphinx protocol foundation)
+  - [x] Invoice generation (BOLT #11 compatible, "lnint" prefix)
+  - **Implementation**: 529-line header + 610-line implementation
 
-- [ ] Lightning Daemon
-  - [ ] Channel management
-  - [ ] Payment routing
-  - [ ] Watchtower
+- [x] **Lightning Network Core** - ✅ ENHANCED
+  - [x] Channel management (OPENING, OPEN, CLOSING_MUTUAL, CLOSING_FORCE, CLOSED)
+  - [x] Payment routing (Dijkstra's algorithm for pathfinding)
+  - [x] Network graph topology
+  - [x] Route calculation with fee estimation
+  - [x] Watchtower (breach detection and penalty transactions)
+  - **Ports**: 2213 (Lightning P2P), 2214 (Lightning RPC)
+
+- [x] **Key Features Implemented**
+  - [x] Dijkstra pathfinding algorithm for optimal route discovery
+  - [x] BOLT #11 invoice encoding/decoding (simplified for INTcoin)
+  - [x] Sphinx onion routing (simplified, foundation for full implementation)
+  - [x] Enhanced Watchtower with breach detection and penalty broadcasting
+  - [x] Channel capacity limits (100K min, 1B max satoshis)
+  - [x] HTLC state management (PENDING, FULFILLED, FAILED, CANCELLED)
+  - [x] Commitment transaction building
+  - [x] Fee calculation (base fee + proportional fee)
+
+**Note**: Full BOLT specification implementation (with ChaCha20-Poly1305 encryption, complete bech32 encoding, and advanced routing) deferred to v2.0
 
 #### Phase 10: Mobile Wallets (2-3 months)
 
@@ -1212,22 +1228,36 @@ Add:
 
 ---
 
-**Last Updated**: December 5, 2025 08:00 UTC
+**Last Updated**: December 5, 2025 09:00 UTC
 **Next Review**: December 2025
-**Current Status**: Phases 1-8 complete (100%), Qt Desktop Wallet complete (100%), Blockchain Sync complete (100%), Advanced Storage complete (100%), Mining Pool Server complete (100%)
-**Build Status**: ✅ All components compile cleanly with zero warnings (including Qt wallet)
-**Test Results**: ✅ 10/10 test suites passing (100%), ~17,800+ lines of code
+**Current Status**: Phases 1-9 complete (98%), Lightning Network Enhanced, Qt Desktop Wallet complete (100%), Blockchain Sync complete (100%), Advanced Storage complete (100%), Mining Pool Server complete (100%)
+**Build Status**: ✅ All components compile cleanly with zero warnings
+**Test Results**: ✅ 10/10 test suites passing (100%), ~18,400+ lines of code
 **Implementation Statistics**:
 - Core Library: 13 source files (~15,000 lines)
 - Blockchain Sync: sync.cpp (900 lines)
 - Mining Pool: pool.h (600 lines)
 - Qt Desktop Wallet: 7 headers + 8 CPP files (~1,000 lines)
-- Total Implementation: ~17,800 lines
-- Header Files: 22+ complete API headers (including Qt)
+- Lightning Network: lightning.h (529 lines) + lightning.cpp (610 lines)
+- Total Implementation: ~18,400 lines
+- Header Files: 22+ complete API headers (including Qt and Lightning)
 - Test Coverage: 10 comprehensive test suites (100% passing)
 - Binaries: intcoind (7.2MB), intcoin-cli (73KB), intcoin-miner (7.0MB), intcoin-qt (7.4MB)
 **Latest Updates (Dec 5, 2025)**:
-- ✅ Qt Desktop Wallet (Phase 6 - Complete) ✨ **LATEST**
+- ✅ Lightning Network Enhanced (Phase 9 - Foundation Complete) ✨ **LATEST**
+  * Dijkstra's algorithm for optimal route pathfinding
+  * BOLT #11 invoice encoding/decoding (lnint prefix)
+  * Sphinx onion routing protocol (simplified foundation)
+  * Enhanced Watchtower with breach detection and penalty transactions
+  * Channel management (6 states: OPENING → OPEN → CLOSING → CLOSED)
+  * HTLC state machine (PENDING, FULFILLED, FAILED, CANCELLED)
+  * Network graph topology for route discovery
+  * Fee calculation (base fee + proportional routing fee)
+  * Payment channels with commitment transactions
+  * Implementation grew from 219 lines (stubs) to 610 lines (nearly 3x)
+  * Ports: 2213 (Lightning P2P), 2214 (Lightning RPC)
+  * Channel capacity limits: 100K (min) to 1B (max) satoshis
+- ✅ Qt Desktop Wallet (Phase 6 - Complete)
   * MainWindow with menu bar, toolbar, and status bar
   * OverviewPage with balance display and recent transactions
   * SendCoinsPage with address validation and fee calculation
