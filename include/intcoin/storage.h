@@ -14,6 +14,8 @@
 #include <vector>
 #include <optional>
 #include <memory>
+#include <map>
+#include <functional>
 
 namespace intcoin {
 

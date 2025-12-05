@@ -11,7 +11,7 @@
 #include "block.h"
 #include "transaction.h"
 #include "blockchain.h"
-#include "miner.h"
+#include "mining.h"
 #include <memory>
 #include <vector>
 #include <map>
