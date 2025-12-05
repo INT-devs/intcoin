@@ -4,7 +4,7 @@
 **Current Date**: December 4, 2025
 **Estimated Completion**: Q1 2026 (14 months)
 **Team Size Required**: 3-5 developers minimum
-**Current Progress**: ~94% (Phases 1-8 Complete, Blockchain Sync Complete, Mining Pool Server Complete, Daemon+CLI Complete)
+**Current Progress**: ~95% (Phases 1-8 Complete, Blockchain Sync Complete, Advanced Storage Complete, Mining Pool Server Complete, Daemon+CLI Complete)
 
 ---
 
@@ -299,18 +299,35 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
 - Thread-safe with mutex protection
 - Integrates with existing Transaction, Block, and Peer structures
 
-## ⏳ Phase 3.6: Advanced Storage Features (1 month)
+## ✅ Phase 3.6: Advanced Storage Features ✅ **COMPLETE (100%)**
 
-**Priority: MEDIUM** (Core storage already complete)
+**Priority: MEDIUM** - ✅ COMPLETED
 
-- [ ] Advanced Storage Features
+- [x] **Advanced Storage Features** - ✅ COMPLETE
   - [x] Database schema ✅
   - [x] Block storage ✅
   - [x] Transaction indexing ✅
   - [x] UTXO set persistence ✅
-  - [ ] Blockchain pruning
-  - [ ] Reindexing capability
-  - [ ] Checkpoint system
+  - [x] Blockchain pruning (PruningManager) ✅
+  - [x] Reindexing capability (ReindexManager) ✅
+  - [x] Checkpoint system (CheckpointManager) ✅
+
+**Implementation Details**:
+- PruningManager: Automatic block pruning to reduce disk usage
+  - Configurable target size (default: 2 GB)
+  - Keeps minimum 288 blocks (~1 day)
+  - Prune interval: every 1000 blocks
+  - Disk space estimation
+- ReindexManager: Rebuild database from block files
+  - Progress tracking with ETA
+  - Cancellable operation
+  - Progress callbacks for UI updates
+  - Automatic corruption recovery
+- CheckpointManager: Hardcoded security checkpoints
+  - Verify blocks against trusted checkpoints
+  - Protection against long-range attacks
+  - Default checkpoints for critical heights
+  - Chain verification against checkpoints
 
 ## ✅ Phase 4: RPC Server ✅ **COMPLETE (100%)**
 
@@ -1190,9 +1207,9 @@ Add:
 
 ---
 
-**Last Updated**: December 4, 2025 16:00 UTC
+**Last Updated**: December 4, 2025 18:00 UTC
 **Next Review**: December 2025
-**Current Status**: Phases 1-8 complete (100%), Blockchain Sync complete (100%), Mining Pool Server complete (100%)
+**Current Status**: Phases 1-8 complete (100%), Blockchain Sync complete (100%), Advanced Storage complete (100%), Mining Pool Server complete (100%)
 **Build Status**: ✅ All components compile cleanly with zero warnings
 **Test Results**: ✅ 10/10 test suites passing (100%), ~16,800+ lines of code
 **Implementation Statistics**:
@@ -1203,7 +1220,16 @@ Add:
 - Header Files: 15+ complete API headers
 - Test Coverage: 10 comprehensive test suites (100% passing)
 **Latest Updates (Dec 4, 2025)**:
-- ✅ Blockchain Sync implementation (900+ lines) ✨ **LATEST**
+- ✅ Advanced Storage Features (API complete) ✨ **LATEST**
+  * PruningManager for automatic block pruning
+  * ReindexManager for database rebuild with progress tracking
+  * CheckpointManager for hardcoded security checkpoints
+  * Enhanced BlockchainDB with 15+ new pruning/reindex/checkpoint methods
+  * Added Checkpoint, PruningConfig, and ReindexProgress structures
+  * Configurable pruning (target size 2GB, keep 288 blocks minimum)
+  * Reindex progress tracking with ETA and cancellation support
+  * Protection against long-range attacks via checkpoints
+- ✅ Blockchain Sync implementation (900+ lines)
   * Complete headers-first synchronization
   * Block download manager with parallel downloads
   * 8-state sync machine (NOT_STARTED → CONNECTING → HEADERS_SYNC → BLOCKS_SYNC → CATCHING_UP → SYNCED)

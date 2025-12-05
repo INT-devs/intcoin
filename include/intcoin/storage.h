@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2025 INTcoin Team (Neil Adamson)
- * SPDX-License-Identifier: MIT License
+ * MIT License
  * Storage Layer (RocksDB Backend)
  */
 
@@ -101,6 +101,74 @@ struct BlockIndex {
 
     /// Deserialize
     static Result<BlockIndex> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// ============================================================================
+// Checkpoint
+// ============================================================================
+
+struct Checkpoint {
+    /// Block height
+    uint64_t height;
+
+    /// Block hash
+    uint256 hash;
+
+    /// Description (optional)
+    std::string description;
+
+    /// Timestamp when checkpoint was added
+    uint64_t timestamp;
+};
+
+// ============================================================================
+// Pruning Configuration
+// ============================================================================
+
+struct PruningConfig {
+    /// Enable pruning
+    bool enabled;
+
+    /// Target database size in GB
+    uint64_t target_size_gb;
+
+    /// Minimum blocks to keep
+    uint64_t min_blocks_to_keep;
+
+    /// Prune interval (blocks)
+    uint64_t prune_interval;
+
+    /// Constructor with defaults
+    PruningConfig()
+        : enabled(false)
+        , target_size_gb(2)
+        , min_blocks_to_keep(288)  // ~1 day at 5min blocks
+        , prune_interval(1000)
+    {}
+};
+
+// ============================================================================
+// Reindex Progress
+// ============================================================================
+
+struct ReindexProgress {
+    /// Reindexing in progress
+    bool in_progress;
+
+    /// Current height being reindexed
+    uint64_t current_height;
+
+    /// Total blocks to reindex
+    uint64_t total_blocks;
+
+    /// Progress percentage (0.0 - 1.0)
+    double progress;
+
+    /// Estimated time remaining (seconds)
+    uint64_t eta_seconds;
+
+    /// Blocks per second
+    double blocks_per_second;
 };
 
 // ============================================================================
@@ -245,6 +313,50 @@ public:
     /// Check if pruning is enabled
     bool IsPruningEnabled() const;
 
+    /// Get pruned block count
+    uint64_t GetPrunedBlockCount() const;
+
+    /// Check if block is pruned
+    bool IsBlockPruned(uint64_t height) const;
+
+    // ------------------------------------------------------------------------
+    // Reindexing
+    // ------------------------------------------------------------------------
+
+    /// Reindex blockchain from block files
+    Result<void> Reindex();
+
+    /// Check if reindexing is in progress
+    bool IsReindexing() const;
+
+    /// Get reindex progress (0.0 - 1.0)
+    double GetReindexProgress() const;
+
+    /// Cancel reindex
+    void CancelReindex();
+
+    // ------------------------------------------------------------------------
+    // Checkpoints
+    // ------------------------------------------------------------------------
+
+    /// Add checkpoint
+    Result<void> AddCheckpoint(uint64_t height, const uint256& hash);
+
+    /// Verify checkpoint
+    Result<bool> VerifyCheckpoint(uint64_t height, const uint256& hash) const;
+
+    /// Get checkpoint at height
+    std::optional<uint256> GetCheckpoint(uint64_t height) const;
+
+    /// Get all checkpoints
+    std::map<uint64_t, uint256> GetAllCheckpoints() const;
+
+    /// Check if height has checkpoint
+    bool HasCheckpoint(uint64_t height) const;
+
+    /// Verify chain against checkpoints
+    Result<void> VerifyCheckpoints() const;
+
     // ------------------------------------------------------------------------
     // Database Stats
     // ------------------------------------------------------------------------
@@ -371,6 +483,130 @@ public:
 
     /// Limit mempool size (evict low-fee txs)
     void LimitSize(size_t max_size);
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
+// ============================================================================
+// Checkpoint Manager
+// ============================================================================
+
+class CheckpointManager {
+public:
+    /// Constructor
+    CheckpointManager();
+
+    /// Destructor
+    ~CheckpointManager();
+
+    /// Load default checkpoints (hardcoded for security)
+    void LoadDefaultCheckpoints();
+
+    /// Add checkpoint
+    void AddCheckpoint(uint64_t height, const uint256& hash,
+                      const std::string& description = "");
+
+    /// Verify block against checkpoint
+    Result<bool> VerifyBlock(uint64_t height, const uint256& hash) const;
+
+    /// Get checkpoint at height
+    std::optional<Checkpoint> GetCheckpoint(uint64_t height) const;
+
+    /// Get all checkpoints
+    std::vector<Checkpoint> GetAllCheckpoints() const;
+
+    /// Check if height has checkpoint
+    bool HasCheckpoint(uint64_t height) const;
+
+    /// Get next checkpoint after height
+    std::optional<Checkpoint> GetNextCheckpoint(uint64_t height) const;
+
+    /// Get last checkpoint before or at height
+    std::optional<Checkpoint> GetLastCheckpoint(uint64_t height) const;
+
+    /// Verify entire chain against checkpoints
+    Result<void> VerifyChain(const std::function<uint256(uint64_t)>& get_block_hash) const;
+
+    /// Get checkpoint count
+    size_t GetCheckpointCount() const;
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
+// ============================================================================
+// Pruning Manager
+// ============================================================================
+
+class PruningManager {
+public:
+    /// Constructor
+    PruningManager(std::shared_ptr<BlockchainDB> db);
+
+    /// Destructor
+    ~PruningManager();
+
+    /// Configure pruning
+    void Configure(const PruningConfig& config);
+
+    /// Get configuration
+    const PruningConfig& GetConfig() const;
+
+    /// Check if pruning should run
+    bool ShouldPrune(uint64_t current_height) const;
+
+    /// Prune blocks up to height
+    Result<void> Prune(uint64_t current_height);
+
+    /// Get pruned block count
+    uint64_t GetPrunedBlockCount() const;
+
+    /// Check if block is pruned
+    bool IsBlockPruned(uint64_t height) const;
+
+    /// Get last pruned height
+    uint64_t GetLastPrunedHeight() const;
+
+    /// Estimate disk space savings
+    uint64_t EstimateDiskSpaceSavings(uint64_t blocks_to_prune) const;
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
+// ============================================================================
+// Reindex Manager
+// ============================================================================
+
+class ReindexManager {
+public:
+    /// Constructor
+    ReindexManager(std::shared_ptr<BlockchainDB> db);
+
+    /// Destructor
+    ~ReindexManager();
+
+    /// Start reindexing
+    Result<void> Start();
+
+    /// Cancel reindexing
+    void Cancel();
+
+    /// Check if reindexing
+    bool IsReindexing() const;
+
+    /// Get progress
+    ReindexProgress GetProgress() const;
+
+    /// Callback for progress updates
+    using ProgressCallback = std::function<void(const ReindexProgress&)>;
+
+    /// Register progress callback
+    void RegisterProgressCallback(ProgressCallback callback);
 
 private:
     class Impl;
