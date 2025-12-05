@@ -137,6 +137,7 @@ set(INTCOIN_CORE_SOURCES
     src/blockchain/script.cpp
     src/blockchain/blockchain.cpp
     src/blockchain/validation.cpp
+    src/blockchain/sync.cpp
 
     # Storage
     src/storage/storage.cpp

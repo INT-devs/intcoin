@@ -26,6 +26,9 @@
 // Network
 #include "network.h"
 
+// Sync
+#include "sync.h"
+
 // Storage
 #include "storage.h"
 
