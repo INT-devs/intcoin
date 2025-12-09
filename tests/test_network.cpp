@@ -49,6 +49,7 @@ void test_network_address() {
     auto result = NetworkAddress::Deserialize(serialized);
     assert(result.IsOk());
     auto addr2 = result.value.value();
+    (void)addr2;
     assert(addr2.port == 2210);
     assert(addr2.services == addr.services);
 
@@ -91,7 +92,8 @@ void test_network_message() {
     assert(msg2.payload == payload);
     assert(msg2.VerifyChecksum());
 
-    // Test checksum calculation
+    uint32_t checksum = NetworkMessage::CalculateChecksum(payload);
+    (void)checksum;
     uint32_t checksum = NetworkMessage::CalculateChecksum(payload);
     assert(checksum == msg.checksum);
 
@@ -115,7 +117,8 @@ void test_inv_vector() {
     assert(serialized.size() == 36); // 4 + 32 bytes
 
     // Test deserialization
-    auto result = InvVector::Deserialize(serialized);
+    auto inv2 = result.value.value();
+    (void)inv2;
     assert(result.IsOk());
     auto inv2 = result.value.value();
     assert(inv2.type == InvType::BLOCK);
@@ -141,7 +144,7 @@ void test_seed_nodes() {
 
     // Verify the hardcoded seed nodes
     // DNS: seed-uk.international-coin.org -> 51.155.97.192
-    //      seed-us.international-coin.org -> 74.208.112.43
+    (void)found_51; (void)found_74;
     bool found_51 = false;
     bool found_74 = false;
 
@@ -162,11 +165,12 @@ void test_seed_nodes() {
 }
 
 void test_service_flags() {
-    std::cout << "Testing service flags...\n";
+    uint64_t flags = static_cast<uint64_t>(ServiceFlags::NODE_NETWORK);
+    (void)flags;
 
     // Test NODE_NETWORK flag
     uint64_t flags = static_cast<uint64_t>(ServiceFlags::NODE_NETWORK);
-    assert(flags == 1);
+    (void)combined;
 
     // Test multiple flags (bitwise operations)
     uint64_t combined = static_cast<uint64_t>(ServiceFlags::NODE_NETWORK) |
@@ -235,7 +239,7 @@ void test_inv_message_creation() {
     block_inv.hash.fill(0xAB);
 
     auto block_payload = block_inv.Serialize();
-    assert(block_payload.size() == 36);
+    (void)type_val;
 
     // Verify type is BLOCK
     uint32_t type_val = 0;

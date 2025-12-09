@@ -37,6 +37,7 @@ void test_randomx_key_generation() {
     assert(key0 != key1);
     assert(key1 != key2);
     assert(key0 != key2);
+    (void)key2;  // Suppress unused warning
     std::cout << "✓ Different epochs produce different keys" << std::endl;
 
     // Same epoch should produce same key
@@ -44,6 +45,8 @@ void test_randomx_key_generation() {
     uint256 key1_dup = RandomXValidator::GetRandomXKey(3000);  // Still epoch 1
     assert(key0 == key0_dup);
     assert(key1 == key1_dup);
+    (void)key0_dup;  // Suppress unused warning
+    (void)key1_dup;  // Suppress unused warning
     std::cout << "✓ Same epoch produces same key" << std::endl;
 
     std::cout << "Epoch 0 key: " << ToHex(key0) << std::endl;
@@ -75,6 +78,7 @@ void test_randomx_hash_calculation() {
     assert(hash_result2.IsOk());
     uint256 hash2 = *hash_result2.value;
     assert(hash1 == hash2);
+    (void)hash2;  // Suppress unused warning
     std::cout << "✓ Deterministic hashing (same input → same output)" << std::endl;
 
     // Different nonce should produce different hash
@@ -83,6 +87,7 @@ void test_randomx_hash_calculation() {
     assert(hash_result3.IsOk());
     uint256 hash3 = *hash_result3.value;
     assert(hash1 != hash3);
+    (void)hash3;  // Suppress unused warning
     std::cout << "✓ Different nonce produces different hash" << std::endl;
 }
 
@@ -97,6 +102,9 @@ void test_dataset_update() {
     assert(needs_update_0 == true);    // Block 0 starts epoch 0
     assert(needs_update_100 == false); // Still in epoch 0
     assert(needs_update_2048 == true); // Block 2048 starts epoch 1
+    (void)needs_update_0;     // Suppress unused warning
+    (void)needs_update_100;   // Suppress unused warning
+    (void)needs_update_2048;  // Suppress unused warning
     std::cout << "✓ Dataset update detection working correctly" << std::endl;
 
     // Test dataset update

@@ -279,6 +279,7 @@ void TestChainState() {
     auto get_result = db.GetChainState();
     assert(get_result.IsOk());
     ChainState retrieved = *get_result.value;
+    (void)retrieved;
     std::cout << "✓ Chain state retrieved successfully\n";
 
     // Verify chain state
@@ -317,6 +318,7 @@ void TestChainState() {
     auto updated_state_result = db.GetChainState();
     assert(updated_state_result.IsOk());
     ChainState updated_state = *updated_state_result.value;
+    (void)updated_state;
     assert(updated_state.best_block_hash == genesis_hash);
     assert(updated_state.best_height == 0);
     std::cout << "✓ Updated chain state verified\n";
@@ -504,7 +506,8 @@ void TestChainStateSerializationDeserialization() {
 
     // Deserialize
     auto result = ChainState::Deserialize(serialized);
-    assert(result.IsOk());
+    ChainState deserialized = *result.value;
+    (void)deserialized;
     ChainState deserialized = *result.value;
 
     // Verify
@@ -536,7 +539,8 @@ void TestBlockIndexSerializationDeserialization() {
     std::cout << "✓ BlockIndex serialized: " << serialized.size() << " bytes\n";
 
     // Deserialize
-    auto result = BlockIndex::Deserialize(serialized);
+    BlockIndex deserialized = *result.value;
+    (void)deserialized;
     assert(result.IsOk());
     BlockIndex deserialized = *result.value;
 

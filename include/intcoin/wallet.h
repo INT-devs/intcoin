@@ -233,6 +233,16 @@ public:
     Result<void> WriteMetadata(const std::string& key, const std::string& value);
     Result<std::string> ReadMetadata(const std::string& key);
 
+    // Encrypted wallet data (AES-256-GCM)
+    Result<void> WriteEncryptedSeed(const std::vector<uint8_t>& salt,
+                                    const std::vector<uint8_t>& iv,
+                                    const std::vector<uint8_t>& encrypted_seed,
+                                    const std::vector<uint8_t>& auth_tag);
+    Result<void> ReadEncryptedSeed(std::vector<uint8_t>& salt,
+                                   std::vector<uint8_t>& iv,
+                                   std::vector<uint8_t>& encrypted_seed,
+                                   std::vector<uint8_t>& auth_tag);
+
     // Labels
     Result<void> WriteLabel(const std::string& address, const std::string& label);
     Result<std::string> ReadLabel(const std::string& address);

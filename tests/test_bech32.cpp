@@ -39,6 +39,7 @@ void test_bech32_encode_decode() {
 
     // Verify we got the same hash back
     assert(pubkey_hash == decoded_hash);
+    (void)decoded_hash;  // Suppress unused warning
     std::cout << "✓ Round-trip encode/decode successful" << std::endl;
 }
 
@@ -267,6 +268,7 @@ void test_bech32_invalid_inputs() {
 
     for (const auto& addr : invalid_addresses) {
         assert(!AddressEncoder::ValidateAddress(addr));
+        (void)addr;  // Suppress unused warning in release builds
     }
     std::cout << "✓ All invalid addresses correctly rejected" << std::endl;
 }

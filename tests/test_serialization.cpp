@@ -78,6 +78,7 @@ void TestOutPointSerialization() {
     auto result = OutPoint::Deserialize(serialized);
     assert(result.IsOk());
     OutPoint deserialized = *result.value;
+    (void)deserialized;
 
     // Verify
     assert(deserialized.tx_hash == original.tx_hash);
@@ -214,6 +215,7 @@ void TestBlockHeaderSerialization() {
     auto result = BlockHeader::Deserialize(serialized);
     assert(result.IsOk());
     BlockHeader deserialized = *result.value;
+    (void)deserialized;
 
     // Verify
     assert(deserialized.version == original.version);
@@ -345,10 +347,10 @@ void TestSerializationDeterminism() {
     assert(serialized2 == serialized3);
     std::cout << "✓ Serialization is deterministic\n";
 
-    // Verify hash is the same
     auto hash1 = tx.GetHash();
     auto hash2 = tx.GetHash();
     assert(hash1 == hash2);
+    (void)hash1; (void)hash2;
     std::cout << "✓ Transaction hashes are deterministic\n";
 }
 

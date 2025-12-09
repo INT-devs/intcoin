@@ -1292,6 +1292,127 @@ Result<std::string> WalletDB::ReadMetadata(const std::string& key) {
     return Result<std::string>::Ok(value);
 }
 
+Result<void> WalletDB::WriteEncryptedSeed(const std::vector<uint8_t>& salt,
+                                          const std::vector<uint8_t>& iv,
+                                          const std::vector<uint8_t>& encrypted_seed,
+                                          const std::vector<uint8_t>& auth_tag) {
+    if (!impl_->is_open) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Serialize all components into a single value
+    // Format: [salt_len(4)][salt][iv_len(4)][iv][seed_len(4)][seed][tag_len(4)][tag]
+    std::vector<uint8_t> data;
+    data.reserve(16 + salt.size() + iv.size() + encrypted_seed.size() + auth_tag.size());
+
+    // Write salt length and data
+    uint32_t salt_len = static_cast<uint32_t>(salt.size());
+    data.insert(data.end(), reinterpret_cast<uint8_t*>(&salt_len), reinterpret_cast<uint8_t*>(&salt_len) + 4);
+    data.insert(data.end(), salt.begin(), salt.end());
+
+    // Write IV length and data
+    uint32_t iv_len = static_cast<uint32_t>(iv.size());
+    data.insert(data.end(), reinterpret_cast<uint8_t*>(&iv_len), reinterpret_cast<uint8_t*>(&iv_len) + 4);
+    data.insert(data.end(), iv.begin(), iv.end());
+
+    // Write encrypted seed length and data
+    uint32_t seed_len = static_cast<uint32_t>(encrypted_seed.size());
+    data.insert(data.end(), reinterpret_cast<uint8_t*>(&seed_len), reinterpret_cast<uint8_t*>(&seed_len) + 4);
+    data.insert(data.end(), encrypted_seed.begin(), encrypted_seed.end());
+
+    // Write auth tag length and data
+    uint32_t tag_len = static_cast<uint32_t>(auth_tag.size());
+    data.insert(data.end(), reinterpret_cast<uint8_t*>(&tag_len), reinterpret_cast<uint8_t*>(&tag_len) + 4);
+    data.insert(data.end(), auth_tag.begin(), auth_tag.end());
+
+    // Write to database
+    rocksdb::Slice value(reinterpret_cast<const char*>(data.data()), data.size());
+    rocksdb::Status status = impl_->db->Put(rocksdb::WriteOptions(), "encrypted_seed", value);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to write encrypted seed: " + status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<void> WalletDB::ReadEncryptedSeed(std::vector<uint8_t>& salt,
+                                         std::vector<uint8_t>& iv,
+                                         std::vector<uint8_t>& encrypted_seed,
+                                         std::vector<uint8_t>& auth_tag) {
+    if (!impl_->is_open) {
+        return Result<void>::Error("Database not open");
+    }
+
+    std::string value;
+    rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), "encrypted_seed", &value);
+
+    if (status.IsNotFound()) {
+        return Result<void>::Error("Encrypted seed not found");
+    }
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to read encrypted seed: " + status.ToString());
+    }
+
+    // Deserialize components
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(value.data());
+    size_t offset = 0;
+
+    // Read salt
+    if (offset + 4 > value.size()) {
+        return Result<void>::Error("Corrupted encrypted seed data (salt length)");
+    }
+    uint32_t salt_len = *reinterpret_cast<const uint32_t*>(data + offset);
+    offset += 4;
+
+    if (offset + salt_len > value.size()) {
+        return Result<void>::Error("Corrupted encrypted seed data (salt)");
+    }
+    salt.assign(data + offset, data + offset + salt_len);
+    offset += salt_len;
+
+    // Read IV
+    if (offset + 4 > value.size()) {
+        return Result<void>::Error("Corrupted encrypted seed data (IV length)");
+    }
+    uint32_t iv_len = *reinterpret_cast<const uint32_t*>(data + offset);
+    offset += 4;
+
+    if (offset + iv_len > value.size()) {
+        return Result<void>::Error("Corrupted encrypted seed data (IV)");
+    }
+    iv.assign(data + offset, data + offset + iv_len);
+    offset += iv_len;
+
+    // Read encrypted seed
+    if (offset + 4 > value.size()) {
+        return Result<void>::Error("Corrupted encrypted seed data (seed length)");
+    }
+    uint32_t seed_len = *reinterpret_cast<const uint32_t*>(data + offset);
+    offset += 4;
+
+    if (offset + seed_len > value.size()) {
+        return Result<void>::Error("Corrupted encrypted seed data (seed)");
+    }
+    encrypted_seed.assign(data + offset, data + offset + seed_len);
+    offset += seed_len;
+
+    // Read auth tag
+    if (offset + 4 > value.size()) {
+        return Result<void>::Error("Corrupted encrypted seed data (tag length)");
+    }
+    uint32_t tag_len = *reinterpret_cast<const uint32_t*>(data + offset);
+    offset += 4;
+
+    if (offset + tag_len > value.size()) {
+        return Result<void>::Error("Corrupted encrypted seed data (tag)");
+    }
+    auth_tag.assign(data + offset, data + offset + tag_len);
+
+    return Result<void>::Ok();
+}
+
 Result<void> WalletDB::WriteLabel(const std::string& address, const std::string& label) {
     if (!impl_->is_open) {
         return Result<void>::Error("Database not open");
@@ -1373,6 +1494,12 @@ public:
     // Master key data
     ExtendedKey master_key;
     std::vector<std::string> mnemonic_words;
+
+    // Encryption data (AES-256-GCM)
+    std::vector<uint8_t> salt;              // 32 bytes for PBKDF2
+    std::vector<uint8_t> iv;                // 12 bytes for GCM
+    std::vector<uint8_t> encrypted_seed;    // Encrypted master seed
+    std::vector<uint8_t> auth_tag;          // 16 bytes GCM authentication tag
 
     // Address management
     std::vector<WalletAddress> addresses;
@@ -1564,7 +1691,99 @@ Result<void> Wallet::Encrypt(const std::string& passphrase) {
         return Result<void>::Error("Wallet already encrypted");
     }
 
-    // TODO: Implement encryption using Kyber768 or AES-256
+    if (passphrase.empty()) {
+        return Result<void>::Error("Passphrase cannot be empty");
+    }
+
+    // Serialize master seed (chain code + private key)
+    std::vector<uint8_t> seed;
+    seed.reserve(64); // 32 bytes chain code + 32 bytes private key
+
+    // Add chain code
+    seed.insert(seed.end(), impl_->master_key.chain_code.begin(), impl_->master_key.chain_code.end());
+
+    // Add private key
+    if (!impl_->master_key.private_key.has_value()) {
+        return Result<void>::Error("No private key to encrypt");
+    }
+    const auto& sk = impl_->master_key.private_key.value();
+    seed.insert(seed.end(), sk.data(), sk.data() + 32);
+
+    // Generate random salt (32 bytes)
+    impl_->salt.resize(32);
+    if (RAND_bytes(impl_->salt.data(), 32) != 1) {
+        return Result<void>::Error("Failed to generate random salt");
+    }
+
+    // Derive encryption key using PBKDF2-HMAC-SHA256 (100,000 iterations)
+    std::vector<uint8_t> derived_key(32); // 256-bit key
+    constexpr int iterations = 100000;
+
+    if (PKCS5_PBKDF2_HMAC(
+            passphrase.c_str(), passphrase.length(),
+            impl_->salt.data(), impl_->salt.size(),
+            iterations,
+            EVP_sha256(),
+            32, derived_key.data()) != 1) {
+        return Result<void>::Error("Failed to derive encryption key");
+    }
+
+    // Generate random IV (12 bytes for GCM)
+    impl_->iv.resize(12);
+    if (RAND_bytes(impl_->iv.data(), 12) != 1) {
+        return Result<void>::Error("Failed to generate random IV");
+    }
+
+    // Encrypt with AES-256-GCM
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        return Result<void>::Error("Failed to create cipher context");
+    }
+
+    int len = 0;
+    impl_->encrypted_seed.resize(seed.size());
+    impl_->auth_tag.resize(16); // GCM tag is 16 bytes
+
+    do {
+        // Initialize encryption
+        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, derived_key.data(), impl_->iv.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return Result<void>::Error("Failed to initialize encryption");
+        }
+
+        // Encrypt the seed
+        if (EVP_EncryptUpdate(ctx, impl_->encrypted_seed.data(), &len, seed.data(), seed.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return Result<void>::Error("Failed to encrypt seed");
+        }
+
+        // Finalize encryption
+        int final_len = 0;
+        if (EVP_EncryptFinal_ex(ctx, impl_->encrypted_seed.data() + len, &final_len) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return Result<void>::Error("Failed to finalize encryption");
+        }
+
+        // Get authentication tag
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, impl_->auth_tag.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            return Result<void>::Error("Failed to get authentication tag");
+        }
+
+    } while (false);
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    // Clear sensitive data from memory
+    OPENSSL_cleanse(seed.data(), seed.size());
+    OPENSSL_cleanse(derived_key.data(), derived_key.size());
+
+    // Save encrypted data to database
+    auto save_result = impl_->db->WriteEncryptedSeed(impl_->salt, impl_->iv, impl_->encrypted_seed, impl_->auth_tag);
+    if (!save_result.IsOk()) {
+        return Result<void>::Error("Failed to save encrypted data: " + save_result.error);
+    }
+
     impl_->is_encrypted = true;
     impl_->is_locked = true;
 
@@ -1584,8 +1803,97 @@ Result<void> Wallet::Unlock(const std::string& passphrase, uint32_t timeout_seco
         return Result<void>::Error("Wallet already unlocked");
     }
 
-    // TODO: Verify passphrase and decrypt master key
+    if (passphrase.empty()) {
+        return Result<void>::Error("Passphrase cannot be empty");
+    }
+
+    // Load encrypted data from database if not already in memory
+    if (impl_->salt.empty() || impl_->iv.empty() || impl_->encrypted_seed.empty() || impl_->auth_tag.empty()) {
+        auto load_result = impl_->db->ReadEncryptedSeed(impl_->salt, impl_->iv, impl_->encrypted_seed, impl_->auth_tag);
+        if (!load_result.IsOk()) {
+            return Result<void>::Error("Failed to load encrypted data: " + load_result.error);
+        }
+    }
+
+    // Derive encryption key using PBKDF2-HMAC-SHA256 (same parameters as encryption)
+    std::vector<uint8_t> derived_key(32);
+    constexpr int iterations = 100000;
+
+    if (PKCS5_PBKDF2_HMAC(
+            passphrase.c_str(), passphrase.length(),
+            impl_->salt.data(), impl_->salt.size(),
+            iterations,
+            EVP_sha256(),
+            32, derived_key.data()) != 1) {
+        return Result<void>::Error("Failed to derive decryption key");
+    }
+
+    // Decrypt with AES-256-GCM
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        return Result<void>::Error("Failed to create cipher context");
+    }
+
+    std::vector<uint8_t> decrypted_seed(impl_->encrypted_seed.size());
+    int len = 0;
+
+    do {
+        // Initialize decryption
+        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, derived_key.data(), impl_->iv.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(derived_key.data(), derived_key.size());
+            return Result<void>::Error("Failed to initialize decryption");
+        }
+
+        // Decrypt the seed
+        if (EVP_DecryptUpdate(ctx, decrypted_seed.data(), &len, impl_->encrypted_seed.data(), impl_->encrypted_seed.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(derived_key.data(), derived_key.size());
+            return Result<void>::Error("Failed to decrypt seed");
+        }
+
+        // Set expected authentication tag
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, impl_->auth_tag.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(derived_key.data(), derived_key.size());
+            return Result<void>::Error("Failed to set authentication tag");
+        }
+
+        // Finalize decryption (verifies authentication tag)
+        int final_len = 0;
+        if (EVP_DecryptFinal_ex(ctx, decrypted_seed.data() + len, &final_len) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(derived_key.data(), derived_key.size());
+            OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+            return Result<void>::Error("Incorrect passphrase or corrupted data");
+        }
+
+    } while (false);
+
+    EVP_CIPHER_CTX_free(ctx);
+    OPENSSL_cleanse(derived_key.data(), derived_key.size());
+
+    // Reconstruct master key from decrypted seed
+    if (decrypted_seed.size() != 64) {
+        OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+        return Result<void>::Error("Invalid seed size");
+    }
+
+    // Extract chain code (first 32 bytes)
+    std::copy(decrypted_seed.begin(), decrypted_seed.begin() + 32, impl_->master_key.chain_code.begin());
+
+    // Extract private key (last 32 bytes)
+    SecretKey sk;
+    std::copy(decrypted_seed.begin() + 32, decrypted_seed.end(), sk.data());
+    impl_->master_key.private_key = sk;
+
+    // Clear decrypted seed from memory
+    OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+
     impl_->is_locked = false;
+
+    // TODO: Handle timeout_seconds for auto-locking (future enhancement)
+    (void)timeout_seconds;
 
     return Result<void>::Ok();
 }
@@ -1621,7 +1929,173 @@ Result<void> Wallet::ChangePassphrase(const std::string& old_pass,
         return Result<void>::Error("Wallet not encrypted");
     }
 
-    // TODO: Verify old passphrase and re-encrypt with new passphrase
+    if (old_pass.empty() || new_pass.empty()) {
+        return Result<void>::Error("Passphrases cannot be empty");
+    }
+
+    if (old_pass == new_pass) {
+        return Result<void>::Error("New passphrase must be different from old passphrase");
+    }
+
+    // Load encrypted data from database if not already in memory
+    if (impl_->salt.empty() || impl_->iv.empty() || impl_->encrypted_seed.empty() || impl_->auth_tag.empty()) {
+        auto load_result = impl_->db->ReadEncryptedSeed(impl_->salt, impl_->iv, impl_->encrypted_seed, impl_->auth_tag);
+        if (!load_result.IsOk()) {
+            return Result<void>::Error("Failed to load encrypted data: " + load_result.error);
+        }
+    }
+
+    // Derive old encryption key
+    std::vector<uint8_t> old_key(32);
+    constexpr int iterations = 100000;
+
+    if (PKCS5_PBKDF2_HMAC(
+            old_pass.c_str(), old_pass.length(),
+            impl_->salt.data(), impl_->salt.size(),
+            iterations,
+            EVP_sha256(),
+            32, old_key.data()) != 1) {
+        return Result<void>::Error("Failed to derive old decryption key");
+    }
+
+    // Decrypt with old passphrase
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        OPENSSL_cleanse(old_key.data(), old_key.size());
+        return Result<void>::Error("Failed to create cipher context");
+    }
+
+    std::vector<uint8_t> decrypted_seed(impl_->encrypted_seed.size());
+    int len = 0;
+
+    do {
+        // Initialize decryption
+        if (EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, old_key.data(), impl_->iv.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(old_key.data(), old_key.size());
+            return Result<void>::Error("Failed to initialize decryption");
+        }
+
+        // Decrypt the seed
+        if (EVP_DecryptUpdate(ctx, decrypted_seed.data(), &len, impl_->encrypted_seed.data(), impl_->encrypted_seed.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(old_key.data(), old_key.size());
+            return Result<void>::Error("Failed to decrypt seed");
+        }
+
+        // Set expected authentication tag
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, impl_->auth_tag.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(old_key.data(), old_key.size());
+            return Result<void>::Error("Failed to set authentication tag");
+        }
+
+        // Finalize decryption (verifies authentication tag)
+        int final_len = 0;
+        if (EVP_DecryptFinal_ex(ctx, decrypted_seed.data() + len, &final_len) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(old_key.data(), old_key.size());
+            OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+            return Result<void>::Error("Incorrect old passphrase");
+        }
+
+    } while (false);
+
+    EVP_CIPHER_CTX_free(ctx);
+    OPENSSL_cleanse(old_key.data(), old_key.size());
+
+    // Now re-encrypt with new passphrase
+    // Generate new salt (32 bytes)
+    std::vector<uint8_t> new_salt(32);
+    if (RAND_bytes(new_salt.data(), 32) != 1) {
+        OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+        return Result<void>::Error("Failed to generate new salt");
+    }
+
+    // Derive new encryption key
+    std::vector<uint8_t> new_key(32);
+    if (PKCS5_PBKDF2_HMAC(
+            new_pass.c_str(), new_pass.length(),
+            new_salt.data(), new_salt.size(),
+            iterations,
+            EVP_sha256(),
+            32, new_key.data()) != 1) {
+        OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+        return Result<void>::Error("Failed to derive new encryption key");
+    }
+
+    // Generate new IV (12 bytes for GCM)
+    std::vector<uint8_t> new_iv(12);
+    if (RAND_bytes(new_iv.data(), 12) != 1) {
+        OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+        OPENSSL_cleanse(new_key.data(), new_key.size());
+        return Result<void>::Error("Failed to generate new IV");
+    }
+
+    // Encrypt with AES-256-GCM
+    ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+        OPENSSL_cleanse(new_key.data(), new_key.size());
+        return Result<void>::Error("Failed to create cipher context");
+    }
+
+    std::vector<uint8_t> new_encrypted_seed(decrypted_seed.size());
+    std::vector<uint8_t> new_auth_tag(16);
+
+    do {
+        // Initialize encryption
+        if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, new_key.data(), new_iv.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+            OPENSSL_cleanse(new_key.data(), new_key.size());
+            return Result<void>::Error("Failed to initialize encryption");
+        }
+
+        // Encrypt the seed
+        if (EVP_EncryptUpdate(ctx, new_encrypted_seed.data(), &len, decrypted_seed.data(), decrypted_seed.size()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+            OPENSSL_cleanse(new_key.data(), new_key.size());
+            return Result<void>::Error("Failed to encrypt seed");
+        }
+
+        // Finalize encryption
+        int final_len = 0;
+        if (EVP_EncryptFinal_ex(ctx, new_encrypted_seed.data() + len, &final_len) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+            OPENSSL_cleanse(new_key.data(), new_key.size());
+            return Result<void>::Error("Failed to finalize encryption");
+        }
+
+        // Get authentication tag
+        if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, new_auth_tag.data()) != 1) {
+            EVP_CIPHER_CTX_free(ctx);
+            OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+            OPENSSL_cleanse(new_key.data(), new_key.size());
+            return Result<void>::Error("Failed to get authentication tag");
+        }
+
+    } while (false);
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    // Clear sensitive data from memory
+    OPENSSL_cleanse(decrypted_seed.data(), decrypted_seed.size());
+    OPENSSL_cleanse(new_key.data(), new_key.size());
+
+    // Update stored encryption data
+    impl_->salt = new_salt;
+    impl_->iv = new_iv;
+    impl_->encrypted_seed = new_encrypted_seed;
+    impl_->auth_tag = new_auth_tag;
+
+    // Save new encrypted data to database
+    auto save_result = impl_->db->WriteEncryptedSeed(impl_->salt, impl_->iv, impl_->encrypted_seed, impl_->auth_tag);
+    if (!save_result.IsOk()) {
+        return Result<void>::Error("Failed to save new encrypted data: " + save_result.error);
+    }
 
     return Result<void>::Ok();
 }
