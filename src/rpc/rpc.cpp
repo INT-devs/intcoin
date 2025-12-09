@@ -782,7 +782,10 @@ JSONValue MiningRPC::getmininginfo(const JSONValue&, Blockchain& blockchain) {
     std::map<std::string, JSONValue> info;
     info["blocks"] = JSONValue(static_cast<int64_t>(blockchain.GetBestHeight()));
     info["difficulty"] = JSONValue(static_cast<double>(blockchain.GetDifficulty()));
-    info["networkhashps"] = JSONValue(0.0);  // TODO: Calculate network hashrate
+
+    // Calculate network hashrate from recent blocks
+    double networkhashps = blockchain.GetNetworkHashRate();
+    info["networkhashps"] = JSONValue(networkhashps);
 
     return JSONValue(info);
 }

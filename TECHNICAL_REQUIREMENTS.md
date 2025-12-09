@@ -1,6 +1,7 @@
 # INTcoin Technical Requirements
 
-**Last Updated**: November 26, 2025
+**Last Updated**: December 9, 2025
+**Current Status**: 97% Complete (Phases 1-10)
 
 ## Development Standards
 
@@ -34,23 +35,33 @@
 - **Minimum**: Windows 11 (21H2 or later)
 - **Compiler**: MSVC 2022 with C++23 support or MinGW-w64 with GCC 13+
 
+## Completed Features (v1.0)
+
+The following features have been completed for v1.0:
+
+### ✅ Core Infrastructure (100%)
+- **Blockchain Core**: Full validation, UTXO model, consensus rules
+- **P2P Networking**: Peer discovery, block/transaction propagation
+- **Storage**: RocksDB persistence with LRU cache and Bloom filters
+- **Qt Desktop Wallet**: Full-featured GUI with transaction history
+- **Block Explorer**: Real-time blockchain explorer backend
+- **Lightning Network**: Foundation complete (BOLT-compatible)
+- **Machine Learning**: Anomaly detection and fee estimation
+- **RPC Server**: JSON-RPC 2.0 with HTTP Basic Auth
+- **CPU Miner**: RandomX miner with pool support
+- **Mining Pool**: Stratum protocol foundation
+- **Testnet Faucet**: Automated testnet coin distribution
+
 ## Deferred Features
 
 The following features are deferred to post-1.0 releases:
 
 ### Deferred to v2.0+
-- **Mobile Wallet** (Android/iOS native apps)
-- **Web Wallet** (Browser-based wallet)
-- **Lightning Network** (Layer 2 payment channels)
-- **Machine Learning Integration** (Network analysis, fraud detection, etc.)
-
-### Reason for Deferral
-Focus on core blockchain functionality:
-1. Stable consensus and validation
-2. Robust P2P networking
-3. UTXO model and transaction validation
-4. Desktop wallet (Qt)
-5. Block explorer
+- **Mobile Wallet** (Android/iOS native apps - separate projects)
+- **Web Wallet** (Browser-based wallet - separate project)
+- **Lightning Network Full BOLT Compliance** (v1.0 has foundation)
+- **Smart Contracts Layer** (Turing-complete VM)
+- **Privacy Features** (Ring signatures, stealth addresses)
 
 ## Core Technology Stack
 
@@ -81,7 +92,7 @@ brew install i2pd            # Privacy (optional)
 - **Boost**: 1.89.0+
 - **OpenSSL**: 3.5.4+
 - **Qt**: 6.8+
-- **RocksDB**: 9.0+
+- **RocksDB**: 10.7+
 - **liboqs**: 0.10.0+
 - **RandomX**: 1.2.0+
 

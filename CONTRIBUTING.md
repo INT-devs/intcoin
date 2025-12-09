@@ -2,6 +2,10 @@
 
 Thank you for your interest in contributing to INTcoin! This document provides guidelines and instructions for contributing to the project.
 
+**Project Status**: 97% Complete (Phases 1-10)
+**Last Updated**: December 9, 2025
+**Test Status**: 12/12 test suites passing (100%)
+
 ---
 
 ## 📜 Code of Conduct
@@ -87,16 +91,25 @@ git checkout -b fix/bug-description
 ```bash
 # Build the project
 mkdir build && cd build
-cmake ..
-make
+cmake -DCMAKE_BUILD_TYPE=Debug ..
+make -j$(nproc)
 
-# Run all tests
+# Run all tests (12/12 suites passing)
 ctest --output-on-failure
 
 # Run specific test suites
-./tests/test_crypto
-./tests/test_randomx
-./tests/test_bech32
+./tests/test_crypto          # Cryptography (Dilithium3, Kyber768, SHA3-256)
+./tests/test_randomx         # RandomX PoW and Digishield V3
+./tests/test_bech32          # Address encoding/decoding
+./tests/test_serialization   # Block/transaction serialization
+./tests/test_storage         # RocksDB integration
+./tests/test_validation      # Block/transaction validation
+./tests/test_genesis         # Genesis block verification
+./tests/test_network         # P2P protocol and mempool
+./tests/test_ml              # Machine learning (anomaly detection)
+./tests/test_wallet          # HD wallet, BIP39, UTXO management
+./tests/test_fuzz            # Fuzzing tests (~3,500 iterations)
+./tests/test_integration     # End-to-end integration tests
 ```
 
 #### 5. Submit a Merge Request
@@ -280,20 +293,42 @@ uint64_t GetBlockReward(uint64_t height);
 
 ### Building from Source
 
-See [BUILD_STATUS.md](BUILD_STATUS.md) for complete build instructions.
+See [BUILDING.md](BUILDING.md) for complete build instructions.
 
-**Quick Start**:
+**Quick Start** (macOS/Linux):
 ```bash
-# Install dependencies
-brew install cmake boost openssl rocksdb qt6 zeromq libevent
+# Install dependencies via Homebrew
+brew install cmake boost openssl@3 rocksdb qt@6 zeromq libevent
 
-# Build liboqs and RandomX (see BUILD_STATUS.md)
+# Build liboqs (post-quantum crypto)
+git clone https://github.com/open-quantum-safe/liboqs.git
+cd liboqs && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make -j$(nproc) && sudo make install
+
+# Build RandomX (ASIC-resistant PoW)
+git clone https://github.com/tevador/RandomX.git
+cd RandomX && mkdir build && cd build
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local ..
+make -j$(nproc) && sudo make install
 
 # Build INTcoin
+cd /path/to/intcoin
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
+
+# Run tests to verify build
+ctest --output-on-failure
 ```
+
+**Current Binaries** (after successful build):
+- `intcoind` (7.2 MB) - Full node daemon
+- `intcoin-cli` (73 KB) - Command-line RPC client
+- `intcoin-miner` (7.0 MB) - CPU miner with pool support
+- `intcoin-qt` (7.4 MB) - Qt6 desktop wallet
+- `intcoin-faucet` (7.1 MB) - Testnet faucet server
+- `libintcoin_core.a` (883 KB) - Core library
 
 ---
 
@@ -343,6 +378,21 @@ Closes #XXX
 
 ## 🎯 Areas for Contribution
 
+### Current Focus (97% → 100%)
+
+We're in the final 3% push to v1.0! Priority areas:
+
+**Outstanding TODO Items** (27 remaining):
+- Wallet encryption (Kyber768) - HIGH PRIORITY
+- GETHEADERS message handling - HIGH PRIORITY
+- Mining pool Stratum protocol - HIGH PRIORITY
+- Network hashrate calculation - ✅ COMPLETED
+- SIGHASH transaction signing - ✅ COMPLETED
+- HTTP Basic Auth for RPC - ✅ COMPLETED
+- Block template generation - ✅ COMPLETED
+
+See [PROGRESS_SUMMARY.md](PROGRESS_SUMMARY.md) for complete TODO list.
+
 ### Good First Issues
 
 New to the project? Look for issues labeled `good-first-issue`:
@@ -351,24 +401,26 @@ New to the project? Look for issues labeled `good-first-issue`:
 - Test coverage additions
 - Small bug fixes
 - Code style cleanup
+- Utility function implementations (hex conversion, amount parsing)
 
 ### High Priority
 
 Need something challenging? Check `high-priority` labels:
 
-- Wallet implementation
-- Mining optimization
-- Network protocol enhancements
-- Performance improvements
+- Wallet encryption implementation
+- GETHEADERS protocol handling
+- Mining pool Stratum JSON parsing
+- Performance optimizations
+- Security audit preparation
 
 ### Help Wanted
 
 Community expertise needed on `help-wanted` issues:
 
-- Cross-platform compatibility
-- Hardware wallet integration
-- Mobile wallet development
-- Security improvements
+- Cross-platform testing (Windows 11, FreeBSD)
+- Hardware wallet integration (Ledger, Trezor)
+- Mobile wallet development (separate projects)
+- Security audit and penetration testing
 
 ---
 

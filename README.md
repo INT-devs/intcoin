@@ -24,7 +24,7 @@
 
 **Network**: INTCOIN (INT)
 **Total Supply**: 221 Trillion INT
-**Progress**: ✅ **Phases 1-10 Complete** (96%)
+**Progress**: ✅ **Phases 1-10 Complete** (97%)
 **Last Updated**: December 9, 2025
 
 ---
@@ -132,23 +132,33 @@ intcoin/
 
 ### Required Dependencies
 
+**Build System**:
 - **CMake** >= 4.2.0
-- **C++ Compiler**: GCC 15.2+, Clang 17+, or Apple Clang 17+ (C++20 support)
-- **OpenSSL** >= 3.5.4 (for SHA3-256)
-- **liboqs** >= 0.15.0 (NIST PQC - Dilithium3, Kyber768) ✅ **Integrated**
-- **RandomX** >= 1.2.1 (ASIC-resistant PoW) ✅ **Integrated**
-- **Threads** - Multi-threading support
+- **C++ Compiler**: GCC 13+, Clang 16+, or Apple Clang 15+ (full C++23 support required)
+- **Threads** - Multi-threading support (POSIX threads)
+
+**Core Libraries**:
+- **OpenSSL** >= 3.5.4 (SHA3-256 hashing)
+- **liboqs** >= 0.10.0 (NIST PQC - Dilithium3, Kyber768) ✅ **Integrated**
+- **RandomX** >= 1.2.0 (ASIC-resistant PoW) ✅ **Integrated**
+
+**Storage & Networking**:
+- **RocksDB** >= 10.7 (high-performance blockchain database)
+- **Boost** >= 1.89.0 (utilities, filesystem, threading)
+- **libzmq** >= 4.3 (ZeroMQ messaging for RPC)
+- **libevent** >= 2.1 (event-driven networking)
+
+**GUI (Desktop Wallet)**:
+- **Qt6** >= 6.8 (cross-platform GUI framework)
 
 ### Optional Dependencies
 
-- **Boost** >= 1.89.0 - Utilities, filesystem, threading
-- **RocksDB** >= 10.7 - Blockchain database
-- **Qt6** >= 6.8 (for desktop wallet)
-- **libzmq** >= 4.3 - ZeroMQ messaging
-- **libevent** >= 2.1 - Event-driven networking
-- **libtor** - Tor integration
-- **libi2pd** - I2P integration
-- **CUDA** / **OpenCL** - GPU mining support
+**Privacy & Anonymity**:
+- **libtor** - Tor network integration (privacy layer)
+- **libi2pd** - I2P network integration (anonymity layer)
+
+**Mining Performance** (Future):
+- **CUDA** / **OpenCL** - GPU mining support (deferred to v2.0)
 
 ---
 
