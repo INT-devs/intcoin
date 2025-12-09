@@ -5,6 +5,7 @@
  */
 
 #include "intcoin/util.h"
+#include "intcoin/crypto.h"
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
@@ -304,6 +305,22 @@ void SetLogLevel(LogLevel level) {
 Result<void> SetLogFile(const std::string& path) {
     // TODO: Implement log file setting
     return Result<void>::Error("Not implemented");
+}
+
+// ============================================================================
+// Random Number Generation
+// ============================================================================
+
+std::vector<uint8_t> GetRandomBytes(size_t count) {
+    return RandomGenerator::GetRandomBytes(count);
+}
+
+uint64_t GetRandomUint64() {
+    return RandomGenerator::GetRandomUint64();
+}
+
+uint256 GetRandomUint256() {
+    return RandomGenerator::GetRandomUint256();
 }
 
 } // namespace intcoin

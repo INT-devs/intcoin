@@ -49,7 +49,18 @@ intcoin-cli
 intcoin-miner
 intcoin-qt
 intcoin-faucet
-tests/test_*
+tests/test_crypto
+tests/test_randomx
+tests/test_bech32
+tests/test_serialization
+tests/test_storage
+tests/test_validation
+tests/test_genesis
+tests/test_network
+tests/test_ml
+tests/test_wallet
+tests/test_fuzz
+tests/test_integration
 
 # Qt MOC auto-generated files
 *_autogen/

@@ -647,4 +647,13 @@ uint256 RandomGenerator::GetRandomUint256() {
     return result;
 }
 
+uint64_t RandomGenerator::GetRandomUint64() {
+    auto bytes = GetRandomBytes(8);
+    uint64_t result = 0;
+    for (size_t i = 0; i < 8; ++i) {
+        result |= (static_cast<uint64_t>(bytes[i]) << (i * 8));
+    }
+    return result;
+}
+
 } // namespace intcoin

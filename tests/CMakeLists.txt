@@ -46,6 +46,14 @@ target_link_libraries(test_ml intcoin_core ${ROCKSDB_LIB})
 add_executable(test_wallet test_wallet.cpp)
 target_link_libraries(test_wallet intcoin_core ${ROCKSDB_LIB})
 
+# Test: Fuzzing (robustness and edge cases)
+add_executable(test_fuzz test_fuzz.cpp)
+target_link_libraries(test_fuzz intcoin_core ${ROCKSDB_LIB})
+
+# Test: Integration (end-to-end component interaction)
+add_executable(test_integration test_integration.cpp)
+target_link_libraries(test_integration intcoin_core ${ROCKSDB_LIB})
+
 # Register tests with CTest
 add_test(NAME CryptoTest COMMAND test_crypto)
 add_test(NAME RandomXTest COMMAND test_randomx)
@@ -57,6 +65,8 @@ add_test(NAME GenesisTest COMMAND test_genesis)
 add_test(NAME NetworkTest COMMAND test_network)
 add_test(NAME MLTest COMMAND test_ml)
 add_test(NAME WalletTest COMMAND test_wallet)
+add_test(NAME FuzzTest COMMAND test_fuzz)
+add_test(NAME IntegrationTest COMMAND test_integration)
 
 # Install test executables (optional)
 install(TARGETS
@@ -70,5 +80,7 @@ install(TARGETS
     test_network
     test_ml
     test_wallet
+    test_fuzz
+    test_integration
     DESTINATION bin/tests
 )
