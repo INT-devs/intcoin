@@ -6,6 +6,7 @@
 
 #include "intcoin/util.h"
 #include "intcoin/crypto.h"
+#include "intcoin/consensus.h"
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
@@ -62,8 +63,32 @@ std::string Uint256ToHex(const uint256& hash) {
 }
 
 Result<uint256> HexToUint256(const std::string& hex) {
-    // TODO: Implement hex to uint256 conversion
-    return Result<uint256>::Error("Not implemented");
+    // Remove 0x prefix if present
+    std::string hex_str = hex;
+    if (hex_str.length() >= 2 && hex_str.substr(0, 2) == "0x") {
+        hex_str = hex_str.substr(2);
+    }
+
+    // Validate hex string length (uint256 = 32 bytes = 64 hex chars)
+    if (hex_str.length() != 64) {
+        return Result<uint256>::Error("Invalid hex string length: expected 64 characters, got " + std::to_string(hex_str.length()));
+    }
+
+    // Validate hex characters
+    for (char c : hex_str) {
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+            return Result<uint256>::Error(std::string("Invalid hex character: ") + c);
+        }
+    }
+
+    // Convert hex string to bytes
+    uint256 result;
+    for (size_t i = 0; i < 32; ++i) {
+        std::string byte_str = hex_str.substr(i * 2, 2);
+        result.data()[i] = static_cast<uint8_t>(std::stoul(byte_str, nullptr, 16));
+    }
+
+    return Result<uint256>::Ok(result);
 }
 
 std::string Trim(const std::string& str) {
@@ -119,8 +144,90 @@ std::string FormatAmount(uint64_t ints) {
 }
 
 Result<uint64_t> ParseAmount(const std::string& str) {
-    // TODO: Implement amount parsing
-    return Result<uint64_t>::Error("Not implemented");
+    // Remove whitespace
+    std::string amount_str = Trim(str);
+
+    // Remove " INT" suffix if present
+    if (amount_str.length() >= 4 && amount_str.substr(amount_str.length() - 4) == " INT") {
+        amount_str = amount_str.substr(0, amount_str.length() - 4);
+        amount_str = Trim(amount_str);
+    }
+
+    // Check for empty string
+    if (amount_str.empty()) {
+        return Result<uint64_t>::Error("Empty amount string");
+    }
+
+    // Check for negative amounts
+    if (amount_str[0] == '-') {
+        return Result<uint64_t>::Error("Negative amounts not allowed");
+    }
+
+    // Find decimal point
+    size_t decimal_pos = amount_str.find('.');
+
+    std::string int_part;
+    std::string frac_part;
+
+    if (decimal_pos == std::string::npos) {
+        // No decimal point - whole INT amount
+        int_part = amount_str;
+        frac_part = "";
+    } else {
+        // Has decimal point - split into integer and fractional parts
+        int_part = amount_str.substr(0, decimal_pos);
+        frac_part = amount_str.substr(decimal_pos + 1);
+
+        // Validate fractional part has max 6 digits (1 INT = 1,000,000 INTS)
+        if (frac_part.length() > 6) {
+            return Result<uint64_t>::Error("Too many decimal places (max 6)");
+        }
+
+        // Pad fractional part to 6 digits
+        while (frac_part.length() < 6) {
+            frac_part += "0";
+        }
+    }
+
+    // Handle empty integer part (e.g., ".5")
+    if (int_part.empty()) {
+        int_part = "0";
+    }
+
+    // Validate numeric characters
+    for (char c : int_part) {
+        if (c < '0' || c > '9') {
+            return Result<uint64_t>::Error(std::string("Invalid character in integer part: ") + c);
+        }
+    }
+    for (char c : frac_part) {
+        if (c < '0' || c > '9') {
+            return Result<uint64_t>::Error(std::string("Invalid character in fractional part: ") + c);
+        }
+    }
+
+    // Convert to INTS (satoshis)
+    try {
+        uint64_t int_value = int_part.empty() ? 0 : std::stoull(int_part);
+        uint64_t frac_value = frac_part.empty() ? 0 : std::stoull(frac_part);
+
+        // Check for overflow
+        if (int_value > UINT64_MAX / INTS_PER_INT) {
+            return Result<uint64_t>::Error("Amount too large");
+        }
+
+        uint64_t total_ints = int_value * INTS_PER_INT + frac_value;
+
+        // Validate against max supply
+        if (total_ints > consensus::MAX_SUPPLY) {
+            return Result<uint64_t>::Error("Amount exceeds max supply");
+        }
+
+        return Result<uint64_t>::Ok(total_ints);
+
+    } catch (const std::exception& e) {
+        return Result<uint64_t>::Error(std::string("Failed to parse amount: ") + e.what());
+    }
 }
 
 // ============================================================================
