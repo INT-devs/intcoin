@@ -15,6 +15,44 @@
 namespace intcoin {
 
 // ============================================================================
+// SIGHASH Types
+// ============================================================================
+
+/// SIGHASH flags determine which parts of transaction are signed
+enum class SigHashType : uint8_t {
+    /// Sign all inputs and outputs (default, most secure)
+    ALL = 0x01,
+
+    /// Sign all inputs but no outputs (allows anyone to choose outputs)
+    NONE = 0x02,
+
+    /// Sign all inputs and only the output with the same index
+    SINGLE = 0x03,
+
+    /// Modifier: Sign only this input, others can be added later
+    ANYONECANPAY = 0x80
+};
+
+/// Combined SIGHASH types (base type | modifier)
+constexpr uint8_t SIGHASH_ALL = 0x01;
+constexpr uint8_t SIGHASH_NONE = 0x02;
+constexpr uint8_t SIGHASH_SINGLE = 0x03;
+constexpr uint8_t SIGHASH_ANYONECANPAY = 0x80;
+constexpr uint8_t SIGHASH_ALL_ANYONECANPAY = SIGHASH_ALL | SIGHASH_ANYONECANPAY;
+constexpr uint8_t SIGHASH_NONE_ANYONECANPAY = SIGHASH_NONE | SIGHASH_ANYONECANPAY;
+constexpr uint8_t SIGHASH_SINGLE_ANYONECANPAY = SIGHASH_SINGLE | SIGHASH_ANYONECANPAY;
+
+/// Get base SIGHASH type (without modifier)
+inline SigHashType GetBaseSigHashType(uint8_t sighash) {
+    return static_cast<SigHashType>(sighash & 0x7F);
+}
+
+/// Check if ANYONECANPAY flag is set
+inline bool HasAnyoneCanPay(uint8_t sighash) {
+    return (sighash & SIGHASH_ANYONECANPAY) != 0;
+}
+
+// ============================================================================
 // Transaction Input (TxIn)
 // ============================================================================
 
@@ -133,14 +171,14 @@ public:
     /// Get transaction hash (txid)
     uint256 GetHash() const;
 
-    /// Calculate transaction hash without signature
-    uint256 GetHashForSigning() const;
+    /// Calculate transaction hash without signature (default: SIGHASH_ALL)
+    uint256 GetHashForSigning(uint8_t sighash_type = SIGHASH_ALL, size_t input_index = 0) const;
 
-    /// Sign transaction with private key
-    Result<void> Sign(const SecretKey& secret_key);
+    /// Sign transaction with private key (default: SIGHASH_ALL)
+    Result<void> Sign(const SecretKey& secret_key, uint8_t sighash_type = SIGHASH_ALL);
 
-    /// Verify transaction signature
-    Result<void> VerifySignature(const PublicKey& public_key) const;
+    /// Verify transaction signature (default: SIGHASH_ALL)
+    Result<void> VerifySignature(const PublicKey& public_key, uint8_t sighash_type = SIGHASH_ALL) const;
 
     /// Check if this is a coinbase transaction
     bool IsCoinbase() const;

@@ -909,30 +909,25 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
   * Compiles cleanly with zero warnings
   * Added to CMakeLists.txt and intcoin.h
 
-#### Phase 11: Mobile Wallets (2-3 months)
+#### Phase 11: Mobile Wallets (Separate Project)
 
-**Priority: LOW (Can be deferred)**
+**Status: DEFERRED - Will be developed as separate project**
 
-- [ ] Android Wallet
-  - [ ] SPV client
-  - [ ] UI/UX
-  - [ ] QR codes
-  - [ ] Push notifications
+Mobile wallets for Android and iOS will be developed as independent projects to allow:
+- Dedicated mobile development teams
+- Platform-specific optimizations
+- Faster iteration cycles
+- App store compliance focus
 
-- [ ] iOS Wallet
-  - [ ] SPV client
-  - [ ] UI/UX
-  - [ ] QR codes
-  - [ ] Push notifications
+#### Phase 12: Web Wallet (Separate Project)
 
-#### Phase 11: Web Wallet (1-2 months)
+**Status: DEFERRED - Will be developed as separate project**
 
-**Priority: LOW (Can be deferred)**
-
-- [ ] Web Interface
-  - [ ] React/Vue frontend
-  - [ ] API integration
-  - [ ] Wallet functionality
+Web wallet will be developed as an independent project to allow:
+- Modern web framework selection
+- Enhanced security auditing
+- Independent deployment
+- Browser-specific optimizations
 
 ---
 
@@ -953,10 +948,13 @@ Building a production-ready blockchain from scratch is an **enormous undertaking
 
 **Estimated Mainnet Launch**: Q1 2026 (March 2026)
 
-**Post-Launch** (Deferred to v2.0+):
-- Lightning Network (3-4 months)
-- Mobile Wallets (2-3 months)
-- Web Wallet (1-2 months)
+**Post-Launch** (v2.0+):
+- Lightning Network enhancements (full BOLT specification)
+- Advanced features (Tor/I2P, hardware wallet support, multi-signature, atomic swaps)
+
+**Separate Projects**:
+- Mobile Wallets (Android/iOS) - Independent development
+- Web Wallet - Independent development
 
 ---
 
@@ -1166,10 +1164,13 @@ Add:
   - Fuzz testing
   - Performance benchmarks
 - **Deferred to v2.0+**:
-  - Lightning Network
-  - Mobile/Web wallets
+  - Lightning Network enhancements (full BOLT specification)
   - Smart contracts
   - Cross-chain bridges
+  - Advanced features (Tor/I2P, hardware wallets, multi-signature, atomic swaps)
+- **Separate Projects** (not part of core):
+  - Mobile wallets (Android/iOS)
+  - Web wallet
 
 ---
 

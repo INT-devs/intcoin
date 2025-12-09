@@ -314,10 +314,10 @@ INTcoin was designed quantum-resistant from the start, avoiding these migration 
 - **Website**: https://international-coin.org
 - **GitLab**: https://gitlab.com/intcoin/crypto
 - **Email**: team@international-coin.org
-- **Twitter/X**: @intcoin_crypto
-- **Discord**: discord.gg/intcoin
+- **X (Twitter)**: https://x.com/INTcoin_team
+- **Discord**: https://discord.gg/7p4VmS2z
 - **Reddit**: r/INTcoin
-- **Telegram**: t.me/intcoin
+- **Telegram**: https://t.me/INTcoin_official
 
 ---
 

@@ -143,6 +143,28 @@ struct WalletAddress {
 };
 
 // ============================================================================
+// Coin Selection Strategy
+// ============================================================================
+
+/// Strategy for selecting UTXOs when creating transactions
+enum class CoinSelectionStrategy {
+    /// Select coins in order until target is reached (fast, simple)
+    GREEDY,
+
+    /// Select largest coins first (minimizes change, fewer inputs)
+    LARGEST_FIRST,
+
+    /// Select smallest coins first (reduces UTXO set, more inputs)
+    SMALLEST_FIRST,
+
+    /// Branch and bound algorithm (optimal selection, slower)
+    BRANCH_AND_BOUND,
+
+    /// Random selection (privacy-focused)
+    RANDOM
+};
+
+// ============================================================================
 // Wallet Transaction
 // ============================================================================
 
@@ -272,7 +294,8 @@ public:
     Result<Transaction> CreateTransaction(
         const std::vector<Recipient>& recipients,
         uint64_t fee_rate = 0,  // 0 = auto-estimate
-        const std::string& comment = ""
+        const std::string& comment = "",
+        CoinSelectionStrategy strategy = CoinSelectionStrategy::GREEDY
     );
 
     Result<Transaction> SignTransaction(const Transaction& tx);

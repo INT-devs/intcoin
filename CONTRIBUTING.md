@@ -378,8 +378,9 @@ Community expertise needed on `help-wanted` issues:
 
 - **GitLab Issues**: Technical discussions, bug reports, feature requests
 - **Email**: [team@international-coin.org](mailto:team@international-coin.org)
-- **Discord**: https://discord.gg/intcoin
-- **Telegram**: https://t.me/intcoin
+- **Discord**: https://discord.gg/7p4VmS2z
+- **Telegram**: https://t.me/INTcoin_official
+- **X (Twitter)**: https://x.com/INTcoin_team
 
 ### Getting Help
 

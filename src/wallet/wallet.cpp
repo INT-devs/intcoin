@@ -9,6 +9,7 @@
 #include "intcoin/util.h"
 #include "intcoin/blockchain.h"
 #include <algorithm>
+#include <random>
 #include <sstream>
 #include <iomanip>
 #include <cstring>
@@ -1795,7 +1796,8 @@ Result<WalletTransaction> Wallet::GetTransaction(const uint256& txid) const {
 
 Result<Transaction> Wallet::CreateTransaction(const std::vector<Recipient>& recipients,
                                               uint64_t fee_rate,
-                                              const std::string& comment) {
+                                              const std::string& comment,
+                                              CoinSelectionStrategy strategy) {
     if (!impl_->is_loaded) {
         return Result<Transaction>::Error("Wallet not loaded");
     }
@@ -1824,16 +1826,86 @@ Result<Transaction> Wallet::CreateTransaction(const std::vector<Recipient>& reci
     size_t estimated_size = 100 + (estimated_inputs * 200) + ((recipients.size() + 1) * 100);
     uint64_t estimated_fee = (fee_rate * estimated_size) / 1000;
 
-    // Select UTXOs (simple greedy algorithm)
+    // Select UTXOs using specified strategy
     std::vector<std::pair<OutPoint, TxOut>> selected_utxos;
     uint64_t selected_amount = 0;
     uint64_t target_amount = total_output + estimated_fee;
 
+    // Copy UTXOs to vector for sorting
+    std::vector<std::pair<OutPoint, TxOut>> available_utxos;
     for (const auto& [outpoint, txout] : impl_->utxos) {
-        selected_utxos.push_back({outpoint, txout});
-        selected_amount += txout.value;
+        available_utxos.push_back({outpoint, txout});
+    }
 
-        if (selected_amount >= target_amount) {
+    // Apply coin selection strategy
+    switch (strategy) {
+        case CoinSelectionStrategy::GREEDY:
+            // Select coins in order until target is reached
+            for (const auto& [outpoint, txout] : available_utxos) {
+                selected_utxos.push_back({outpoint, txout});
+                selected_amount += txout.value;
+                if (selected_amount >= target_amount) break;
+            }
+            break;
+
+        case CoinSelectionStrategy::LARGEST_FIRST:
+            // Sort by value (descending), select largest coins first
+            std::sort(available_utxos.begin(), available_utxos.end(),
+                [](const auto& a, const auto& b) { return a.second.value > b.second.value; });
+            for (const auto& [outpoint, txout] : available_utxos) {
+                selected_utxos.push_back({outpoint, txout});
+                selected_amount += txout.value;
+                if (selected_amount >= target_amount) break;
+            }
+            break;
+
+        case CoinSelectionStrategy::SMALLEST_FIRST:
+            // Sort by value (ascending), select smallest coins first
+            std::sort(available_utxos.begin(), available_utxos.end(),
+                [](const auto& a, const auto& b) { return a.second.value < b.second.value; });
+            for (const auto& [outpoint, txout] : available_utxos) {
+                selected_utxos.push_back({outpoint, txout});
+                selected_amount += txout.value;
+                if (selected_amount >= target_amount) break;
+            }
+            break;
+
+        case CoinSelectionStrategy::BRANCH_AND_BOUND: {
+            // Branch and bound: find exact match or best fit
+            // For simplicity, use a greedy approximation
+            // TODO: Implement full branch-and-bound algorithm
+            std::sort(available_utxos.begin(), available_utxos.end(),
+                [](const auto& a, const auto& b) { return a.second.value > b.second.value; });
+
+            // Try to find exact match first
+            for (size_t i = 0; i < available_utxos.size(); ++i) {
+                uint64_t sum = 0;
+                std::vector<std::pair<OutPoint, TxOut>> candidate;
+                for (size_t j = i; j < available_utxos.size(); ++j) {
+                    candidate.push_back(available_utxos[j]);
+                    sum += available_utxos[j].second.value;
+                    if (sum >= target_amount) {
+                        selected_utxos = candidate;
+                        selected_amount = sum;
+                        break;
+                    }
+                }
+                if (selected_amount >= target_amount) break;
+            }
+            break;
+        }
+
+        case CoinSelectionStrategy::RANDOM: {
+            // Random selection for privacy
+            auto shuffled = available_utxos;
+            std::random_device rd;
+            std::mt19937 g(rd());
+            std::shuffle(shuffled.begin(), shuffled.end(), g);
+            for (const auto& [outpoint, txout] : shuffled) {
+                selected_utxos.push_back({outpoint, txout});
+                selected_amount += txout.value;
+                if (selected_amount >= target_amount) break;
+            }
             break;
         }
     }

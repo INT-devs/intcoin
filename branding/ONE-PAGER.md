@@ -191,8 +191,9 @@ make -j$(nproc)
 - **Website**: [international-coin.org](https://international-coin.org)
 - **Repository**: [gitlab.com/intcoin/crypto](https://gitlab.com/intcoin/crypto)
 - **Email**: team@international-coin.org
-- **Discord**: discord.gg/intcoin
-- **Twitter/X**: @intcoin_crypto
+- **Discord**: https://discord.gg/7p4VmS2z
+- **X (Twitter)**: https://x.com/INTcoin_team
+- **Telegram**: https://t.me/INTcoin_official
 - **Reddit**: r/INTcoin
 
 ---

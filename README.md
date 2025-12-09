@@ -645,8 +645,8 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - [ ] Hardware wallet support
 - [ ] Multi-signature
 - [ ] Atomic swaps
-- [ ] Mobile wallets (Android/iOS)
-- [ ] Web wallet
+
+**Note**: Mobile wallets (Android/iOS) and Web wallet will be developed as separate projects.
 
 **Current Status**: Phases 1-10 complete (96%). Lightning Network foundation and Qt Desktop Wallet implemented. Core blockchain fully functional with daemon, CLI, CPU miner, block explorer, and graphical wallet. Enhanced with comprehensive fuzzing (~3,500 iterations) and integration test suites. Ready for testnet deployment.
 
@@ -677,9 +677,9 @@ Copyright (c) 2025 INTcoin Team (Neil Adamson)
 - **Website**: https://international-coin.org
 - **Email**: team@international-coin.org
 - **GitLab**: https://gitlab.com/intcoin/crypto
-- **Discord**: https://discord.gg/intcoin
-- **Telegram**: https://t.me/intcoin
-- **Twitter**: @intcoin_official
+- **Discord**: https://discord.gg/7p4VmS2z
+- **Telegram**: https://t.me/INTcoin_official
+- **X (Twitter)**: https://x.com/INTcoin_team
 
 ---
 

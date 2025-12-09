@@ -511,7 +511,9 @@ intcoind --port=2220
 - **Documentation**: https://intcoin.org/docs
 - **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/
 - **Issues**: https://github.com/intcoin/intcoin/issues
-- **Community**: [Discord](https://discord.gg/intcoin)
+- **Discord**: https://discord.gg/7p4VmS2z
+- **Telegram**: https://t.me/INTcoin_official
+- **X (Twitter)**: https://x.com/INTcoin_team
 
 ---
 

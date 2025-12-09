@@ -303,10 +303,10 @@ cp ~/.intcoin/wallets/wallet.dat ~/backup/
 
 ### Community
 
-- **Discord**: https://discord.gg/intcoin
-- **Telegram**: https://t.me/intcoin
+- **Discord**: https://discord.gg/7p4VmS2z
+- **Telegram**: https://t.me/INTcoin_official
 - **Reddit**: https://reddit.com/r/intcoin
-- **Twitter**: https://twitter.com/intcoin
+- **X (Twitter)**: https://x.com/INTcoin_team
 
 ### Support
 

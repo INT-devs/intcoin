@@ -183,18 +183,25 @@ uint256 Transaction::GetHash() const {
     return hash;
 }
 
-uint256 Transaction::GetHashForSigning() const {
-    // TODO: Implement hash for signing (without signature field)
+uint256 Transaction::GetHashForSigning(uint8_t sighash_type, size_t input_index) const {
+    // TODO: Implement SIGHASH-based hash for signing
+    // For now, return simple hash (default SIGHASH_ALL behavior)
+    (void)sighash_type;  // Suppress unused warning
+    (void)input_index;   // Suppress unused warning
     return GetHash();
 }
 
-Result<void> Transaction::Sign(const SecretKey& secret_key) {
-    // TODO: Implement transaction signing
+Result<void> Transaction::Sign(const SecretKey& secret_key, uint8_t sighash_type) {
+    // TODO: Implement SIGHASH-aware transaction signing
+    (void)secret_key;     // Suppress unused warning
+    (void)sighash_type;   // Suppress unused warning
     return Result<void>::Error("Not implemented");
 }
 
-Result<void> Transaction::VerifySignature(const PublicKey& public_key) const {
-    // TODO: Implement signature verification
+Result<void> Transaction::VerifySignature(const PublicKey& public_key, uint8_t sighash_type) const {
+    // TODO: Implement SIGHASH-aware signature verification
+    (void)public_key;     // Suppress unused warning
+    (void)sighash_type;   // Suppress unused warning
     return Result<void>::Error("Not implemented");
 }
 

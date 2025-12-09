@@ -186,8 +186,9 @@ gpg --verify intcoin-v[VERSION]-linux-x86_64.tar.gz.asc
 - **Documentation**: https://international-coin.org/docs
 - **GitLab**: https://gitlab.com/intcoin/crypto
 - **Email**: team@international-coin.org
-- **Discord**: https://discord.gg/intcoin
-- **Telegram**: https://t.me/intcoin
+- **Discord**: https://discord.gg/7p4VmS2z
+- **Telegram**: https://t.me/INTcoin_official
+- **X (Twitter)**: https://x.com/INTcoin_team
 
 ---
 

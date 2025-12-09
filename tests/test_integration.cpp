@@ -44,6 +44,10 @@ bool test_blockchain_storage_integration() {
         uint256 best_hash = blockchain.GetBestBlockHash();
         std::cout << "Best block hash: " << Uint256ToHex(best_hash).substr(0, 16) << "..." << std::endl;
 
+        // Get block count from chain state
+        auto chain_state = blockchain.GetChainState();
+        std::cout << "Block height: " << chain_state.height << std::endl;
+
         // Verify blockchain initialized
         std::cout << "✅ Blockchain initialized successfully" << std::endl;
 
