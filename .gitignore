@@ -47,7 +47,14 @@ Testing/
 intcoind
 intcoin-cli
 intcoin-miner
+intcoin-qt
+intcoin-faucet
 tests/test_*
+
+# Qt MOC auto-generated files
+*_autogen/
+moc_*.cpp
+ui_*.h
 
 # Logs
 *.log
