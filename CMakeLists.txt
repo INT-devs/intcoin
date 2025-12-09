@@ -22,6 +22,7 @@ option(BUILD_DAEMON "Build intcoind daemon" ON)
 option(BUILD_CLI "Build intcoin-cli" ON)
 option(BUILD_MINER "Build miner" ON)
 option(BUILD_EXPLORER "Build block explorer" ON)
+option(BUILD_FAUCET "Build testnet faucet" ON)
 option(ENABLE_LIGHTNING "Enable Lightning Network" OFF)  # Deferred
 option(ENABLE_TOR "Enable Tor support" OFF)
 option(ENABLE_I2P "Enable I2P support" OFF)
@@ -171,6 +172,9 @@ set(INTCOIN_CORE_SOURCES
 
     # Lightning Network
     src/lightning/lightning.cpp
+
+    # Testnet Faucet
+    src/faucet/faucet.cpp
 )
 
 # Core library
@@ -276,6 +280,17 @@ if(BUILD_WALLET_QT)
         Qt6::Gui
     )
     install(TARGETS intcoin-qt DESTINATION bin)
+endif()
+
+# Testnet Faucet
+if(BUILD_FAUCET)
+    find_library(ROCKSDB_LIB rocksdb REQUIRED)
+
+    add_executable(intcoin-faucet
+        src/faucet/intcoin-faucet.cpp
+    )
+    target_link_libraries(intcoin-faucet intcoin_core ${ROCKSDB_LIB})
+    install(TARGETS intcoin-faucet DESTINATION bin)
 endif()
 
 # Block Explorer
