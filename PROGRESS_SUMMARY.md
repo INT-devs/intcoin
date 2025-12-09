@@ -68,7 +68,7 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 ---
 
-## 📝 Outstanding TODO Items (27)
+## 📝 Outstanding TODO Items (26)
 
 ### Core Blockchain (1 item - 2 completed ✅)
 1. ~~**SIGHASH-based transaction signing**~~ ✅ **COMPLETED** (Dec 9, 2025)
@@ -126,14 +126,14 @@ Total: 100% passing (excluding wallet directory setup tests)
     - Sync headers faster during initial sync
     - Priority: HIGH | Est: 1 week
 
-### RPC Server (4 items - 3 completed ✅)
+### RPC Server (3 items - 4 completed ✅)
 14. ~~**HTTP Basic Auth verification**~~ ✅ **COMPLETED** (Dec 9, 2025)
     - ✅ Implement Base64 decoding and credential verification
     - Location: [rpc.cpp:431-475](src/rpc/rpc.cpp:431)
 
-15. **Network hashrate calculation** ([rpc.cpp:785](src/rpc/rpc.cpp:785))
-    - Calculate from recent blocks
-    - Priority: MEDIUM | Est: 2 days
+15. ~~**Network hashrate calculation**~~ ✅ **COMPLETED** (Dec 9, 2025)
+    - ✅ Calculate network hashrate using Blockchain::GetNetworkHashRate()
+    - Location: [rpc.cpp:787-788](src/rpc/rpc.cpp:787)
 
 16. ~~**Block template generation**~~ ✅ **COMPLETED** (Dec 9, 2025)
     - ✅ Create mining block templates with mempool transactions
