@@ -184,25 +184,118 @@ uint256 Transaction::GetHash() const {
 }
 
 uint256 Transaction::GetHashForSigning(uint8_t sighash_type, size_t input_index) const {
-    // TODO: Implement SIGHASH-based hash for signing
-    // For now, return simple hash (default SIGHASH_ALL behavior)
-    (void)sighash_type;  // Suppress unused warning
-    (void)input_index;   // Suppress unused warning
-    return GetHash();
+    // Create a copy of the transaction for signing
+    std::vector<uint8_t> signing_data;
+
+    // Serialize version
+    SerializeUint32(signing_data, version);
+
+    // Determine base SIGHASH type
+    SigHashType base_type = GetBaseSigHashType(sighash_type);
+    bool anyonecanpay = HasAnyoneCanPay(sighash_type);
+
+    // Serialize inputs based on ANYONECANPAY flag
+    if (anyonecanpay) {
+        // ANYONECANPAY: Only serialize the input being signed
+        SerializeUint64(signing_data, 1);
+        if (input_index < inputs.size()) {
+            auto input_bytes = inputs[input_index].Serialize();
+            signing_data.insert(signing_data.end(), input_bytes.begin(), input_bytes.end());
+        }
+    } else {
+        // Normal: Serialize all inputs (with script_sig cleared for others)
+        SerializeUint64(signing_data, inputs.size());
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            TxIn input = inputs[i];
+            if (i != input_index) {
+                // Clear script_sig for inputs other than the one being signed
+                input.script_sig = Script(std::vector<uint8_t>());
+            }
+            auto input_bytes = input.Serialize();
+            signing_data.insert(signing_data.end(), input_bytes.begin(), input_bytes.end());
+        }
+    }
+
+    // Serialize outputs based on SIGHASH type
+    switch (base_type) {
+        case SigHashType::ALL:
+            // SIGHASH_ALL: Include all outputs
+            SerializeUint64(signing_data, outputs.size());
+            for (const auto& output : outputs) {
+                auto output_bytes = output.Serialize();
+                signing_data.insert(signing_data.end(), output_bytes.begin(), output_bytes.end());
+            }
+            break;
+
+        case SigHashType::NONE:
+            // SIGHASH_NONE: No outputs
+            SerializeUint64(signing_data, 0);
+            break;
+
+        case SigHashType::SINGLE:
+            // SIGHASH_SINGLE: Only output at same index
+            if (input_index < outputs.size()) {
+                SerializeUint64(signing_data, 1);
+                auto output_bytes = outputs[input_index].Serialize();
+                signing_data.insert(signing_data.end(), output_bytes.begin(), output_bytes.end());
+            } else {
+                // If no corresponding output, serialize 0 outputs
+                SerializeUint64(signing_data, 0);
+            }
+            break;
+
+        case SigHashType::ANYONECANPAY:
+            // ANYONECANPAY is a modifier, not a base type
+            // It should have been filtered out by GetBaseSigHashType
+            // Default to ALL behavior
+            SerializeUint64(signing_data, outputs.size());
+            for (const auto& output : outputs) {
+                auto output_bytes = output.Serialize();
+                signing_data.insert(signing_data.end(), output_bytes.begin(), output_bytes.end());
+            }
+            break;
+    }
+
+    // Serialize locktime
+    SerializeUint64(signing_data, locktime);
+
+    // Append SIGHASH type
+    signing_data.push_back(sighash_type);
+
+    // Hash the signing data
+    return SHA3::Hash(signing_data);
 }
 
 Result<void> Transaction::Sign(const SecretKey& secret_key, uint8_t sighash_type) {
-    // TODO: Implement SIGHASH-aware transaction signing
-    (void)secret_key;     // Suppress unused warning
-    (void)sighash_type;   // Suppress unused warning
-    return Result<void>::Error("Not implemented");
+    // Get the hash to sign (SIGHASH_ALL by default, signs entire transaction)
+    uint256 hash = GetHashForSigning(sighash_type, 0);
+
+    // Sign the hash using Dilithium3
+    auto sign_result = DilithiumCrypto::SignHash(hash, secret_key);
+    if (!sign_result.IsOk()) {
+        return Result<void>::Error("Failed to sign transaction: " + sign_result.error);
+    }
+
+    // Store the signature
+    signature = *sign_result.value;
+
+    // Clear cached hash since signature changed
+    cached_hash_.reset();
+
+    return Result<void>::Ok();
 }
 
 Result<void> Transaction::VerifySignature(const PublicKey& public_key, uint8_t sighash_type) const {
-    // TODO: Implement SIGHASH-aware signature verification
-    (void)public_key;     // Suppress unused warning
-    (void)sighash_type;   // Suppress unused warning
-    return Result<void>::Error("Not implemented");
+    // Get the hash that was signed
+    uint256 hash = GetHashForSigning(sighash_type, 0);
+
+    // Verify the signature using Dilithium3
+    auto verify_result = DilithiumCrypto::VerifyHash(hash, signature, public_key);
+    if (!verify_result.IsOk()) {
+        return Result<void>::Error("Signature verification failed: " + verify_result.error);
+    }
+
+    return Result<void>::Ok();
 }
 
 bool Transaction::IsCoinbase() const {

@@ -435,9 +435,43 @@ public:
                 return HTTPResponse::Unauthorized();
             }
 
-            // For simplicity, we'll just check if credentials are present
-            // In production, implement proper base64 decode and check
-            // TODO: Implement proper HTTP Basic Auth verification
+            // Extract base64-encoded credentials
+            std::string encoded = auth.substr(6);
+
+            // Trim whitespace
+            size_t start = encoded.find_first_not_of(" \t\r\n");
+            size_t end = encoded.find_last_not_of(" \t\r\n");
+            if (start != std::string::npos && end != std::string::npos) {
+                encoded = encoded.substr(start, end - start + 1);
+            }
+
+            // Decode base64
+            auto decoded_result = Base64Decode(encoded);
+            if (!decoded_result.IsOk()) {
+                stats.auth_failures++;
+                return HTTPResponse::Unauthorized();
+            }
+
+            // Convert bytes to string
+            std::string credentials(decoded_result.value->begin(), decoded_result.value->end());
+
+            // Split by ':' to get username and password
+            size_t colon_pos = credentials.find(':');
+            if (colon_pos == std::string::npos) {
+                stats.auth_failures++;
+                return HTTPResponse::Unauthorized();
+            }
+
+            std::string provided_user = credentials.substr(0, colon_pos);
+            std::string provided_pass = credentials.substr(colon_pos + 1);
+
+            // Verify credentials match configuration
+            if (provided_user != config.rpc_user || provided_pass != config.rpc_password) {
+                stats.auth_failures++;
+                return HTTPResponse::Unauthorized();
+            }
+
+            // Authentication successful
         }
 
         // Parse RPC request
@@ -753,14 +787,102 @@ JSONValue MiningRPC::getmininginfo(const JSONValue&, Blockchain& blockchain) {
     return JSONValue(info);
 }
 
-JSONValue MiningRPC::getblocktemplate(const JSONValue&, Blockchain&) {
-    // TODO: Implement block template generation
-    throw std::runtime_error("Not implemented yet");
+JSONValue MiningRPC::getblocktemplate(const JSONValue& params, Blockchain& blockchain) {
+    // Get miner address from params (optional)
+    std::string miner_address;
+    if (params.IsObject() && params.HasKey("address")) {
+        miner_address = params["address"].GetString();
+    }
+
+    // Get best block info
+    uint256 prev_hash = blockchain.GetBestBlockHash();
+    uint64_t height = blockchain.GetBestHeight() + 1;
+    uint64_t timestamp = static_cast<uint64_t>(time(nullptr));
+
+    // Get difficulty bits from best block
+    auto best_block_result = blockchain.GetBestBlock();
+    uint32_t bits = 0x1d00ffff;  // Default difficulty bits
+    if (best_block_result.IsOk()) {
+        bits = best_block_result.value->header.bits;
+    }
+
+    // Calculate block reward
+    uint64_t block_reward = GetBlockReward(height);
+
+    // Get transactions from mempool (sorted by fee, max 1000)
+    auto& mempool = blockchain.GetMempool();
+    auto txs = mempool.GetTransactionsForMining(1000);
+
+    // Calculate total fees (fee calculation requires UTXO set access)
+    uint64_t total_fees = 0;
+    (void)txs;  // Suppress unused warning for now
+
+    // Create coinbase transaction (requires miner public key)
+    // For template, we'll create a placeholder
+    std::vector<Transaction> block_txs;
+
+    // Add mempool transactions
+    block_txs.insert(block_txs.end(), txs.begin(), txs.end());
+
+    // Build response
+    std::map<std::string, JSONValue> result;
+    result["version"] = JSONValue(static_cast<int64_t>(1));
+    result["previousblockhash"] = JSONValue(Uint256ToHex(prev_hash));
+    result["height"] = JSONValue(static_cast<int64_t>(height));
+    result["bits"] = JSONValue(std::to_string(bits));
+    result["curtime"] = JSONValue(static_cast<int64_t>(timestamp));
+    result["coinbasevalue"] = JSONValue(static_cast<int64_t>(block_reward + total_fees));
+
+    // Add transactions
+    std::vector<JSONValue> tx_array;
+    for (const auto& tx : block_txs) {
+        std::map<std::string, JSONValue> tx_obj;
+        tx_obj["txid"] = JSONValue(Uint256ToHex(tx.GetHash()));
+        tx_obj["size"] = JSONValue(static_cast<int64_t>(tx.GetSerializedSize()));
+        tx_array.push_back(JSONValue(tx_obj));
+    }
+    result["transactions"] = JSONValue(tx_array);
+    result["target"] = JSONValue(Uint256ToHex(uint256()));  // Placeholder target
+
+    return JSONValue(result);
 }
 
-JSONValue MiningRPC::submitblock(const JSONValue&, Blockchain&) {
-    // TODO: Implement block submission
-    throw std::runtime_error("Not implemented yet");
+JSONValue MiningRPC::submitblock(const JSONValue& params, Blockchain& blockchain) {
+    // Expect block data as hex string in params
+    if (!params.IsArray() || params.Size() == 0) {
+        throw std::runtime_error("Block data required as first parameter");
+    }
+
+    std::string block_hex = params[0].GetString();
+
+    // Convert hex to bytes
+    auto block_data_result = HexToBytes(block_hex);
+    if (!block_data_result.IsOk()) {
+        std::map<std::string, JSONValue> error;
+        error["error"] = JSONValue("Invalid hex data");
+        return JSONValue(error);
+    }
+
+    // Deserialize block
+    auto block_result = Block::Deserialize(*block_data_result.value);
+    if (!block_result.IsOk()) {
+        std::map<std::string, JSONValue> error;
+        error["error"] = JSONValue("Failed to deserialize block: " + block_result.error);
+        return JSONValue(error);
+    }
+
+    Block block = *block_result.value;
+
+    // Add block to blockchain
+    auto add_result = blockchain.AddBlock(block);
+    if (!add_result.IsOk()) {
+        std::map<std::string, JSONValue> error;
+        error["error"] = JSONValue("Failed to add block: " + add_result.error);
+        return JSONValue(error);
+    }
+
+    // Return success (null for success in Bitcoin RPC)
+    return JSONValue();
 }
 
 JSONValue MiningRPC::generatetoaddress(const JSONValue&, Blockchain&) {
