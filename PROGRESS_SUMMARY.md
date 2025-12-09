@@ -3,7 +3,7 @@
 **Last Updated**: December 9, 2025
 **Version**: 1.0.0-alpha
 **C++ Standard**: C++23 (ISO/IEC 14882:2023)
-**Current Status**: **96% Complete** (Phases 1-10 Complete)
+**Current Status**: **97% Complete** (Phases 1-10 Complete)
 
 **See also**: [10-Year Roadmap](ROADMAP.md)
 
@@ -11,7 +11,7 @@
 
 ## 📊 Current Status
 
-### ✅ Completed Phases (96%)
+### ✅ Completed Phases (97%)
 
 - **Phase 1**: Core Blockchain ✅ (100%)
 - **Phase 2**: Validation ✅ (100%)
@@ -68,17 +68,17 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 ---
 
-## 📝 Outstanding TODO Items (32)
+## 📝 Outstanding TODO Items (27)
 
-### Core Blockchain (3 items)
-1. **SIGHASH-based transaction signing** ([transaction.cpp:187](src/blockchain/transaction.cpp:187))
-   - Implement SIGHASH_ALL, SIGHASH_NONE, SIGHASH_SINGLE logic
-   - Support ANYONECANPAY modifier
-   - Priority: HIGH | Est: 1 week
+### Core Blockchain (1 item - 2 completed ✅)
+1. ~~**SIGHASH-based transaction signing**~~ ✅ **COMPLETED** (Dec 9, 2025)
+   - ✅ Implemented SIGHASH_ALL, SIGHASH_NONE, SIGHASH_SINGLE logic
+   - ✅ Support ANYONECANPAY modifier
+   - Location: [transaction.cpp:186-256](src/blockchain/transaction.cpp:186)
 
-2. **SIGHASH-aware signature verification** ([transaction.cpp:202](src/blockchain/transaction.cpp:202))
-   - Verify signatures based on SIGHASH type
-   - Priority: HIGH | Est: 3 days
+2. ~~**SIGHASH-aware signature verification**~~ ✅ **COMPLETED** (Dec 9, 2025)
+   - ✅ Verify signatures based on SIGHASH type
+   - Location: [transaction.cpp:277-288](src/blockchain/transaction.cpp:277)
 
 3. **Base58Check serialization/deserialization** ([wallet.cpp:648-654](src/wallet/wallet.cpp:648))
    - For legacy Bitcoin address compatibility
@@ -126,22 +126,24 @@ Total: 100% passing (excluding wallet directory setup tests)
     - Sync headers faster during initial sync
     - Priority: HIGH | Est: 1 week
 
-### RPC Server (7 items)
-14. **HTTP Basic Auth verification** ([rpc.cpp:440](src/rpc/rpc.cpp:440))
-    - Implement authentication checks
-    - Priority: HIGH | Est: 2 days
+### RPC Server (4 items - 3 completed ✅)
+14. ~~**HTTP Basic Auth verification**~~ ✅ **COMPLETED** (Dec 9, 2025)
+    - ✅ Implement Base64 decoding and credential verification
+    - Location: [rpc.cpp:431-475](src/rpc/rpc.cpp:431)
 
-15. **Network hashrate calculation** ([rpc.cpp:751](src/rpc/rpc.cpp:751))
+15. **Network hashrate calculation** ([rpc.cpp:785](src/rpc/rpc.cpp:785))
     - Calculate from recent blocks
     - Priority: MEDIUM | Est: 2 days
 
-16. **Block template generation** ([rpc.cpp:757](src/rpc/rpc.cpp:757))
-    - Create mining block templates
-    - Priority: HIGH | Est: 1 week
+16. ~~**Block template generation**~~ ✅ **COMPLETED** (Dec 9, 2025)
+    - ✅ Create mining block templates with mempool transactions
+    - ✅ Include difficulty bits, block reward, and transaction fees
+    - Location: [rpc.cpp:790-848](src/rpc/rpc.cpp:790)
 
-17. **Block submission** ([rpc.cpp:762](src/rpc/rpc.cpp:762))
-    - Submit mined blocks to network
-    - Priority: HIGH | Est: 3 days
+17. ~~**Block submission**~~ ✅ **COMPLETED** (Dec 9, 2025)
+    - ✅ Submit mined blocks to network via RPC
+    - ✅ Hex decoding, deserialization, and blockchain integration
+    - Location: [rpc.cpp:850-886](src/rpc/rpc.cpp:850)
 
 18. **Mining to address (regtest)** ([rpc.cpp:767](src/rpc/rpc.cpp:767))
     - Generate blocks for testing
