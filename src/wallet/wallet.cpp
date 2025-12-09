@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2025 INTcoin Team (Neil Adamson)
- * SPDX-License-Identifier: MIT License
  * Wallet Implementation - HD Wallet with BIP32/BIP39/BIP44
  */
 
@@ -20,6 +19,9 @@
 #include <rocksdb/options.h>
 #include <rocksdb/slice.h>
 #include <rocksdb/utilities/backup_engine.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/kdf.h>
 
 using namespace intcoin;
 

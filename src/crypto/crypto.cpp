@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2025 INTcoin Team (Neil Adamson)
- * SPDX-License-Identifier: MIT License
  * Cryptography Implementation (Dilithium3 + Kyber768 + SHA3)
  */
 

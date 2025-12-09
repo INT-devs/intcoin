@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2025 INTcoin Team (Neil Adamson)
- * SPDX-License-Identifier: MIT License
  * Consensus Implementation (RandomX + Digishield V3)
  */
 

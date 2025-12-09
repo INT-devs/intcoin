@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2025 INTcoin Team (Neil Adamson)
- * SPDX-License-Identifier: MIT License
  * Quantum-Resistant Cryptography (Dilithium3 + Kyber768)
  */
 

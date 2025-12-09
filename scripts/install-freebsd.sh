@@ -1,7 +1,6 @@
 #!/usr/bin/env sh
 # INTcoin FreeBSD Installation Script
 # Copyright (c) 2025 INTcoin Team (Neil Adamson)
-# SPDX-License-Identifier: MIT License
 
 set -e  # Exit on error
 set -u  # Exit on undefined variable

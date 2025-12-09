@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # INTcoin Windows Cross-Compilation Script (Linux -> Windows)
 # Copyright (c) 2025 INTcoin Team (Neil Adamson)
-# SPDX-License-Identifier: MIT License
 
 set -e  # Exit on error
 set -u  # Exit on undefined variable
