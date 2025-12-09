@@ -163,6 +163,9 @@ set(INTCOIN_CORE_SOURCES
     # Mining
     src/mining/mining.cpp
 
+    # Mining Pool
+    src/pool/pool.cpp
+
     # Block Explorer
     src/explorer/explorer.cpp
 
