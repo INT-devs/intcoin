@@ -23,7 +23,7 @@
 ---
 
 **Network**: INTCOIN (INT)
-**Total Supply**: ~420 Billion INT
+**Total Supply**: 221 Trillion INT
 **Progress**: ✅ **100% Feature Complete**
 **Last Updated**: December 10, 2025
 
@@ -72,10 +72,10 @@ INTcoin is a quantum-resistant cryptocurrency designed for long-term security in
 | **Ticker** | INT |
 | **Base Unit** | INT |
 | **Sub Unit** | INTS (1 INT = 1,000,000 INTS) |
-| **Total Supply** | ~420,000,000,000 INT (~420 Billion) |
-| **Initial Block Reward** | 105,113.636 INT |
+| **Total Supply** | 221,000,000,000,000 INT (221 Trillion) |
+| **Initial Block Reward** | 105,113,636 INT |
 | **Block Time** | 2 minutes (120 seconds) |
-| **Halving Interval** | 2,102,400 blocks (~8 years) |
+| **Halving Interval** | 1,051,200 blocks (~4 years) |
 | **Difficulty Adjustment** | Every block (Digishield V3) |
 | **PoW Algorithm** | RandomX (ASIC-resistant) |
 | **Signature Algorithm** | Dilithium3 (ML-DSA-65, NIST Level 3) |
