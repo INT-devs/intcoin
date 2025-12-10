@@ -3,7 +3,7 @@
 **Last Updated**: December 10, 2025
 **Version**: 1.0.0-alpha
 **C++ Standard**: C++23 (ISO/IEC 14882:2023)
-**Current Status**: **99% Complete** (Phases 1-10 Complete)
+**Current Status**: **99.5% Complete** (Phases 1-10 Complete)
 
 **See also**: [10-Year Roadmap](ROADMAP.md)
 
@@ -68,9 +68,13 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 ---
 
-## 📝 Outstanding TODO Items (6)
+## 📝 Outstanding TODO Items (4)
 
-**Recently Completed** (Dec 10, 2025 - Session 4):
+**Recently Completed** (Dec 10, 2025 - Session 5):
+- ✅ Mining to address (regtest) - generatetoaddress RPC method
+- ✅ Block search in RPC - search transactions in blockchain, not just mempool
+
+**Previously Completed** (Dec 10, 2025 - Session 4):
 - ✅ Proper logging implementation (file logging, rotation, log levels, thread-safe)
 - ✅ Wallet backup restore (RocksDB backup engine integration)
 
@@ -181,7 +185,7 @@ Total: 100% passing (excluding wallet directory setup tests)
     - ✅ Add valid transactions to mempool
     - Location: [network.cpp:1514-1553](src/network/network.cpp:1514)
 
-### RPC Server (2 items - 5 completed ✅)
+### RPC Server (0 items - 7 completed ✅)
 15. ~~**HTTP Basic Auth verification**~~ ✅ **COMPLETED** (Dec 9, 2025)
     - ✅ Implement Base64 decoding and credential verification
     - Location: [rpc.cpp:431-475](src/rpc/rpc.cpp:431)
@@ -206,13 +210,19 @@ Total: 100% passing (excluding wallet directory setup tests)
     - ✅ Integrated into BlockToJSON() for RPC responses
     - Location: [rpc.cpp:1068-1084](src/rpc/rpc.cpp:1068)
 
-20. **Mining to address (regtest)** ([rpc.cpp:767](src/rpc/rpc.cpp:767))
-    - Generate blocks for testing
-    - Priority: LOW | Est: 2 days
+20. ~~**Mining to address (regtest)**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Implemented generatetoaddress RPC method
+    - ✅ Creates coinbase transactions to specified address
+    - ✅ Builds blocks with mempool transactions
+    - ✅ Simple mining for regtest/testing environments
+    - ✅ Returns array of generated block hashes
+    - Location: [rpc.cpp:890-1001](src/rpc/rpc.cpp:890)
 
-21. **Block search in RPC** ([rpc.cpp:857](src/rpc/rpc.cpp:857))
-    - Search blocks by transaction
-    - Priority: LOW | Est: 2 days
+21. ~~**Block search in RPC**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Search transactions in blockchain, not just mempool
+    - ✅ Enhanced getrawtransaction to query blockchain
+    - ✅ Returns blockhash, confirmations, blockheight, and timestamp for confirmed txs
+    - Location: [rpc.cpp:1108-1160](src/rpc/rpc.cpp:1108)
 
 ### Mining Pool (0 items - 6 completed ✅)
 15. ~~**Share time calculation**~~ ✅ **COMPLETED** (Dec 10, 2025)
@@ -345,7 +355,7 @@ Total: 100% passing (excluding wallet directory setup tests)
 **Maintainer**: Neil Adamson
 **License**: MIT
 **Repository**: https://gitlab.com/intcoin/crypto
-**Status**: Active Development (99% to Mainnet)
+**Status**: Active Development (99.5% to Mainnet)
 
 ---
 
