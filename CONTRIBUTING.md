@@ -407,11 +407,10 @@ New to the project? Look for issues labeled `good-first-issue`:
 
 Need something challenging? Check `high-priority` labels:
 
-- Wallet encryption implementation
-- GETHEADERS protocol handling
-- Mining pool Stratum JSON parsing
 - Performance optimizations
-- Security audit preparation
+- Community code review
+- Test coverage improvements
+- Documentation enhancements
 
 ### Help Wanted
 
@@ -420,7 +419,7 @@ Community expertise needed on `help-wanted` issues:
 - Cross-platform testing (Windows 11, FreeBSD)
 - Hardware wallet integration (Ledger, Trezor)
 - Mobile wallet development (separate projects)
-- Security audit and penetration testing
+- Community security reviews and penetration testing
 
 ---
 

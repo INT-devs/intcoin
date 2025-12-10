@@ -297,7 +297,7 @@ Flow:
 
 ### Medium-term (v1.0.0-rc)
 1. Comprehensive testing (unit + integration)
-2. Security audit
+2. Community security review
 3. Performance optimization
 4. Complete API documentation
 5. User guides and tutorials

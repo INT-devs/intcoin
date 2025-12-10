@@ -109,8 +109,8 @@ PURPOSES. USERS SHOULD BE AWARE THAT:
 3. The Lightning Network implementation is in foundation stage and may not be
    suitable for production use without further development.
 
-4. This software has not undergone a third-party security audit. Use at your
-   own risk for production deployments.
+4. This software is open source and relies on community security review. Users
+   should conduct their own security assessment before production deployments.
 
 ================================================================================
 Export Compliance
