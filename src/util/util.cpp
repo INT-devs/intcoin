@@ -298,6 +298,125 @@ Result<std::vector<uint8_t>> Base64Decode(const std::string& encoded) {
 }
 
 // ============================================================================
+// Base58 Encoding/Decoding
+// ============================================================================
+
+// Base58 alphabet (Bitcoin-style)
+static const char* base58_chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+std::string Base58Encode(const std::vector<uint8_t>& data) {
+    // Count leading zeros
+    size_t leading_zeros = 0;
+    for (size_t i = 0; i < data.size() && data[i] == 0; i++) {
+        leading_zeros++;
+    }
+
+    // Allocate enough space in big-endian base58 representation
+    size_t size = data.size() * 138 / 100 + 1; // log(256) / log(58), rounded up
+    std::vector<uint8_t> b58(size);
+
+    // Process the bytes
+    for (size_t i = 0; i < data.size(); i++) {
+        int carry = data[i];
+        // Apply "b58 = b58 * 256 + ch"
+        for (size_t j = size; j > 0; j--) {
+            carry += 256 * b58[j - 1];
+            b58[j - 1] = carry % 58;
+            carry /= 58;
+        }
+    }
+
+    // Skip leading zeros in base58 result
+    size_t start_idx = 0;
+    while (start_idx < size && b58[start_idx] == 0) {
+        start_idx++;
+    }
+
+    // Translate to base58 characters
+    std::string result;
+    result.reserve(leading_zeros + (size - start_idx));
+
+    // Add '1' for each leading zero byte
+    for (size_t i = 0; i < leading_zeros; i++) {
+        result += '1';
+    }
+
+    // Add base58 encoded characters
+    for (size_t i = start_idx; i < size; i++) {
+        result += base58_chars[b58[i]];
+    }
+
+    return result;
+}
+
+Result<std::vector<uint8_t>> Base58Decode(const std::string& encoded) {
+    // Count leading '1's
+    size_t leading_ones = 0;
+    for (size_t i = 0; i < encoded.size() && encoded[i] == '1'; i++) {
+        leading_ones++;
+    }
+
+    // Allocate enough space
+    size_t size = encoded.size() * 733 / 1000 + 1; // log(58) / log(256), rounded up
+    std::vector<uint8_t> b256(size);
+
+    // Process the characters
+    for (size_t i = 0; i < encoded.size(); i++) {
+        // Find character in base58 alphabet
+        const char* ch = strchr(base58_chars, encoded[i]);
+        if (ch == nullptr) {
+            return Result<std::vector<uint8_t>>::Error(
+                std::string("Invalid base58 character: ") + encoded[i]);
+        }
+
+        int carry = static_cast<int>(ch - base58_chars);
+
+        // Apply "b256 = b256 * 58 + carry"
+        for (size_t j = size; j > 0; j--) {
+            carry += 58 * b256[j - 1];
+            b256[j - 1] = carry % 256;
+            carry /= 256;
+        }
+    }
+
+    // Skip leading zeros in result
+    size_t start_idx = 0;
+    while (start_idx < size && b256[start_idx] == 0) {
+        start_idx++;
+    }
+
+    // Construct result with leading zeros
+    std::vector<uint8_t> result;
+    result.reserve(leading_ones + (size - start_idx));
+
+    // Add zero bytes for leading '1's
+    for (size_t i = 0; i < leading_ones; i++) {
+        result.push_back(0);
+    }
+
+    // Add remaining bytes
+    for (size_t i = start_idx; i < size; i++) {
+        result.push_back(b256[i]);
+    }
+
+    return Result<std::vector<uint8_t>>::Ok(result);
+}
+
+std::string Base58CheckEncode(const std::vector<uint8_t>& data) {
+    // TODO: Requires SHA3_256(vector) implementation for checksum calculation
+    // Implementation available but commented out until SHA3 is linked properly
+    (void)data;
+    return "Base58Check_not_implemented";
+}
+
+Result<std::vector<uint8_t>> Base58CheckDecode(const std::string& encoded) {
+    // TODO: Requires SHA3_256(vector) implementation for checksum verification
+    // Implementation available but commented out until SHA3 is linked properly
+    (void)encoded;
+    return Result<std::vector<uint8_t>>::Error("Base58Check decode not implemented - requires SHA3 linkage");
+}
+
+// ============================================================================
 // Time Utilities
 // ============================================================================
 

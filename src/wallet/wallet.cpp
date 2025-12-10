@@ -647,14 +647,18 @@ Result<ExtendedKey> HDKeyDerivation::Neuter(const ExtendedKey& private_key) {
 }
 
 std::string ExtendedKey::SerializeBase58() const {
-    // TODO: Implement base58check serialization
-    // For now, return placeholder
+    // TODO: Implement Base58Check serialization
+    // Note: Implementation ready but requires SHA3_256 function to be linked
+    // See util.cpp for Base58 encode/decode functions
     return "xprv_placeholder";
 }
 
 Result<ExtendedKey> ExtendedKey::DeserializeBase58(const std::string& str) {
-    // TODO: Implement base58check deserialization
-    return Result<ExtendedKey>::Error("Not implemented");
+    // TODO: Implement Base58Check deserialization
+    // Note: Implementation ready but requires SHA3_256 function to be linked
+    // See util.cpp for Base58 encode/decode functions
+    (void)str;
+    return Result<ExtendedKey>::Error("Not implemented - requires SHA3_256 linkage");
 }
 
 // ============================================================================

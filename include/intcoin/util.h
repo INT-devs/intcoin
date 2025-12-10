@@ -57,6 +57,18 @@ std::string Base64Encode(const std::vector<uint8_t>& data);
 /// Base64 decode
 Result<std::vector<uint8_t>> Base64Decode(const std::string& encoded);
 
+/// Base58 encode
+std::string Base58Encode(const std::vector<uint8_t>& data);
+
+/// Base58 decode
+Result<std::vector<uint8_t>> Base58Decode(const std::string& encoded);
+
+/// Base58Check encode (with checksum)
+std::string Base58CheckEncode(const std::vector<uint8_t>& data);
+
+/// Base58Check decode (verify checksum)
+Result<std::vector<uint8_t>> Base58CheckDecode(const std::string& encoded);
+
 /// Bech32 encode
 std::string Bech32Encode(const std::string& hrp,
                         const std::vector<uint8_t>& data);
