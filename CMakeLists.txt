@@ -152,6 +152,9 @@ set(INTCOIN_CORE_SOURCES
     # Network
     src/network/network.cpp
 
+    # Privacy & Anonymous Networking
+    src/privacy/privacy.cpp
+
     # Machine Learning
     src/ml/ml.cpp
 
@@ -292,6 +295,13 @@ if(BUILD_FAUCET)
     target_link_libraries(intcoin-faucet intcoin_core ${ROCKSDB_LIB})
     install(TARGETS intcoin-faucet DESTINATION bin)
 endif()
+
+# Genesis Block Miner Tool (development/testing)
+find_library(ROCKSDB_LIB rocksdb REQUIRED)
+add_executable(mine_genesis
+    tools/mine_genesis.cpp
+)
+target_link_libraries(mine_genesis intcoin_core ${ROCKSDB_LIB})
 
 # Block Explorer
 # if(BUILD_EXPLORER)

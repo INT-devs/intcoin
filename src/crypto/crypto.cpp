@@ -625,6 +625,314 @@ std::string PublicKeyToAddress(const PublicKey& pubkey) {
 }
 
 // ============================================================================
+// Enhanced Dilithium Functions
+// ============================================================================
+
+Result<void> DilithiumCrypto::BatchVerify(
+        const std::vector<std::vector<uint8_t>>& messages,
+        const std::vector<Signature>& signatures,
+        const std::vector<PublicKey>& public_keys) {
+
+    // Check all vectors have the same size
+    if (messages.size() != signatures.size() || messages.size() != public_keys.size()) {
+        return Result<void>::Error("Batch verify: vector sizes must match");
+    }
+
+    if (messages.empty()) {
+        return Result<void>::Error("Batch verify: empty input");
+    }
+
+    // Verify each signature individually
+    // Note: True batch verification would use optimized algorithms,
+    // but Dilithium doesn't support batch verification natively
+    for (size_t i = 0; i < messages.size(); ++i) {
+        auto result = Verify(messages[i], signatures[i], public_keys[i]);
+        if (result.IsError()) {
+            return Result<void>::Error("Batch verify failed at index " + std::to_string(i) +
+                                      ": " + result.error);
+        }
+    }
+
+    return Result<void>::Ok();
+}
+
+uint64_t DilithiumCrypto::GetPublicKeyFingerprint(const PublicKey& key) {
+    // Hash the public key
+    std::vector<uint8_t> key_bytes(key.begin(), key.end());
+    uint256 hash = SHA3::Hash(key_bytes);
+
+    // Return first 8 bytes as uint64_t (little-endian)
+    uint64_t fingerprint = 0;
+    for (size_t i = 0; i < 8; ++i) {
+        fingerprint |= (static_cast<uint64_t>(hash[i]) << (i * 8));
+    }
+
+    return fingerprint;
+}
+
+std::vector<uint8_t> DilithiumCrypto::CompressPublicKey(const PublicKey& key) {
+    // For Dilithium, we can't truly compress the key due to lattice structure
+    // Instead, we return a hash-based identifier (32 bytes instead of 1952)
+    std::vector<uint8_t> key_bytes(key.begin(), key.end());
+    uint256 hash = SHA3::Hash(key_bytes);
+    return std::vector<uint8_t>(hash.begin(), hash.end());
+}
+
+Result<PublicKey> DilithiumCrypto::DecompressPublicKey(const std::vector<uint8_t>& compressed) {
+    // Decompression requires a lookup table/database
+    // This is a placeholder - real implementation would query a key database
+    return Result<PublicKey>::Error("Key decompression requires database lookup (not implemented)");
+}
+
+// ============================================================================
+// Enhanced SHA3 Functions
+// ============================================================================
+
+std::array<uint8_t, SHA3_512_DIGEST_SIZE> SHA3::Hash512(const std::vector<uint8_t>& data) {
+    return Hash512(data.data(), data.size());
+}
+
+std::array<uint8_t, SHA3_512_DIGEST_SIZE> SHA3::Hash512(const uint8_t* data, size_t len) {
+    std::array<uint8_t, SHA3_512_DIGEST_SIZE> digest;
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if (!ctx) {
+        throw std::runtime_error("Failed to create EVP_MD_CTX for SHA3-512");
+    }
+
+    if (EVP_DigestInit_ex(ctx, EVP_sha3_512(), nullptr) != 1) {
+        EVP_MD_CTX_free(ctx);
+        throw std::runtime_error("Failed to initialize SHA3-512");
+    }
+
+    if (EVP_DigestUpdate(ctx, data, len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        throw std::runtime_error("Failed to update SHA3-512");
+    }
+
+    unsigned int digest_len = 0;
+    if (EVP_DigestFinal_ex(ctx, digest.data(), &digest_len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        throw std::runtime_error("Failed to finalize SHA3-512");
+    }
+
+    EVP_MD_CTX_free(ctx);
+    return digest;
+}
+
+std::vector<uint8_t> SHA3::SHAKE256(const std::vector<uint8_t>& data, size_t output_len) {
+    return SHAKE256(data.data(), data.size(), output_len);
+}
+
+std::vector<uint8_t> SHA3::SHAKE256(const uint8_t* data, size_t data_len, size_t output_len) {
+    std::vector<uint8_t> output(output_len);
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if (!ctx) {
+        throw std::runtime_error("Failed to create EVP_MD_CTX for SHAKE256");
+    }
+
+    if (EVP_DigestInit_ex(ctx, EVP_shake256(), nullptr) != 1) {
+        EVP_MD_CTX_free(ctx);
+        throw std::runtime_error("Failed to initialize SHAKE256");
+    }
+
+    if (EVP_DigestUpdate(ctx, data, data_len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        throw std::runtime_error("Failed to update SHAKE256");
+    }
+
+    if (EVP_DigestFinalXOF(ctx, output.data(), output_len) != 1) {
+        EVP_MD_CTX_free(ctx);
+        throw std::runtime_error("Failed to finalize SHAKE256");
+    }
+
+    EVP_MD_CTX_free(ctx);
+    return output;
+}
+
+std::array<uint8_t, SHA3_512_DIGEST_SIZE> SHA3::HMAC512(
+        const std::vector<uint8_t>& key,
+        const std::vector<uint8_t>& message) {
+
+    std::array<uint8_t, SHA3_512_DIGEST_SIZE> result;
+
+    // HMAC implementation: HMAC(K, m) = H((K' ⊕ opad) || H((K' ⊕ ipad) || m))
+    constexpr size_t BLOCK_SIZE = 136; // SHA3-512 block size
+    constexpr uint8_t IPAD = 0x36;
+    constexpr uint8_t OPAD = 0x5C;
+
+    // Prepare key
+    std::vector<uint8_t> key_prime(BLOCK_SIZE, 0);
+    if (key.size() > BLOCK_SIZE) {
+        auto hash = Hash512(key);
+        std::copy(hash.begin(), hash.end(), key_prime.begin());
+    } else {
+        std::copy(key.begin(), key.end(), key_prime.begin());
+    }
+
+    // Inner hash: H((K' ⊕ ipad) || m)
+    std::vector<uint8_t> inner_data;
+    inner_data.reserve(BLOCK_SIZE + message.size());
+    for (size_t i = 0; i < BLOCK_SIZE; ++i) {
+        inner_data.push_back(key_prime[i] ^ IPAD);
+    }
+    inner_data.insert(inner_data.end(), message.begin(), message.end());
+    auto inner_hash = Hash512(inner_data);
+
+    // Outer hash: H((K' ⊕ opad) || inner_hash)
+    std::vector<uint8_t> outer_data;
+    outer_data.reserve(BLOCK_SIZE + SHA3_512_DIGEST_SIZE);
+    for (size_t i = 0; i < BLOCK_SIZE; ++i) {
+        outer_data.push_back(key_prime[i] ^ OPAD);
+    }
+    outer_data.insert(outer_data.end(), inner_hash.begin(), inner_hash.end());
+    result = Hash512(outer_data);
+
+    return result;
+}
+
+// ============================================================================
+// PQC Security Utilities
+// ============================================================================
+
+PQCUtils::AlgorithmInfo PQCUtils::GetDilithiumInfo() {
+    AlgorithmInfo info;
+    info.name = "Dilithium3";
+    info.nist_name = "ML-DSA-65";
+    info.security_level = PQCSecurityLevel::LEVEL_3;
+    info.public_key_size = DILITHIUM3_PUBLICKEYBYTES;
+    info.secret_key_size = DILITHIUM3_SECRETKEYBYTES;
+    info.signature_size = DILITHIUM3_BYTES;
+    info.ciphertext_size = 0; // Not applicable for signatures
+    return info;
+}
+
+PQCUtils::AlgorithmInfo PQCUtils::GetKyberInfo() {
+    AlgorithmInfo info;
+    info.name = "Kyber768";
+    info.nist_name = "ML-KEM-768";
+    info.security_level = PQCSecurityLevel::LEVEL_3;
+    info.public_key_size = KYBER768_PUBLICKEYBYTES;
+    info.secret_key_size = KYBER768_SECRETKEYBYTES;
+    info.signature_size = 0; // Not applicable for KEMs
+    info.ciphertext_size = KYBER768_CIPHERTEXTBYTES;
+    return info;
+}
+
+double PQCUtils::BenchmarkSignature(size_t iterations) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Generate a test keypair
+    auto keypair_result = DilithiumCrypto::GenerateKeyPair();
+    if (keypair_result.IsError()) {
+        return 0.0;
+    }
+    auto keypair = *keypair_result.value;
+
+    // Test message
+    std::vector<uint8_t> message(32, 0x42);
+
+    // Benchmark signing
+    for (size_t i = 0; i < iterations; ++i) {
+        auto sig_result = DilithiumCrypto::Sign(message, keypair.secret_key);
+        if (sig_result.IsError()) {
+            return 0.0;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    return (duration > 0) ? (iterations * 1000.0 / duration) : 0.0;
+}
+
+double PQCUtils::BenchmarkVerification(size_t iterations) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Generate a test keypair and signature
+    auto keypair_result = DilithiumCrypto::GenerateKeyPair();
+    if (keypair_result.IsError()) {
+        return 0.0;
+    }
+    auto keypair = *keypair_result.value;
+
+    std::vector<uint8_t> message(32, 0x42);
+    auto sig_result = DilithiumCrypto::Sign(message, keypair.secret_key);
+    if (sig_result.IsError()) {
+        return 0.0;
+    }
+    auto signature = *sig_result.value;
+
+    // Benchmark verification
+    for (size_t i = 0; i < iterations; ++i) {
+        auto verify_result = DilithiumCrypto::Verify(message, signature, keypair.public_key);
+        if (verify_result.IsError()) {
+            return 0.0;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    return (duration > 0) ? (iterations * 1000.0 / duration) : 0.0;
+}
+
+double PQCUtils::BenchmarkEncapsulation(size_t iterations) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Generate a test keypair
+    auto keypair_result = KyberCrypto::GenerateKeyPair();
+    if (keypair_result.IsError()) {
+        return 0.0;
+    }
+    auto keypair = *keypair_result.value;
+
+    // Benchmark encapsulation
+    for (size_t i = 0; i < iterations; ++i) {
+        auto encap_result = KyberCrypto::Encapsulate(keypair.public_key);
+        if (encap_result.IsError()) {
+            return 0.0;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    return (duration > 0) ? (iterations * 1000.0 / duration) : 0.0;
+}
+
+double PQCUtils::BenchmarkDecapsulation(size_t iterations) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Generate a test keypair and ciphertext
+    auto keypair_result = KyberCrypto::GenerateKeyPair();
+    if (keypair_result.IsError()) {
+        return 0.0;
+    }
+    auto keypair = *keypair_result.value;
+
+    auto encap_result = KyberCrypto::Encapsulate(keypair.public_key);
+    if (encap_result.IsError()) {
+        return 0.0;
+    }
+    auto [shared_secret, ciphertext] = *encap_result.value;
+
+    // Benchmark decapsulation
+    for (size_t i = 0; i < iterations; ++i) {
+        auto decap_result = KyberCrypto::Decapsulate(ciphertext, keypair.secret_key);
+        if (decap_result.IsError()) {
+            return 0.0;
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    return (duration > 0) ? (iterations * 1000.0 / duration) : 0.0;
+}
+
+// ============================================================================
 // Random Number Generation
 // ============================================================================
 

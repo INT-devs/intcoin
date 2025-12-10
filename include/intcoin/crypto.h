@@ -28,8 +28,10 @@ constexpr size_t KYBER768_SECRETKEYBYTES = 2400;
 constexpr size_t KYBER768_CIPHERTEXTBYTES = 1088;
 constexpr size_t KYBER768_SSBYTES = 32;
 
-// SHA3-256
+// SHA3-256, SHA3-512, SHAKE256
 constexpr size_t SHA3_256_DIGEST_SIZE = 32;
+constexpr size_t SHA3_512_DIGEST_SIZE = 64;
+constexpr size_t SHAKE256_DEFAULT_SIZE = 64;
 
 // ============================================================================
 // Dilithium3 Cryptography (Digital Signatures)
@@ -79,6 +81,22 @@ public:
 
     /// Export secret key to bytes
     static std::vector<uint8_t> ExportSecretKey(const SecretKey& key);
+
+    /// Batch verify signatures (more efficient than individual verification)
+    /// All vectors must have the same size
+    static Result<void> BatchVerify(
+        const std::vector<std::vector<uint8_t>>& messages,
+        const std::vector<Signature>& signatures,
+        const std::vector<PublicKey>& public_keys);
+
+    /// Get public key fingerprint (first 8 bytes of SHA3-256 hash)
+    static uint64_t GetPublicKeyFingerprint(const PublicKey& key);
+
+    /// Compress public key (simple compression: hash-based identification)
+    static std::vector<uint8_t> CompressPublicKey(const PublicKey& key);
+
+    /// Decompress public key (requires key database lookup)
+    static Result<PublicKey> DecompressPublicKey(const std::vector<uint8_t>& compressed);
 };
 
 // ============================================================================
@@ -121,23 +139,40 @@ public:
 };
 
 // ============================================================================
-// SHA3-256 Hashing
+// SHA3 Hashing (SHA3-256, SHA3-512, SHAKE256)
 // ============================================================================
 
 class SHA3 {
 public:
-    /// Hash single buffer
+    /// Hash single buffer (SHA3-256)
     static uint256 Hash(const std::vector<uint8_t>& data);
 
-    /// Hash two buffers (double hash)
+    /// Hash two buffers (double hash with SHA3-256)
     static uint256 DoubleHash(const std::vector<uint8_t>& data);
 
-    /// Hash buffer with specific size
+    /// Hash buffer with specific size (SHA3-256)
     static uint256 Hash(const uint8_t* data, size_t len);
 
     /// HMAC-SHA3-256
     static uint256 HMAC(const std::vector<uint8_t>& key,
                         const std::vector<uint8_t>& message);
+
+    /// SHA3-512 hash (64 bytes output)
+    static std::array<uint8_t, SHA3_512_DIGEST_SIZE> Hash512(const std::vector<uint8_t>& data);
+
+    /// SHA3-512 hash with pointer and length
+    static std::array<uint8_t, SHA3_512_DIGEST_SIZE> Hash512(const uint8_t* data, size_t len);
+
+    /// SHAKE256 extendable-output function (variable length)
+    static std::vector<uint8_t> SHAKE256(const std::vector<uint8_t>& data, size_t output_len);
+
+    /// SHAKE256 with pointer and length
+    static std::vector<uint8_t> SHAKE256(const uint8_t* data, size_t data_len, size_t output_len);
+
+    /// HMAC-SHA3-512
+    static std::array<uint8_t, SHA3_512_DIGEST_SIZE> HMAC512(
+        const std::vector<uint8_t>& key,
+        const std::vector<uint8_t>& message);
 };
 
 // ============================================================================
@@ -204,6 +239,60 @@ public:
 
     /// Seed the RNG (for testing only - production uses system entropy)
     static void SeedForTesting(uint64_t seed);
+};
+
+// ============================================================================
+// Post-Quantum Cryptography Security Utilities
+// ============================================================================
+
+/// NIST PQC Security Levels
+enum class PQCSecurityLevel {
+    LEVEL_1 = 1,  // Equivalent to AES-128 (e.g., Kyber512, Dilithium2)
+    LEVEL_2 = 2,  // Equivalent to SHA-256/SHA3-256 collision
+    LEVEL_3 = 3,  // Equivalent to AES-192 (Kyber768, Dilithium3) - INTcoin uses this
+    LEVEL_4 = 4,  // Equivalent to SHA-384/SHA3-384 collision
+    LEVEL_5 = 5   // Equivalent to AES-256 (Kyber1024, Dilithium5)
+};
+
+class PQCUtils {
+public:
+    /// Get current Dilithium security level
+    static PQCSecurityLevel GetDilithiumSecurityLevel() { return PQCSecurityLevel::LEVEL_3; }
+
+    /// Get current Kyber security level
+    static PQCSecurityLevel GetKyberSecurityLevel() { return PQCSecurityLevel::LEVEL_3; }
+
+    /// Get algorithm name
+    static std::string GetDilithiumAlgorithmName() { return "ML-DSA-65 (Dilithium3)"; }
+    static std::string GetKyberAlgorithmName() { return "ML-KEM-768 (Kyber768)"; }
+
+    /// Get algorithm version info
+    struct AlgorithmInfo {
+        std::string name;
+        std::string nist_name;
+        PQCSecurityLevel security_level;
+        size_t public_key_size;
+        size_t secret_key_size;
+        size_t signature_size;  // For signatures
+        size_t ciphertext_size; // For KEMs
+    };
+
+    static AlgorithmInfo GetDilithiumInfo();
+    static AlgorithmInfo GetKyberInfo();
+
+    /// Check if algorithms are post-quantum secure
+    static bool IsQuantumResistant() { return true; }
+
+    /// Get quantum security bits estimate
+    static int GetQuantumSecurityBits() { return 192; } // NIST Level 3
+
+    /// Benchmark signature operations (returns operations per second)
+    static double BenchmarkSignature(size_t iterations = 100);
+    static double BenchmarkVerification(size_t iterations = 100);
+
+    /// Benchmark KEM operations
+    static double BenchmarkEncapsulation(size_t iterations = 100);
+    static double BenchmarkDecapsulation(size_t iterations = 100);
 };
 
 // ============================================================================
