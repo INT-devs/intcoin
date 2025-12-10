@@ -83,3 +83,6 @@ scan_results.*
 *_audit.html
 security/
 audits/
+# Ignore all files in security_audit/ except the script
+security_audit/*
+!security_audit/run_audit.sh
