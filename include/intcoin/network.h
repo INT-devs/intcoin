@@ -443,11 +443,13 @@ public:
 
     /// Handle BLOCK message
     static Result<void> HandleBlock(Peer& peer,
-                                   const std::vector<uint8_t>& payload);
+                                   const std::vector<uint8_t>& payload,
+                                   class Blockchain* blockchain);
 
     /// Handle TX message
     static Result<void> HandleTx(Peer& peer,
-                                const std::vector<uint8_t>& payload);
+                                const std::vector<uint8_t>& payload,
+                                class Blockchain* blockchain);
 
     /// Handle GETHEADERS message
     static Result<void> HandleGetHeaders(Peer& peer,

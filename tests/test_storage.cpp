@@ -506,9 +506,9 @@ void TestChainStateSerializationDeserialization() {
 
     // Deserialize
     auto result = ChainState::Deserialize(serialized);
+    assert(result.IsOk());
     ChainState deserialized = *result.value;
-    (void)deserialized;
-    ChainState deserialized = *result.value;
+    (void)deserialized;  // Used in assertions below
 
     // Verify
     assert(deserialized.best_block_hash == original.best_block_hash);
@@ -539,10 +539,10 @@ void TestBlockIndexSerializationDeserialization() {
     std::cout << "✓ BlockIndex serialized: " << serialized.size() << " bytes\n";
 
     // Deserialize
-    BlockIndex deserialized = *result.value;
-    (void)deserialized;
+    auto result = BlockIndex::Deserialize(serialized);
     assert(result.IsOk());
     BlockIndex deserialized = *result.value;
+    (void)deserialized;  // Used in assertions below
 
     // Verify
     assert(deserialized.hash == original.hash);

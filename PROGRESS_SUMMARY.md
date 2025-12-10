@@ -1,9 +1,9 @@
 # INTcoin Progress Summary
 
-**Last Updated**: December 9, 2025
+**Last Updated**: December 10, 2025
 **Version**: 1.0.0-alpha
 **C++ Standard**: C++23 (ISO/IEC 14882:2023)
-**Current Status**: **97% Complete** (Phases 1-10 Complete)
+**Current Status**: **98% Complete** (Phases 1-10 Complete)
 
 **See also**: [10-Year Roadmap](ROADMAP.md)
 
@@ -68,9 +68,14 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 ---
 
-## 📝 Outstanding TODO Items (10)
+## 📝 Outstanding TODO Items (8)
 
-**Recently Completed** (Dec 10, 2025 - Session 2):
+**Recently Completed** (Dec 10, 2025 - Session 3):
+- ✅ Enhanced block validation (parent checks, transaction validation, merkle root verification)
+- ✅ Enhanced transaction validation (TxValidator integration, mempool addition)
+- ✅ Fixed test compilation issues (test_storage.cpp, test_network.cpp, test_wallet.cpp)
+
+**Previously Completed** (Dec 10, 2025 - Session 2):
 - ✅ Block duplicate detection (prevent re-downloading existing blocks)
 - ✅ Transaction duplicate detection (mempool checks)
 - ✅ Confirmation calculation (block height and confirmations)
@@ -131,7 +136,7 @@ Total: 100% passing (excluding wallet directory setup tests)
    - Restore from encrypted backup file
    - Priority: MEDIUM | Est: 3 days
 
-### Networking (2 items - 4 completed ✅)
+### Networking (0 items - 6 completed ✅)
 9. ~~**GETHEADERS message handling**~~ ✅ **COMPLETED** (Dec 10, 2025)
    - ✅ Implemented header-first synchronization
    - ✅ Block locator logic to find common ancestor
@@ -153,13 +158,22 @@ Total: 100% passing (excluding wallet directory setup tests)
     - ✅ Prevents duplicate transaction requests
     - Location: [network.cpp:1222-1238](src/network/network.cpp:1222)
 
-13. **Additional block validation** ([network.cpp:1417](src/network/network.cpp:1417))
-    - Enhanced block validation rules
-    - Priority: MEDIUM | Est: 3 days
+13. ~~**Additional block validation**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Check if block already exists before processing
+    - ✅ Verify block connects to chain (parent block exists)
+    - ✅ Validate all transactions in block
+    - ✅ Verify merkle root matches calculated root
+    - ✅ Add validated block to blockchain
+    - ✅ Orphan block handling placeholder (future enhancement)
+    - Location: [network.cpp:1434-1477](src/network/network.cpp:1434)
 
-14. **Additional transaction validation** ([network.cpp:1467](src/network/network.cpp:1467))
-    - Enhanced transaction validation rules
-    - Priority: MEDIUM | Est: 3 days
+14. ~~**Additional transaction validation**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Check for duplicate transactions in mempool
+    - ✅ Full validation using TxValidator (structure, signatures, UTXOs, fees)
+    - ✅ Verify inputs exist and are unspent
+    - ✅ Check for double-spending
+    - ✅ Add valid transactions to mempool
+    - Location: [network.cpp:1514-1553](src/network/network.cpp:1514)
 
 ### RPC Server (2 items - 5 completed ✅)
 15. ~~**HTTP Basic Auth verification**~~ ✅ **COMPLETED** (Dec 9, 2025)
@@ -321,8 +335,8 @@ Total: 100% passing (excluding wallet directory setup tests)
 **Maintainer**: Neil Adamson
 **License**: MIT
 **Repository**: https://gitlab.com/intcoin/crypto
-**Status**: Active Development (96% to Mainnet)
+**Status**: Active Development (98% to Mainnet)
 
 ---
 
-*Last Updated: December 9, 2025*
+*Last Updated: December 10, 2025*

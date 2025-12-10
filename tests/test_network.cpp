@@ -94,7 +94,6 @@ void test_network_message() {
 
     uint32_t checksum = NetworkMessage::CalculateChecksum(payload);
     (void)checksum;
-    uint32_t checksum = NetworkMessage::CalculateChecksum(payload);
     assert(checksum == msg.checksum);
 
     std::cout << "  ✓ NetworkMessage tests passed\n";
@@ -117,10 +116,10 @@ void test_inv_vector() {
     assert(serialized.size() == 36); // 4 + 32 bytes
 
     // Test deserialization
-    auto inv2 = result.value.value();
-    (void)inv2;
+    auto result = InvVector::Deserialize(serialized);
     assert(result.IsOk());
     auto inv2 = result.value.value();
+    (void)inv2;
     assert(inv2.type == InvType::BLOCK);
     assert(inv2.hash == test_hash);
 
@@ -144,9 +143,9 @@ void test_seed_nodes() {
 
     // Verify the hardcoded seed nodes
     // DNS: seed-uk.international-coin.org -> 51.155.97.192
-    (void)found_51; (void)found_74;
     bool found_51 = false;
     bool found_74 = false;
+    (void)found_51; (void)found_74;  // Used in assertions below
 
     for (const auto& seed : seeds) {
         std::string addr_str = seed.ToString();
@@ -165,16 +164,14 @@ void test_seed_nodes() {
 }
 
 void test_service_flags() {
-    uint64_t flags = static_cast<uint64_t>(ServiceFlags::NODE_NETWORK);
-    (void)flags;
-
     // Test NODE_NETWORK flag
     uint64_t flags = static_cast<uint64_t>(ServiceFlags::NODE_NETWORK);
-    (void)combined;
+    (void)flags;
 
     // Test multiple flags (bitwise operations)
     uint64_t combined = static_cast<uint64_t>(ServiceFlags::NODE_NETWORK) |
                         static_cast<uint64_t>(ServiceFlags::NODE_BLOOM);
+    (void)combined;  // Used in assertions below
     assert(combined == 5); // 1 | 4 = 5
 
     std::cout << "  ✓ Service flag tests passed\n";
@@ -239,10 +236,10 @@ void test_inv_message_creation() {
     block_inv.hash.fill(0xAB);
 
     auto block_payload = block_inv.Serialize();
-    (void)type_val;
 
     // Verify type is BLOCK
     uint32_t type_val = 0;
+    (void)type_val;  // Used in assertions below
     for (int i = 0; i < 4; i++) {
         type_val |= (static_cast<uint32_t>(block_payload[i]) << (i * 8));
     }

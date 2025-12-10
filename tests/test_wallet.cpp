@@ -49,6 +49,7 @@ void test_mnemonic_generation() {
     const auto& wordlist = Mnemonic::GetWordList();
     for (const auto& word : words_12) {
         bool found = false;
+        (void)found;
         for (const auto& valid_word : wordlist) {
             if (word == valid_word) {
                 found = true;
@@ -143,6 +144,7 @@ void test_master_key_generation() {
     assert(master_result.IsOk());
 
     ExtendedKey master = master_result.value.value();
+    (void)master;
     assert(master.depth == 0);
     assert(master.parent_fingerprint == 0);
     assert(master.child_index == 0);
@@ -175,6 +177,7 @@ void test_child_key_derivation() {
     auto child_0h_result = HDKeyDerivation::DeriveChild(master, 0, true);
     assert(child_0h_result.IsOk());
     ExtendedKey child_0h = child_0h_result.value.value();
+    (void)child_0h;
 
     assert(child_0h.depth == 1);
     assert(child_0h.child_index == (0 | 0x80000000));
@@ -185,6 +188,7 @@ void test_child_key_derivation() {
     auto child_0_result = HDKeyDerivation::DeriveChild(master, 0, false);
     assert(child_0_result.IsOk());
     ExtendedKey child_0 = child_0_result.value.value();
+    (void)child_0;
 
     assert(child_0.depth == 1);
     assert(child_0.child_index == 0);
@@ -195,6 +199,7 @@ void test_child_key_derivation() {
     // Derive multiple children
     auto child_1 = HDKeyDerivation::DeriveChild(master, 1, false).value.value();
     auto child_2 = HDKeyDerivation::DeriveChild(master, 2, false).value.value();
+    (void)child_1; (void)child_2;
 
     // All children should be different
     assert(child_0.private_key != child_1.private_key);
@@ -202,6 +207,7 @@ void test_child_key_derivation() {
 
     // Same parent + index should produce same child (deterministic)
     auto child_0_again = HDKeyDerivation::DeriveChild(master, 0, false).value.value();
+    (void)child_0_again;
     assert(child_0.private_key == child_0_again.private_key);
 
     std::cout << "  ✓ Child key derivation tests passed\n";
@@ -261,17 +267,20 @@ void test_full_path_derivation() {
     assert(key_result.IsOk());
 
     ExtendedKey derived = key_result.value.value();
+    (void)derived;
     assert(derived.depth == 5);
     assert(derived.private_key.has_value());
     assert(derived.public_key.has_value());
 
     // Same path should produce same key
     auto derived_2 = HDKeyDerivation::DerivePath(master, path).value.value();
+    (void)derived_2;
     assert(derived.private_key == derived_2.private_key);
 
     // Different paths should produce different keys
     auto path_2 = DerivationPath::Parse("m/44'/2210'/0'/0/1").value.value();
     auto derived_different = HDKeyDerivation::DerivePath(master, path_2).value.value();
+    (void)derived_different;
     assert(derived.private_key != derived_different.private_key);
 
     std::cout << "  ✓ Full path derivation tests passed\n";
@@ -312,6 +321,7 @@ void test_wallet_creation() {
     auto info_result = wallet.GetInfo();
     assert(info_result.IsOk());
     auto info = info_result.value.value();
+    (void)info;
     assert(info.address_count >= config.keypool_size);  // At least keypool size
 
     // Get addresses
@@ -322,6 +332,7 @@ void test_wallet_creation() {
 
     // Verify addresses are valid Bech32
     for (const auto& addr : addresses) {
+        (void)addr;
         assert(addr.address.substr(0, 4) == "int1");
         assert(addr.public_key.size() == DILITHIUM3_PUBLICKEYBYTES);
     }
@@ -371,6 +382,7 @@ void test_wallet_load() {
     auto addresses = addrs_result.value.value();
 
     bool found_first_address = false;
+    (void)found_first_address;
     for (const auto& addr : addresses) {
         if (addr.address == first_address) {
             found_first_address = true;
@@ -429,6 +441,7 @@ void test_address_generation() {
     auto all_addresses = addrs_result.value.value();
 
     bool found_addr1 = false, found_addr2 = false, found_change = false;
+    (void)found_addr1; (void)found_addr2; (void)found_change;
     for (const auto& addr : all_addresses) {
         if (addr.address == addr1) {
             found_addr1 = true;

@@ -1390,7 +1390,8 @@ Result<void> MessageHandler::HandleGetData(Peer& peer,
 }
 
 Result<void> MessageHandler::HandleBlock(Peer& peer,
-                                        const std::vector<uint8_t>& payload) {
+                                        const std::vector<uint8_t>& payload,
+                                        Blockchain* blockchain) {
     // BLOCK message format:
     // - block (Block): full block data
 
@@ -1408,7 +1409,7 @@ Result<void> MessageHandler::HandleBlock(Peer& peer,
     auto block = result.value.value();
 
     // Calculate block hash
-    [[maybe_unused]] auto block_hash = block.GetHash();
+    auto block_hash = block.GetHash();
 
     // Basic validation
     // 1. Verify block structure and PoW
@@ -1430,25 +1431,55 @@ Result<void> MessageHandler::HandleBlock(Peer& peer,
         return Result<void>::Error("Block timestamp too far in the future");
     }
 
-    // TODO: Additional validation:
-    // - Check if we already have this block
-    // - Verify block connects to the chain (check prev_block_hash)
-    // - If parent is missing, add to orphan pool
-    // - Validate all transactions in the block
-    // - Check merkle root matches transactions
-    // - Add to blockchain if valid
+    // Additional validation (if blockchain is available)
+    if (blockchain) {
+        // 3. Check if we already have this block
+        if (blockchain->HasBlock(block_hash)) {
+            // Already have this block, no need to process
+            return Result<void>::Ok();
+        }
 
-    // For now, we just acknowledge receipt
-    // In a full implementation, we would:
-    // 1. Add block to blockchain
-    // 2. Relay to other peers
-    // 3. Remove transactions from mempool
+        // 4. Verify block connects to the chain (check prev_block_hash exists)
+        if (!block.IsGenesis() && !blockchain->HasBlock(block.header.prev_block_hash)) {
+            // Parent block is missing
+            // TODO: Implement orphan pool to handle out-of-order blocks
+            // For now, we just reject blocks with missing parents
+            return Result<void>::Error("Parent block not found - orphan block handling not yet implemented");
+        }
+
+        // 5. Validate all transactions in the block
+        auto tx_validate_result = block.VerifyTransactions();
+        if (tx_validate_result.IsError()) {
+            peer.IncreaseBanScore(50);
+            return Result<void>::Error("Block transaction validation failed: " + tx_validate_result.error);
+        }
+
+        // 6. Check merkle root matches transactions
+        uint256 calculated_merkle_root = block.CalculateMerkleRoot();
+        if (calculated_merkle_root != block.header.merkle_root) {
+            peer.IncreaseBanScore(100); // Severe violation
+            return Result<void>::Error("Merkle root mismatch");
+        }
+
+        // 7. Add to blockchain if valid
+        auto add_result = blockchain->AddBlock(block);
+        if (add_result.IsError()) {
+            peer.IncreaseBanScore(20);
+            return Result<void>::Error("Failed to add block to blockchain: " + add_result.error);
+        }
+
+        // Successfully added block
+        // TODO: In a full implementation, we would:
+        // 1. Relay block to other peers
+        // 2. Remove transactions from mempool
+    }
 
     return Result<void>::Ok();
 }
 
 Result<void> MessageHandler::HandleTx(Peer& peer,
-                                     const std::vector<uint8_t>& payload) {
+                                     const std::vector<uint8_t>& payload,
+                                     Blockchain* blockchain) {
     // TX message format:
     // - transaction (Transaction): full transaction data
 
@@ -1466,7 +1497,7 @@ Result<void> MessageHandler::HandleTx(Peer& peer,
     auto tx = result.value.value();
 
     // Calculate transaction hash
-    [[maybe_unused]] auto tx_hash = tx.GetHash();
+    auto tx_hash = tx.GetHash();
 
     // Basic validation
     // 1. Check transaction format
@@ -1480,15 +1511,38 @@ Result<void> MessageHandler::HandleTx(Peer& peer,
         return Result<void>::Error("Transaction has no outputs");
     }
 
-    // TODO: Additional validation:
-    // - Verify signatures
-    // - Check inputs exist and are unspent
-    // - Verify input amounts >= output amounts
-    // - Check for double-spending
-    // - Add to mempool if valid
-    // - Relay to other peers
+    // Additional validation (if blockchain is available)
+    if (blockchain) {
+        // 2. Check for duplicate transaction in mempool
+        auto& mempool = blockchain->GetMempool();
+        auto mempool_txs = mempool.GetAllTransactions();
+        for (const auto& mempool_tx : mempool_txs) {
+            if (mempool_tx.GetHash() == tx_hash) {
+                // Already have this transaction in mempool
+                return Result<void>::Ok();
+            }
+        }
 
-    // For now, we just acknowledge receipt
+        // 3. Validate transaction completely using TxValidator
+        // This checks: structure, signatures, inputs exist, UTXOs, amounts, fees, double-spending
+        TxValidator validator(*blockchain);
+        auto validate_result = validator.Validate(tx);
+        if (validate_result.IsError()) {
+            peer.IncreaseBanScore(20);
+            return Result<void>::Error("Transaction validation failed: " + validate_result.error);
+        }
+
+        // 4. Add to mempool if valid
+        auto add_result = mempool.AddTransaction(tx);
+        if (add_result.IsError()) {
+            // Not a ban-worthy offense - might be policy-related
+            return Result<void>::Error("Failed to add transaction to mempool: " + add_result.error);
+        }
+
+        // Successfully added transaction to mempool
+        // TODO: Relay transaction to other peers
+    }
+
     return Result<void>::Ok();
 }
 
