@@ -309,8 +309,8 @@
 
 **Week 1 (Mar 1-7)**: Final Preparations
 1. [ ] Deploy mainnet seed nodes (5+ globally distributed)
-2. [ ] Deploy block explorers (mainnet.intcoin.org)
-3. [ ] Deploy official mining pools (pool.intcoin.org)
+2. [ ] Deploy block explorers (mainnet.international-coin.org)
+3. [ ] Deploy official mining pools (pool.international-coin.org)
 4. [ ] Final testing on staging environment
 5. [ ] Emergency response team formation
 

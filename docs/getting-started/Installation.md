@@ -508,7 +508,7 @@ intcoind --port=2220
 
 ## Getting Help
 
-- **Documentation**: https://intcoin.org/docs
+- **Documentation**: https://international-coin.org/docs
 - **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/
 - **Issues**: https://github.com/intcoin/intcoin/issues
 - **Discord**: https://discord.gg/7p4VmS2z

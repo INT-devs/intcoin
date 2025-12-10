@@ -189,7 +189,7 @@ Consider:
 ```bash
 ./intcoin-miner \\
     --pool \\
-    --pool-host=pool.intcoin.org \\
+    --pool-host=pool.international-coin.org \\
     --pool-port=3333 \\
     --pool-user=yourworker \\
     --pool-pass=x \\

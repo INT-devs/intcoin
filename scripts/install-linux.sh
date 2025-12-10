@@ -294,7 +294,7 @@ setup_systemd() {
 [Unit]
 Description=INTcoin Daemon
 After=network.target
-Documentation=https://code.intcoin.org/intcoin/core
+Documentation=https://code.international-coin.org/intcoin/core
 
 [Service]
 Type=forking
@@ -376,7 +376,7 @@ print_summary() {
     echo "  intcoin-cli getblockchaininfo"
     echo "  intcoin-cli help"
     echo ""
-    echo -e "${YELLOW}Documentation: https://code.intcoin.org/intcoin/core/wiki${NC}"
+    echo -e "${YELLOW}Documentation: https://code.international-coin.org/intcoin/core/wiki${NC}"
     echo ""
 }
 

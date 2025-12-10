@@ -373,7 +373,7 @@ print_summary() {
     echo "  3. Configure intcoin.conf"
     echo "  4. Run intcoind.exe"
     echo ""
-    echo -e "${YELLOW}Documentation: https://code.intcoin.org/intcoin/core/wiki${NC}"
+    echo -e "${YELLOW}Documentation: https://code.international-coin.org/intcoin/core/wiki${NC}"
     echo ""
 }
 

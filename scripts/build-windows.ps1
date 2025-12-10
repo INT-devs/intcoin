@@ -332,7 +332,7 @@ function Print-Summary {
     Write-Host "  3. Configure: Edit %APPDATA%\INTcoin\intcoin.conf"
     Write-Host "  4. Start daemon: intcoind.exe"
     Write-Host ""
-    Write-Host "Documentation: https://code.intcoin.org/intcoin/core/wiki" -ForegroundColor Yellow
+    Write-Host "Documentation: https://code.international-coin.org/intcoin/core/wiki" -ForegroundColor Yellow
     Write-Host ""
 }
 

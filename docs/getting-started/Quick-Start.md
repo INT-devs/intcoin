@@ -93,7 +93,7 @@ intcoin-qt --testnet
 intcoin-faucet --testnet --port=2215
 
 # Or visit public faucet
-# Open browser: http://testnet-faucet.intcoin.org
+# Open browser: http://testnet-faucet.international-coin.org
 # Enter your address and request coins
 ```
 
@@ -144,7 +144,7 @@ intcoin-miner --solo \
 ```bash
 # Mine to pool
 intcoin-miner --pool \
-  --pool-url=stratum+tcp://pool.intcoin.org:3333 \
+  --pool-url=stratum+tcp://pool.international-coin.org:3333 \
   --pool-user=int1qyour_address \
   --threads=8
 ```
@@ -310,10 +310,10 @@ cp ~/.intcoin/wallets/wallet.dat ~/backup/
 
 ### Support
 
-- **Documentation**: https://intcoin.org/docs
+- **Documentation**: https://international-coin.org/docs
 - **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/
 - **Issues**: https://github.com/intcoin/intcoin/issues
-- **Email**: support@intcoin.org
+- **Email**: support@international-coin.org
 
 ## Next Steps
 

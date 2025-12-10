@@ -475,7 +475,7 @@ intcoin-cli sendtoaddress int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh 100.0
 intcoin-miner --threads 8 --address int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
 
 # Pool mining
-intcoin-miner --pool stratum+tcp://pool.intcoin.org:3333 --user your_address --pass x
+intcoin-miner --pool stratum+tcp://pool.international-coin.org:3333 --user your_address --pass x
 ```
 
 ### Lightning Network

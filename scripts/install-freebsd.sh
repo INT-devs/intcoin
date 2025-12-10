@@ -334,7 +334,7 @@ print_summary() {
     echo "  intcoin-cli getblockchaininfo"
     echo "  intcoin-cli help"
     echo ""
-    echo "Documentation: https://code.intcoin.org/intcoin/core/wiki"
+    echo "Documentation: https://code.international-coin.org/intcoin/core/wiki"
     echo ""
 }
 

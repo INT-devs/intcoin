@@ -46,7 +46,7 @@ A cryptocurrency faucet is a service that distributes small amounts of testnet c
    ```
 
 2. **Visit Faucet**
-   - Open: http://testnet-faucet.intcoin.org:2215
+   - Open: http://testnet-faucet.international-coin.org:2215
    - Paste your address in the form
    - Click "Request Testnet Coins"
 
@@ -559,7 +559,7 @@ intcoin-faucet \
 ```nginx
 server {
     listen 80;
-    server_name testnet-faucet.intcoin.org;
+    server_name testnet-faucet.international-coin.org;
 
     location / {
         proxy_pass http://127.0.0.1:2215;

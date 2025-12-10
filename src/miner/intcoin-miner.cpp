@@ -66,7 +66,7 @@ void print_usage() {
     std::cout << "  intcoin-miner -a int1qxyz... -t 4 --testnet\n";
     std::cout << "\n";
     std::cout << "  # Pool mining\n";
-    std::cout << "  intcoin-miner --pool --pool-host=pool.intcoin.org --pool-user=worker1\n";
+    std::cout << "  intcoin-miner --pool --pool-host=pool.international-coin.org --pool-user=worker1\n";
     std::cout << "\n";
 }
 
