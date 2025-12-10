@@ -531,7 +531,7 @@ intcoin-lightning closechannel <channel_id>
 ### Mainnet
 
 - **Website**: `https://international-coin.org`
-- **P2P**: `seed1.international-coin.org:2211`, `seed2.international-coin.org:2211`
+- **P2P**: `seed-uk.international-coin.org:2210`, `seed-us.international-coin.org:2210`
 - **RPC**: `rpc.international-coin.org:2212`
 - **Explorer**: `https://explorer.international-coin.org`
 - **Lightning**: Port 2213 (P2P), Port 2214 (RPC)
@@ -540,8 +540,8 @@ intcoin-lightning closechannel <channel_id>
 
 ### Testnet
 
-- **P2P**: `testnet1.international-coin.org:12211`, `testnet2.international-coin.org:12211`
-- **RPC**: `testrpc.international-coin.org:12212`
+- **P2P**: `test-uk.international-coin.org:2212`, `test-us.international-coin.org:2212`
+- **RPC**: `testrpc.international-coin.org:2213`
 - **Explorer**: `https://testnet-explorer.international-coin.org`
 - **Faucet**: `http://faucet.international-coin.org:8080`
 
@@ -758,7 +758,7 @@ Copyright (c) 2025 INTcoin Team (Neil Adamson)
 - **Issues**: https://gitlab.com/intcoin/crypto/-/issues
 - **Email**: team@international-coin.org
 - **Security**: security@international-coin.org
-- **Discord**: https://discord.gg/intcoin
+- **Discord**: https://discord.gg/7p4VmS2z
 - **Telegram**: https://t.me/intcoin_official
 - **X (Twitter)**: https://x.com/intcoin_crypto
 - **Reddit**: https://reddit.com/r/intcoin

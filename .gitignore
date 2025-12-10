@@ -69,3 +69,17 @@ ui_*.h
 
 # Logs
 *.log
+
+# Security audit reports (NEVER commit these!)
+security_audit.txt
+security_audit.md
+security_audit.html
+security-audit.*
+audit_report.*
+vulnerability_report.*
+scan_results.*
+*_audit.txt
+*_audit.md
+*_audit.html
+security/
+audits/
