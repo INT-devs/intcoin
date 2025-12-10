@@ -244,7 +244,7 @@ sudo make install
 
 ### Using Pre-built Binaries
 
-1. Download the latest release from the [Releases page](https://github.com/intcoin/intcoin/releases)
+1. Download the latest release from the [Releases page](https://gitlab.com/intcoin/crypto/-/releases)
 2. Extract the ZIP file
 3. Run `intcoind.exe` from the extracted folder
 
@@ -334,7 +334,7 @@ chmod +x cross-build-windows.sh
 ### Clone Repository
 
 ```bash
-git clone https://github.com/intcoin/intcoin.git
+git clone https://gitlab.com/intcoin/crypto.git
 cd intcoin
 ```
 
@@ -510,7 +510,7 @@ intcoind --port=2220
 
 - **Documentation**: https://international-coin.org/docs
 - **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/
-- **Issues**: https://github.com/intcoin/intcoin/issues
+- **Issues**: https://gitlab.com/intcoin/crypto/-/issues
 - **Discord**: https://discord.gg/7p4VmS2z
 - **Telegram**: https://t.me/INTcoin_official
 - **X (Twitter)**: https://x.com/INTcoin_team

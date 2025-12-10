@@ -346,7 +346,7 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 ---
 
-## 🌍 Community & Governance
+## 🌍 Community & Development
 
 ### Community Growth
 - Discord: https://discord.gg/7p4VmS2z
@@ -354,11 +354,11 @@ Total: 100% passing (excluding wallet directory setup tests)
 - X (Twitter): https://x.com/INTcoin_team
 - GitLab: https://gitlab.com/intcoin/crypto
 
-### Governance Model (2027+)
-- Community proposals
-- On-chain voting
-- Treasury allocation
-- Protocol upgrades
+### Development Model
+- Open-source community development
+- Pure Proof-of-Work consensus (no staking)
+- Decentralized mining (ASIC-resistant RandomX)
+- Protocol upgrades via node consensus
 
 ---
 
