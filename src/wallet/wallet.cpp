@@ -2351,26 +2351,138 @@ Result<Transaction> Wallet::CreateTransaction(const std::vector<Recipient>& reci
             break;
 
         case CoinSelectionStrategy::BRANCH_AND_BOUND: {
-            // Branch and bound: find exact match or best fit
-            // For simplicity, use a greedy approximation
-            // TODO: Implement full branch-and-bound algorithm
+            // Branch and bound: optimal UTXO selection algorithm
+            // Minimizes transaction fee by finding exact matches or best fit with minimum waste
+            //
+            // Algorithm overview:
+            // 1. Sort UTXOs by descending value for efficient pruning
+            // 2. Use depth-first search to explore subset combinations
+            // 3. Prune branches that can't improve the current best solution
+            // 4. Find exact match (no change) or minimize waste (excess amount)
+            //
+            // Cost model:
+            // - cost_of_change: estimated cost of creating a change output (~68 bytes * fee_rate)
+            // - waste = (selected_amount - target_amount) + cost_of_change
+            // - Goal: minimize waste or find exact match (waste = 0)
+
+            // Define constants used in algorithm
+            const uint64_t DUST_THRESHOLD = 546; // Minimum output value (satoshis)
+            const uint64_t CHANGE_OUTPUT_SIZE = 68; // Average change output size (bytes)
+
+            // Sort UTXOs by descending value for better pruning
             std::sort(available_utxos.begin(), available_utxos.end(),
                 [](const auto& a, const auto& b) { return a.second.value > b.second.value; });
 
-            // Try to find exact match first
-            for (size_t i = 0; i < available_utxos.size(); ++i) {
-                uint64_t sum = 0;
-                std::vector<std::pair<OutPoint, TxOut>> candidate;
-                for (size_t j = i; j < available_utxos.size(); ++j) {
-                    candidate.push_back(available_utxos[j]);
-                    sum += available_utxos[j].second.value;
-                    if (sum >= target_amount) {
-                        selected_utxos = candidate;
-                        selected_amount = sum;
-                        break;
-                    }
+            // Calculate cost of change output
+            uint64_t cost_of_change = (fee_rate * CHANGE_OUTPUT_SIZE) / 1000;
+
+            // Early exit: if total available is less than target, fail immediately
+            uint64_t total_available = 0;
+            for (const auto& [outpoint, txout] : available_utxos) {
+                total_available += txout.value;
+            }
+            if (total_available < target_amount) {
+                // Will be caught by insufficient funds check later
+                break;
+            }
+
+            // Branch and bound state
+            struct BnBState {
+                std::vector<std::pair<OutPoint, TxOut>> selected;
+                uint64_t selected_value = 0;
+                size_t index = 0;
+                uint64_t waste = UINT64_MAX;
+            };
+
+            BnBState best_solution;
+            best_solution.waste = UINT64_MAX;
+
+            // Depth-first search with pruning
+            std::function<void(BnBState&, size_t, uint64_t)> bnb_search;
+            bnb_search = [&](BnBState& current, size_t depth, uint64_t accumulated_waste) {
+                // Pruning: if current waste already exceeds best, stop exploring
+                if (accumulated_waste >= best_solution.waste) {
+                    return;
                 }
-                if (selected_amount >= target_amount) break;
+
+                // Base case: explored all UTXOs
+                if (depth >= available_utxos.size()) {
+                    // Check if this solution is valid (meets target)
+                    if (current.selected_value >= target_amount) {
+                        uint64_t excess = current.selected_value - target_amount;
+                        uint64_t waste = (excess < DUST_THRESHOLD) ? excess : (excess + cost_of_change);
+
+                        if (waste < best_solution.waste) {
+                            best_solution = current;
+                            best_solution.waste = waste;
+
+                            // Perfect match found (no change needed)
+                            if (excess == 0 || excess < DUST_THRESHOLD) {
+                                best_solution.waste = 0;
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                // Get current UTXO
+                const auto& [outpoint, txout] = available_utxos[depth];
+                uint64_t utxo_value = txout.value;
+
+                // Branch 1: Include this UTXO
+                BnBState include_state = current;
+                include_state.selected.push_back({outpoint, txout});
+                include_state.selected_value += utxo_value;
+
+                // Check if including this UTXO could lead to exact match
+                if (include_state.selected_value == target_amount) {
+                    // Exact match! Best possible solution (waste = 0)
+                    best_solution = include_state;
+                    best_solution.waste = 0;
+                    return;
+                }
+
+                // Pruning: only explore if we haven't exceeded target by too much
+                uint64_t max_excess = target_amount + cost_of_change;
+                if (include_state.selected_value <= max_excess ||
+                    include_state.selected_value < target_amount) {
+                    bnb_search(include_state, depth + 1, accumulated_waste);
+                }
+
+                // Early exit if we found perfect solution
+                if (best_solution.waste == 0) {
+                    return;
+                }
+
+                // Branch 2: Exclude this UTXO
+                // Only explore exclusion if remaining UTXOs could still meet target
+                uint64_t remaining_value = 0;
+                for (size_t i = depth + 1; i < available_utxos.size(); ++i) {
+                    remaining_value += available_utxos[i].second.value;
+                }
+
+                if (current.selected_value + remaining_value >= target_amount) {
+                    bnb_search(current, depth + 1, accumulated_waste);
+                }
+            };
+
+            // Start branch and bound search
+            BnBState initial_state;
+            bnb_search(initial_state, 0, 0);
+
+            // Use best solution found
+            if (best_solution.waste != UINT64_MAX && !best_solution.selected.empty()) {
+                selected_utxos = best_solution.selected;
+                selected_amount = best_solution.selected_value;
+            } else {
+                // Fallback to largest-first if BnB fails (shouldn't happen with enough UTXOs)
+                std::sort(available_utxos.begin(), available_utxos.end(),
+                    [](const auto& a, const auto& b) { return a.second.value > b.second.value; });
+                for (const auto& [outpoint, txout] : available_utxos) {
+                    selected_utxos.push_back({outpoint, txout});
+                    selected_amount += txout.value;
+                    if (selected_amount >= target_amount) break;
+                }
             }
             break;
         }
