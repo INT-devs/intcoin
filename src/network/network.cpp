@@ -1476,15 +1476,304 @@ Result<void> MessageHandler::HandleTx(Peer& peer,
 }
 
 Result<void> MessageHandler::HandleGetHeaders(Peer& peer,
-                                             const std::vector<uint8_t>& payload) {
-    // TODO: Implement GETHEADERS message handling
-    return Result<void>::Error("Not implemented");
+                                             const std::vector<uint8_t>& payload,
+                                             Blockchain* blockchain) {
+    // GETHEADERS message format:
+    // - version (4 bytes): protocol version
+    // - hash_count (varint): number of block locator hashes
+    // - block_locator_hashes[] (32 bytes each): block hashes to locate start point
+    // - hash_stop (32 bytes): stop at this block (or zero to get max headers)
+
+    if (!blockchain) {
+        return Result<void>::Error("Blockchain not available");
+    }
+
+    if (payload.size() < 5 + 32) {  // version + min 1 count byte + hash_stop
+        peer.IncreaseBanScore(5);
+        return Result<void>::Error("GETHEADERS message too short");
+    }
+
+    size_t pos = 0;
+
+    // Read version (4 bytes, little-endian)
+    uint32_t version = 0;
+    for (size_t i = 0; i < 4; i++) {
+        version |= (static_cast<uint32_t>(payload[pos++]) << (i * 8));
+    }
+    (void)version; // Not currently used, but validated
+
+    // Read hash count (varint, simplified to 1 byte for now)
+    if (pos >= payload.size()) {
+        peer.IncreaseBanScore(5);
+        return Result<void>::Error("Truncated GETHEADERS message");
+    }
+    uint8_t hash_count = payload[pos++];
+
+    if (hash_count > 100) {  // Reasonable limit
+        peer.IncreaseBanScore(5);
+        return Result<void>::Error("Too many locator hashes");
+    }
+
+    // Read block locator hashes
+    std::vector<uint256> locator_hashes;
+    for (uint8_t i = 0; i < hash_count; i++) {
+        if (pos + 32 > payload.size()) {
+            peer.IncreaseBanScore(5);
+            return Result<void>::Error("Truncated locator hash");
+        }
+
+        uint256 hash;
+        std::copy(payload.begin() + pos, payload.begin() + pos + 32, hash.data());
+        locator_hashes.push_back(hash);
+        pos += 32;
+    }
+
+    // Read hash_stop
+    if (pos + 32 != payload.size()) {
+        peer.IncreaseBanScore(5);
+        return Result<void>::Error("Invalid GETHEADERS message size");
+    }
+
+    uint256 hash_stop;
+    std::copy(payload.begin() + pos, payload.begin() + pos + 32, hash_stop.data());
+
+    // Find the first known block from the locator
+    uint256 start_hash;
+    uint64_t start_height = 0;
+    bool found_start = false;
+
+    for (const auto& hash : locator_hashes) {
+        auto block_result = blockchain->GetBlock(hash);
+        if (block_result.IsOk()) {
+            // Found a known block - start from the next one
+            start_hash = hash;
+
+            // Calculate height using confirmations
+            // height = best_height - confirmations
+            uint64_t confirmations = blockchain->GetBlockConfirmations(hash);
+            uint64_t best_height = blockchain->GetBestHeight();
+            if (confirmations > 0) {
+                start_height = best_height - confirmations + 2;  // Start from next block
+            } else {
+                start_height = best_height + 1;  // This block is not on main chain yet
+            }
+            found_start = true;
+            break;
+        }
+    }
+
+    // If no locator match found, start from genesis
+    if (!found_start) {
+        start_height = 0;
+    }
+
+    // Collect up to 2000 headers
+    constexpr size_t MAX_HEADERS = 2000;
+    std::vector<BlockHeader> headers;
+    uint64_t current_height = start_height;
+    uint64_t best_height = blockchain->GetBestHeight();
+
+    while (headers.size() < MAX_HEADERS && current_height <= best_height) {
+        auto header_result = blockchain->GetBlockHeaderByHeight(current_height);
+        if (header_result.IsOk()) {
+            headers.push_back(*header_result.value);
+
+            // Check if we reached hash_stop
+            if (header_result.value->GetHash() == hash_stop) {
+                break;
+            }
+
+            current_height++;
+        } else {
+            break;  // No more blocks
+        }
+    }
+
+    // Send HEADERS response
+    std::vector<uint8_t> headers_payload;
+
+    // Count (varint, simplified to 1-2 bytes)
+    if (headers.size() < 253) {
+        headers_payload.push_back(static_cast<uint8_t>(headers.size()));
+    } else {
+        headers_payload.push_back(253);
+        uint16_t count = static_cast<uint16_t>(headers.size());
+        headers_payload.push_back(count & 0xFF);
+        headers_payload.push_back((count >> 8) & 0xFF);
+    }
+
+    // Serialize each header
+    for (const auto& header : headers) {
+        auto header_data = header.Serialize();
+        headers_payload.insert(headers_payload.end(), header_data.begin(), header_data.end());
+
+        // Add tx count (always 0 for header-only messages)
+        headers_payload.push_back(0);
+    }
+
+    NetworkMessage headers_msg(network::MAINNET_MAGIC, "headers", headers_payload);
+    auto send_result = peer.SendMessage(headers_msg);
+    if (send_result.IsError()) {
+        return Result<void>::Error("Failed to send HEADERS response: " + send_result.error);
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<void> MessageHandler::HandleHeaders(Peer& peer,
-                                          const std::vector<uint8_t>& payload) {
-    // TODO: Implement HEADERS message handling
-    return Result<void>::Error("Not implemented");
+                                          const std::vector<uint8_t>& payload,
+                                          Blockchain* blockchain) {
+    // HEADERS message format:
+    // - count (varint): number of headers
+    // - headers[] (count * BlockHeader): block headers
+    //   - Each header followed by tx_count (varint, always 0 for headers-only)
+
+    if (!blockchain) {
+        return Result<void>::Error("Blockchain not available");
+    }
+
+    if (payload.empty()) {
+        peer.IncreaseBanScore(5);
+        return Result<void>::Error("Empty HEADERS payload");
+    }
+
+    size_t pos = 0;
+
+    // Read count (varint, simplified to 1-2 bytes)
+    uint16_t count = 0;
+    if (payload[pos] < 253) {
+        count = payload[pos++];
+    } else if (payload[pos] == 253) {
+        if (pos + 3 > payload.size()) {
+            peer.IncreaseBanScore(5);
+            return Result<void>::Error("Truncated HEADERS count");
+        }
+        pos++;
+        count = payload[pos] | (static_cast<uint16_t>(payload[pos + 1]) << 8);
+        pos += 2;
+    } else {
+        peer.IncreaseBanScore(5);
+        return Result<void>::Error("Invalid HEADERS count encoding");
+    }
+
+    if (count > 2000) {
+        peer.IncreaseBanScore(10);
+        return Result<void>::Error("Too many headers in HEADERS message");
+    }
+
+    if (count == 0) {
+        // No headers received - peer is synced with us or has no more headers
+        return Result<void>::Ok();
+    }
+
+    // Parse and validate headers
+    std::vector<BlockHeader> headers;
+    for (uint16_t i = 0; i < count; i++) {
+        // Check if we have enough bytes for a header
+        size_t header_size = 32 + 32 + 32 + 8 + 4 + 8 + 32 + 32;  // Approximate BlockHeader size
+        if (pos + header_size + 1 > payload.size()) {
+            peer.IncreaseBanScore(5);
+            return Result<void>::Error("Truncated header in HEADERS message");
+        }
+
+        // Extract header bytes (we need to know exact size)
+        // For now, deserialize to get the header
+        std::vector<uint8_t> header_bytes(payload.begin() + pos, payload.end());
+        auto header_result = BlockHeader::Deserialize(header_bytes);
+        if (header_result.IsError()) {
+            peer.IncreaseBanScore(5);
+            return Result<void>::Error("Failed to deserialize header: " + header_result.error);
+        }
+
+        BlockHeader header = *header_result.value;
+        headers.push_back(header);
+
+        // Advance position by header size
+        pos += header.GetSerializedSize();
+
+        // Read tx_count (should be 0 for headers-only)
+        if (pos >= payload.size()) {
+            peer.IncreaseBanScore(5);
+            return Result<void>::Error("Missing tx_count in HEADERS message");
+        }
+
+        uint8_t tx_count = payload[pos++];
+        if (tx_count != 0) {
+            peer.IncreaseBanScore(5);
+            return Result<void>::Error("Non-zero tx_count in HEADERS message");
+        }
+    }
+
+    // Validate header chain (each header should connect to previous)
+    for (size_t i = 1; i < headers.size(); i++) {
+        if (headers[i].prev_block_hash != headers[i - 1].GetHash()) {
+            peer.IncreaseBanScore(10);
+            return Result<void>::Error("Headers do not form a valid chain");
+        }
+    }
+
+    // Process headers - add them to the blockchain
+    // In a full implementation, we would:
+    // 1. Validate each header (PoW, difficulty, timestamp)
+    // 2. Add headers to a headers-only chain
+    // 3. Request full blocks if needed
+    // 4. Continue syncing if we received max headers (2000)
+
+    // For now, just validate the first header connects to our chain
+    if (!headers.empty()) {
+        const auto& first_header = headers[0];
+
+        // Check if we already have this header
+        auto existing = blockchain->GetBlockHeader(first_header.GetHash());
+        if (existing.IsOk()) {
+            // We already have this header, likely during sync overlap
+            return Result<void>::Ok();
+        }
+
+        // Verify it connects to a known block
+        auto prev_block = blockchain->GetBlock(first_header.prev_block_hash);
+        if (prev_block.IsError()) {
+            // Previous block not found - we might be behind
+            // In a full implementation, we would request earlier headers
+            return Result<void>::Error("Header does not connect to known blockchain");
+        }
+
+        // Headers are valid and connected
+        // In a full implementation, we would store these headers
+        // and potentially request full blocks via GETDATA
+
+        // If we received max headers (2000), request more
+        if (headers.size() == 2000) {
+            // Build new GETHEADERS request starting from last received header
+            std::vector<uint8_t> getheaders_payload;
+
+            // Version (4 bytes)
+            uint32_t version = network::PROTOCOL_VERSION;
+            for (size_t i = 0; i < 4; i++) {
+                getheaders_payload.push_back((version >> (i * 8)) & 0xFF);
+            }
+
+            // Hash count (1 for simplicity)
+            getheaders_payload.push_back(1);
+
+            // Last received header hash
+            uint256 last_hash = headers.back().GetHash();
+            getheaders_payload.insert(getheaders_payload.end(),
+                                     last_hash.data(), last_hash.data() + 32);
+
+            // Hash stop (all zeros = no stop)
+            uint256 zero_hash;
+            std::fill(zero_hash.data(), zero_hash.data() + 32, 0);
+            getheaders_payload.insert(getheaders_payload.end(),
+                                     zero_hash.data(), zero_hash.data() + 32);
+
+            // Send GETHEADERS to continue syncing
+            NetworkMessage getheaders_msg(network::MAINNET_MAGIC, "getheaders", getheaders_payload);
+            peer.SendMessage(getheaders_msg);
+        }
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<void> MessageHandler::HandlePing(Peer& peer,

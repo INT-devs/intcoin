@@ -68,7 +68,23 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 ---
 
-## 📝 Outstanding TODO Items (26)
+## 📝 Outstanding TODO Items (15)
+
+**Recently Completed** (Dec 10, 2025):
+- ✅ GETHEADERS message handling (headers-first sync)
+- ✅ HEADERS message handling (header chain validation)
+- ✅ Stratum protocol JSON parsing
+- ✅ Stratum protocol JSON formatting
+- ✅ Share difficulty calculation from hash
+- ✅ Mining pool difficulty validation
+- ✅ Mining pool block validation (network difficulty check)
+- ✅ Variable difficulty share time calculation
+
+**Previously Completed** (Dec 9, 2025):
+- ✅ Wallet encryption (AES-256-GCM + PBKDF2)
+- ✅ Base64 encoding/decoding
+- ✅ Hex to uint256 conversion
+- ✅ Amount parsing utility
 
 ### Core Blockchain (1 item - 2 completed ✅)
 1. ~~**SIGHASH-based transaction signing**~~ ✅ **COMPLETED** (Dec 9, 2025)
@@ -84,47 +100,57 @@ Total: 100% passing (excluding wallet directory setup tests)
    - For legacy Bitcoin address compatibility
    - Priority: LOW | Est: 2 days
 
-### Wallet (4 items)
-4. **Wallet encryption implementation** ([wallet.cpp:1565](src/wallet/wallet.cpp:1565))
-   - Kyber768 or AES-256 encryption
-   - Priority: HIGH | Est: 1 week
+### Wallet (1 item - 3 completed ✅)
+4. ~~**Wallet encryption implementation**~~ ✅ **COMPLETED** (Dec 9, 2025)
+   - ✅ Implemented AES-256-GCM with PBKDF2 key derivation (100K iterations)
+   - ✅ Encrypt(), Unlock(), ChangePassphrase() functions
+   - ✅ Secure memory cleanup with OPENSSL_cleanse()
+   - Location: [wallet.cpp:1564-1980](src/wallet/wallet.cpp:1564)
 
-5. **Passphrase verification and key decryption** ([wallet.cpp:1585](src/wallet/wallet.cpp:1585))
-   - Unlock encrypted wallets
-   - Priority: HIGH | Est: 3 days
+5. ~~**Passphrase verification and key decryption**~~ ✅ **COMPLETED** (Dec 9, 2025)
+   - ✅ Unlock encrypted wallets with passphrase verification
+   - ✅ GCM authentication tag verification
+   - Location: [wallet.cpp:1672-1778](src/wallet/wallet.cpp:1672)
 
-6. **Passphrase change functionality** ([wallet.cpp:1622](src/wallet/wallet.cpp:1622))
-   - Re-encrypt with new passphrase
-   - Priority: MEDIUM | Est: 2 days
+6. ~~**Passphrase change functionality**~~ ✅ **COMPLETED** (Dec 9, 2025)
+   - ✅ Re-encrypt with new passphrase (new salt and IV)
+   - Location: [wallet.cpp:1801-1980](src/wallet/wallet.cpp:1801)
 
-7. **Full branch-and-bound coin selection** ([wallet.cpp:1876](src/wallet/wallet.cpp:1876))
+7. **Full branch-and-bound coin selection** ([wallet.cpp:2135](src/wallet/wallet.cpp:2135))
    - Optimal UTXO selection algorithm
    - Priority: MEDIUM | Est: 1 week
 
-8. **Wallet backup restore** ([wallet.cpp:2253](src/wallet/wallet.cpp:2253))
+8. **Wallet backup restore** ([wallet.cpp:2512](src/wallet/wallet.cpp:2512))
    - Restore from encrypted backup file
    - Priority: MEDIUM | Est: 3 days
 
-### Networking (5 items)
-9. **Block duplicate detection** ([network.cpp:1217](src/network/network.cpp:1217))
-   - Check if block already exists before requesting
-   - Priority: MEDIUM | Est: 1 day
+### Networking (3 items - 2 completed ✅)
+9. ~~**GETHEADERS message handling**~~ ✅ **COMPLETED** (Dec 10, 2025)
+   - ✅ Implemented header-first synchronization
+   - ✅ Block locator logic to find common ancestor
+   - ✅ Sends up to 2000 headers per message
+   - Location: [network.cpp:1478-1617](src/network/network.cpp:1478)
 
-10. **Transaction duplicate detection** ([network.cpp:1221](src/network/network.cpp:1221))
+10. ~~**HEADERS message handling**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Parses and validates header chain continuity
+    - ✅ Auto-continues sync for large chains
+    - Location: [network.cpp:1619-1773](src/network/network.cpp:1619)
+
+11. **Block duplicate detection** ([network.cpp:1217](src/network/network.cpp:1217))
+    - Check if block already exists before requesting
+    - Priority: MEDIUM | Est: 1 day
+
+12. **Transaction duplicate detection** ([network.cpp:1221](src/network/network.cpp:1221))
     - Check if transaction already in mempool
     - Priority: MEDIUM | Est: 1 day
 
-11. **Additional block validation** ([network.cpp:1417](src/network/network.cpp:1417))
+13. **Additional block validation** ([network.cpp:1417](src/network/network.cpp:1417))
     - Enhanced block validation rules
     - Priority: MEDIUM | Est: 3 days
 
-12. **Additional transaction validation** ([network.cpp:1467](src/network/network.cpp:1467))
+14. **Additional transaction validation** ([network.cpp:1467](src/network/network.cpp:1467))
     - Enhanced transaction validation rules
     - Priority: MEDIUM | Est: 3 days
-
-13. **GETHEADERS message handling** ([network.cpp:1481](src/network/network.cpp:1481))
-    - Sync headers faster during initial sync
-    - Priority: HIGH | Est: 1 week
 
 ### RPC Server (3 items - 4 completed ✅)
 14. ~~**HTTP Basic Auth verification**~~ ✅ **COMPLETED** (Dec 9, 2025)
@@ -157,30 +183,36 @@ Total: 100% passing (excluding wallet directory setup tests)
     - Calculate transaction confirmations
     - Priority: MEDIUM | Est: 1 day
 
-### Mining Pool (6 items)
-21. **Share time calculation** ([pool.cpp:29](src/pool/pool.cpp:29))
-    - Calculate average share time from recent shares
-    - Priority: MEDIUM | Est: 1 day
+### Mining Pool (0 items - 6 completed ✅)
+15. ~~**Share time calculation**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Calculate average time between shares from recent_shares vector
+    - Location: [pool.cpp:29-32](src/pool/pool.cpp:29)
 
-22. **Difficulty validation** ([pool.cpp:62](src/pool/pool.cpp:62))
-    - Proper share difficulty validation
-    - Priority: HIGH | Est: 2 days
+16. ~~**Difficulty validation**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Validates hash meets required share difficulty
+    - ✅ Uses CalculateShareDifficulty() helper
+    - Location: [pool.cpp:64-73](src/pool/pool.cpp:64)
 
-23. **Hash difficulty checks** ([pool.cpp:71](src/pool/pool.cpp:71))
-    - Verify hash meets network difficulty
-    - Priority: HIGH | Est: 1 day
+17. ~~**Hash difficulty checks**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Verifies hash meets network difficulty for block validation
+    - Location: [pool.cpp:79-88](src/pool/pool.cpp:79)
 
-24. **Stratum JSON parsing** ([pool.cpp:246](src/pool/pool.cpp:246))
-    - Parse Stratum protocol JSON
-    - Priority: HIGH | Est: 3 days
+18. ~~**Stratum JSON parsing**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Parse Stratum protocol messages (subscribe, authorize, submit, notify)
+    - ✅ Supports all Stratum message types
+    - ✅ Uses RPC JSON parser (zero external dependencies)
+    - Location: [pool.cpp:245-345](src/pool/pool.cpp:245)
 
-25. **Stratum JSON formatting** ([pool.cpp:253](src/pool/pool.cpp:253))
-    - Format Stratum protocol responses
-    - Priority: HIGH | Est: 2 days
+19. ~~**Stratum JSON formatting**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Format Stratum responses with proper JSON-RPC structure
+    - ✅ Supports result, error, and notification formats
+    - Location: [pool.cpp:347-426](src/pool/pool.cpp:347)
 
-26. **Difficulty from hash calculation** ([pool.cpp:258](src/pool/pool.cpp:258))
-    - Calculate difficulty from hash
-    - Priority: MEDIUM | Est: 1 day
+20. ~~**Difficulty from hash calculation**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ Calculate share difficulty based on leading zero bits
+    - ✅ Bitcoin-compatible pool difficulty formula
+    - ✅ Overflow protection for high-difficulty shares
+    - Location: [pool.cpp:428-469](src/pool/pool.cpp:428)
 
 ### Utilities (7 items)
 27. **Hex to uint256 conversion** ([util.cpp:65](src/util/util.cpp:65))

@@ -450,11 +450,13 @@ public:
 
     /// Handle GETHEADERS message
     static Result<void> HandleGetHeaders(Peer& peer,
-                                        const std::vector<uint8_t>& payload);
+                                        const std::vector<uint8_t>& payload,
+                                        class Blockchain* blockchain);
 
     /// Handle HEADERS message
     static Result<void> HandleHeaders(Peer& peer,
-                                     const std::vector<uint8_t>& payload);
+                                     const std::vector<uint8_t>& payload,
+                                     class Blockchain* blockchain);
 
     /// Handle PING message
     static Result<void> HandlePing(Peer& peer,
