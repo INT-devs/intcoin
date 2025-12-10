@@ -2726,8 +2726,70 @@ Result<void> Wallet::BackupWallet(const std::string& backup_path) {
 }
 
 Result<void> Wallet::RestoreFromBackup(const std::string& backup_path) {
-    // TODO: Implement restore from backup
-    return Result<void>::Error("Not implemented yet");
+    // Verify backup path exists
+    if (!DirectoryExists(backup_path)) {
+        return Result<void>::Error("Backup directory does not exist: " + backup_path);
+    }
+
+    // Close wallet if loaded
+    if (impl_->is_loaded) {
+        auto close_result = Close();
+        if (close_result.IsError()) {
+            return Result<void>::Error("Failed to close wallet before restore: " + close_result.error);
+        }
+    }
+
+    // Close database connection
+    if (impl_->db) {
+        impl_->db.reset();
+    }
+
+    // Create backup engine to access the backup
+    rocksdb::BackupEngine* backup_engine = nullptr;
+    rocksdb::BackupEngineOptions backup_options(backup_path);
+
+    rocksdb::Status status = rocksdb::BackupEngine::Open(
+        rocksdb::Env::Default(),
+        backup_options,
+        &backup_engine
+    );
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to open backup engine: " + status.ToString());
+    }
+
+    std::unique_ptr<rocksdb::BackupEngine> backup_ptr(backup_engine);
+
+    // Get backup info
+    std::vector<rocksdb::BackupInfo> backup_info;
+    backup_ptr->GetBackupInfo(&backup_info);
+
+    if (backup_info.empty()) {
+        return Result<void>::Error("No backups found in: " + backup_path);
+    }
+
+    // Use the latest backup (highest backup_id)
+    uint32_t latest_backup_id = backup_info.back().backup_id;
+
+    // Restore database to original location
+    // This will overwrite the current wallet database
+    status = backup_ptr->RestoreDBFromBackup(
+        latest_backup_id,
+        impl_->config.data_dir,    // restore destination
+        impl_->config.data_dir     // wal_dir (same as db_dir)
+    );
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to restore from backup: " + status.ToString());
+    }
+
+    // Reload the wallet from the restored database
+    auto load_result = Load();
+    if (load_result.IsError()) {
+        return Result<void>::Error("Failed to reload wallet after restore: " + load_result.error);
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<void> Wallet::Rescan(Blockchain& blockchain, uint64_t start_height) {

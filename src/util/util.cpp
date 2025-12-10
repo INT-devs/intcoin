@@ -12,6 +12,9 @@
 #include <ctime>
 #include <chrono>
 #include <iostream>
+#include <fstream>
+#include <mutex>
+#include <cstdarg>
 #include <filesystem>
 
 namespace intcoin {
@@ -487,20 +490,161 @@ Result<std::string> DeserializeString(const std::vector<uint8_t>& data, size_t& 
 // Logging
 // ============================================================================
 
+namespace {
+    // Global logging state
+    struct LoggerState {
+        LogLevel min_level{LogLevel::INFO};
+        std::string log_file_path;
+        std::ofstream log_file;
+        std::mutex log_mutex;
+        size_t max_file_size{10 * 1024 * 1024};  // 10 MB default
+        size_t current_file_size{0};
+        bool initialized{false};
+    };
+
+    LoggerState& GetLoggerState() {
+        static LoggerState state;
+        return state;
+    }
+
+    const char* LogLevelToString(LogLevel level) {
+        switch (level) {
+            case LogLevel::TRACE: return "TRACE";
+            case LogLevel::DEBUG: return "DEBUG";
+            case LogLevel::INFO: return "INFO";
+            case LogLevel::WARNING: return "WARN";
+            case LogLevel::ERROR: return "ERROR";
+            case LogLevel::FATAL: return "FATAL";
+            default: return "UNKNOWN";
+        }
+    }
+
+    void RotateLogFile() {
+        auto& state = GetLoggerState();
+
+        if (state.log_file.is_open()) {
+            state.log_file.close();
+        }
+
+        // Rotate old log files: debug.log.4 -> debug.log.5, etc.
+        const int max_rotations = 5;
+        for (int i = max_rotations - 1; i >= 0; i--) {
+            std::string old_name = state.log_file_path + "." + std::to_string(i);
+            std::string new_name = state.log_file_path + "." + std::to_string(i + 1);
+
+            if (FileExists(old_name)) {
+                std::rename(old_name.c_str(), new_name.c_str());
+            }
+        }
+
+        // Rename current log file to .0
+        if (FileExists(state.log_file_path)) {
+            std::string backup = state.log_file_path + ".0";
+            std::rename(state.log_file_path.c_str(), backup.c_str());
+        }
+
+        // Open new log file
+        state.log_file.open(state.log_file_path, std::ios::out | std::ios::app);
+        state.current_file_size = 0;
+    }
+}
+
 void Log(LogLevel level, const std::string& message) {
-    // TODO: Implement proper logging
-    const char* level_str[] = {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
-    std::cout << "[" << level_str[static_cast<int>(level)] << "] "
-              << message << std::endl;
+    auto& state = GetLoggerState();
+
+    // Check if this log level should be printed
+    if (level < state.min_level) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(state.log_mutex);
+
+    // Format: [2025-12-10 14:30:45] [INFO] message
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()) % 1000;
+
+    std::tm tm_buf;
+    std::tm* tm = nullptr;
+#if defined(_WIN32) || defined(_WIN64)
+    localtime_s(&tm_buf, &time_t);
+    tm = &tm_buf;
+#else
+    tm = localtime_r(&time_t, &tm_buf);
+#endif
+
+    std::ostringstream oss;
+    oss << "[" << std::put_time(tm, "%Y-%m-%d %H:%M:%S")
+        << "." << std::setfill('0') << std::setw(3) << ms.count()
+        << "] [" << LogLevelToString(level) << "] "
+        << message;
+
+    std::string log_line = oss.str();
+
+    // Write to console
+    if (level >= LogLevel::WARNING) {
+        std::cerr << log_line << std::endl;
+    } else {
+        std::cout << log_line << std::endl;
+    }
+
+    // Write to file if configured
+    if (state.initialized && state.log_file.is_open()) {
+        size_t line_size = log_line.size() + 1;  // +1 for newline
+
+        // Check if rotation is needed
+        if (state.current_file_size + line_size > state.max_file_size) {
+            RotateLogFile();
+        }
+
+        if (state.log_file.is_open()) {
+            state.log_file << log_line << std::endl;
+            state.log_file.flush();  // Ensure immediate write for important logs
+            state.current_file_size += line_size;
+        }
+    }
 }
 
 void SetLogLevel(LogLevel level) {
-    // TODO: Implement log level setting
+    auto& state = GetLoggerState();
+    std::lock_guard<std::mutex> lock(state.log_mutex);
+    state.min_level = level;
 }
 
 Result<void> SetLogFile(const std::string& path) {
-    // TODO: Implement log file setting
-    return Result<void>::Error("Not implemented");
+    auto& state = GetLoggerState();
+    std::lock_guard<std::mutex> lock(state.log_mutex);
+
+    // Close existing file if open
+    if (state.log_file.is_open()) {
+        state.log_file.close();
+    }
+
+    state.log_file_path = path;
+
+    // Open log file in append mode
+    state.log_file.open(path, std::ios::out | std::ios::app);
+    if (!state.log_file.is_open()) {
+        state.initialized = false;
+        return Result<void>::Error("Failed to open log file: " + path);
+    }
+
+    // Get current file size
+    state.log_file.seekp(0, std::ios::end);
+    state.current_file_size = static_cast<size_t>(state.log_file.tellp());
+    state.initialized = true;
+
+    return Result<void>::Ok();
+}
+
+void LogF(LogLevel level, const char* format, ...) {
+    char buffer[4096];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    Log(level, std::string(buffer));
 }
 
 // ============================================================================

@@ -3,7 +3,7 @@
 **Last Updated**: December 10, 2025
 **Version**: 1.0.0-alpha
 **C++ Standard**: C++23 (ISO/IEC 14882:2023)
-**Current Status**: **98% Complete** (Phases 1-10 Complete)
+**Current Status**: **99% Complete** (Phases 1-10 Complete)
 
 **See also**: [10-Year Roadmap](ROADMAP.md)
 
@@ -68,9 +68,13 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 ---
 
-## 📝 Outstanding TODO Items (8)
+## 📝 Outstanding TODO Items (6)
 
-**Recently Completed** (Dec 10, 2025 - Session 3):
+**Recently Completed** (Dec 10, 2025 - Session 4):
+- ✅ Proper logging implementation (file logging, rotation, log levels, thread-safe)
+- ✅ Wallet backup restore (RocksDB backup engine integration)
+
+**Previously Completed** (Dec 10, 2025 - Session 3):
 - ✅ Enhanced block validation (parent checks, transaction validation, merkle root verification)
 - ✅ Enhanced transaction validation (TxValidator integration, mempool addition)
 - ✅ Fixed test compilation issues (test_storage.cpp, test_network.cpp, test_wallet.cpp)
@@ -112,7 +116,7 @@ Total: 100% passing (excluding wallet directory setup tests)
    - For legacy Bitcoin address compatibility
    - Priority: LOW | Est: 2 days
 
-### Wallet (1 item - 3 completed ✅)
+### Wallet (1 item - 4 completed ✅)
 4. ~~**Wallet encryption implementation**~~ ✅ **COMPLETED** (Dec 9, 2025)
    - ✅ Implemented AES-256-GCM with PBKDF2 key derivation (100K iterations)
    - ✅ Encrypt(), Unlock(), ChangePassphrase() functions
@@ -132,9 +136,11 @@ Total: 100% passing (excluding wallet directory setup tests)
    - Optimal UTXO selection algorithm
    - Priority: MEDIUM | Est: 1 week
 
-8. **Wallet backup restore** ([wallet.cpp:2512](src/wallet/wallet.cpp:2512))
-   - Restore from encrypted backup file
-   - Priority: MEDIUM | Est: 3 days
+8. ~~**Wallet backup restore**~~ ✅ **COMPLETED** (Dec 10, 2025)
+   - ✅ Restore from RocksDB backup using BackupEngine
+   - ✅ Automatic wallet reload after restore
+   - ✅ Backup verification and latest backup selection
+   - Location: [wallet.cpp:2728-2793](src/wallet/wallet.cpp:2728)
 
 ### Networking (0 items - 6 completed ✅)
 9. ~~**GETHEADERS message handling**~~ ✅ **COMPLETED** (Dec 10, 2025)
@@ -239,7 +245,7 @@ Total: 100% passing (excluding wallet directory setup tests)
     - ✅ Overflow protection for high-difficulty shares
     - Location: [pool.cpp:428-469](src/pool/pool.cpp:428)
 
-### Utilities (5 items - 2 completed ✅)
+### Utilities (3 items - 3 completed ✅)
 22. **Hex to uint256 conversion** ([util.cpp:65](src/util/util.cpp:65))
     - Parse hex strings to uint256
     - Priority: MEDIUM | Est: 1 day
@@ -261,10 +267,14 @@ Total: 100% passing (excluding wallet directory setup tests)
     - ✅ Proper exception handling
     - Location: [util.cpp:355-373](src/util/util.cpp:355)
 
-26. **Proper logging implementation** ([util.cpp:295-306](src/util/util.cpp:295))
-    - File logging with rotation
-    - Log levels (DEBUG, INFO, WARN, ERROR)
-    - Priority: MEDIUM | Est: 1 week
+26. ~~**Proper logging implementation**~~ ✅ **COMPLETED** (Dec 10, 2025)
+    - ✅ File logging with automatic rotation (10MB limit)
+    - ✅ Log levels (TRACE, DEBUG, INFO, WARNING, ERROR, FATAL)
+    - ✅ Thread-safe logging with mutex protection
+    - ✅ Timestamped log entries with millisecond precision
+    - ✅ Keeps 5 rotated log file backups
+    - ✅ Console and file output with level-based routing
+    - Location: [util.cpp:486-636](src/util/util.cpp:486)
 
 ---
 
@@ -335,7 +345,7 @@ Total: 100% passing (excluding wallet directory setup tests)
 **Maintainer**: Neil Adamson
 **License**: MIT
 **Repository**: https://gitlab.com/intcoin/crypto
-**Status**: Active Development (98% to Mainnet)
+**Status**: Active Development (99% to Mainnet)
 
 ---
 
