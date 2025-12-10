@@ -12,6 +12,7 @@
 #include <ctime>
 #include <chrono>
 #include <iostream>
+#include <filesystem>
 
 namespace intcoin {
 
@@ -325,26 +326,51 @@ std::string FormatTime(uint64_t timestamp) {
 // ============================================================================
 
 std::string GetDefaultDataDir() {
-    // TODO: Implement platform-specific data directory
+    // Platform-specific data directories
 #ifdef __APPLE__
-    return std::string(getenv("HOME")) + "/Library/Application Support/INTcoin";
-#elif __linux__
-    return std::string(getenv("HOME")) + "/.intcoin";
-#elif _WIN32
-    return std::string(getenv("APPDATA")) + "\\INTcoin";
+    // macOS: ~/Library/Application Support/INTcoin
+    const char* home = getenv("HOME");
+    if (!home) home = ".";
+    return std::string(home) + "/Library/Application Support/INTcoin";
+#elif defined(__linux__)
+    // Linux: ~/.intcoin
+    const char* home = getenv("HOME");
+    if (!home) home = ".";
+    return std::string(home) + "/.intcoin";
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+    // BSD: ~/.intcoin
+    const char* home = getenv("HOME");
+    if (!home) home = ".";
+    return std::string(home) + "/.intcoin";
+#elif defined(_WIN32) || defined(_WIN64)
+    // Windows: %APPDATA%\INTcoin
+    const char* appdata = getenv("APPDATA");
+    if (!appdata) appdata = ".";
+    return std::string(appdata) + "\\INTcoin";
 #else
+    // Fallback: current directory
     return "./intcoin_data";
 #endif
 }
 
 bool FileExists(const std::string& path) {
-    // TODO: Implement file existence check
-    return false;
+    // Check if file exists using C++17 filesystem
+    try {
+        std::filesystem::path p(path);
+        return std::filesystem::exists(p) && std::filesystem::is_regular_file(p);
+    } catch (const std::filesystem::filesystem_error&) {
+        return false;
+    }
 }
 
 bool DirectoryExists(const std::string& path) {
-    // TODO: Implement directory existence check
-    return false;
+    // Check if directory exists using C++17 filesystem
+    try {
+        std::filesystem::path p(path);
+        return std::filesystem::exists(p) && std::filesystem::is_directory(p);
+    } catch (const std::filesystem::filesystem_error&) {
+        return false;
+    }
 }
 
 // ============================================================================

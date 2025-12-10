@@ -1166,7 +1166,8 @@ Result<void> MessageHandler::HandleAddr(const std::vector<uint8_t>& payload) {
 }
 
 Result<void> MessageHandler::HandleInv(Peer& peer,
-                                      const std::vector<uint8_t>& payload) {
+                                      const std::vector<uint8_t>& payload,
+                                      Blockchain* blockchain) {
     // INV message format:
     // - count (varint): number of inventory items
     // - inventory[] (count * InvVector): inventory items
@@ -1213,13 +1214,29 @@ Result<void> MessageHandler::HandleInv(Peer& peer,
 
     for (const auto& inv : inv_items) {
         if (inv.type == InvType::BLOCK) {
-            // TODO: Check if we already have this block
-            // For now, request all blocks we don't have
+            // Check if we already have this block
+            if (blockchain && blockchain->HasBlock(inv.hash)) {
+                // Already have this block, skip it
+                continue;
+            }
             items_to_request.push_back(inv);
         } else if (inv.type == InvType::TX) {
-            // TODO: Check if we already have this transaction
-            // For now, request all transactions we don't have
-            items_to_request.push_back(inv);
+            // Check if we already have this transaction in mempool
+            bool have_tx = false;
+            if (blockchain) {
+                auto& mempool = blockchain->GetMempool();
+                auto mempool_txs = mempool.GetAllTransactions();
+                for (const auto& tx : mempool_txs) {
+                    if (tx.GetHash() == inv.hash) {
+                        have_tx = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!have_tx) {
+                items_to_request.push_back(inv);
+            }
         }
     }
 

@@ -679,7 +679,7 @@ JSONValue BlockchainRPC::getblock(const JSONValue& params, Blockchain& blockchai
         verbose = params[1].GetInt() != 0;
     }
 
-    return json::BlockToJSON(block_result.value.value(), verbose);
+    return json::BlockToJSON(block_result.value.value(), verbose, &blockchain);
 }
 
 JSONValue BlockchainRPC::getdifficulty(const JSONValue&, Blockchain& blockchain) {
@@ -1055,17 +1055,35 @@ JSONValue BlockHeaderToJSON(const BlockHeader& header) {
     return JSONValue(obj);
 }
 
-JSONValue BlockToJSON(const Block& block, bool verbose) {
+JSONValue BlockToJSON(const Block& block, bool verbose, const Blockchain* blockchain) {
     if (!verbose) {
         std::vector<uint8_t> serialized = block.Serialize();
         return JSONValue(BytesToHex(serialized));
     }
 
     std::map<std::string, JSONValue> obj;
-    obj["hash"] = JSONValue(Uint256ToHex(block.GetHash()));
-    obj["confirmations"] = JSONValue(static_cast<int64_t>(1));  // TODO: Calculate confirmations
+    uint256 block_hash = block.GetHash();
+    obj["hash"] = JSONValue(Uint256ToHex(block_hash));
+
+    // Calculate confirmations if blockchain is available
+    if (blockchain) {
+        uint64_t confirmations = blockchain->GetBlockConfirmations(block_hash);
+        obj["confirmations"] = JSONValue(static_cast<int64_t>(confirmations));
+
+        // Calculate height: best_height - confirmations + 1
+        uint64_t best_height = blockchain->GetBestHeight();
+        if (confirmations > 0) {
+            uint64_t height = best_height - confirmations + 1;
+            obj["height"] = JSONValue(static_cast<int64_t>(height));
+        } else {
+            obj["height"] = JSONValue(static_cast<int64_t>(-1));  // Not on main chain
+        }
+    } else {
+        obj["confirmations"] = JSONValue(static_cast<int64_t>(0));
+        obj["height"] = JSONValue(static_cast<int64_t>(0));
+    }
+
     obj["size"] = JSONValue(static_cast<int64_t>(block.GetSerializedSize()));
-    obj["height"] = JSONValue(static_cast<int64_t>(0));  // TODO: Get block height
     obj["version"] = JSONValue(static_cast<int64_t>(block.header.version));
     obj["merkleroot"] = JSONValue(Uint256ToHex(block.header.merkle_root));
     obj["time"] = JSONValue(static_cast<int64_t>(block.header.timestamp));

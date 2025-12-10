@@ -433,7 +433,8 @@ public:
 
     /// Handle INV message
     static Result<void> HandleInv(Peer& peer,
-                                 const std::vector<uint8_t>& payload);
+                                 const std::vector<uint8_t>& payload,
+                                 class Blockchain* blockchain);
 
     /// Handle GETDATA message
     static Result<void> HandleGetData(Peer& peer,

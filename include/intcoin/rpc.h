@@ -306,7 +306,7 @@ public:
 // Convert blockchain types to JSON
 namespace json {
     JSONValue BlockHeaderToJSON(const BlockHeader& header);
-    JSONValue BlockToJSON(const Block& block, bool verbose = true);
+    JSONValue BlockToJSON(const Block& block, bool verbose, const class Blockchain* blockchain = nullptr);
     JSONValue TransactionToJSON(const Transaction& tx);
     JSONValue TxOutToJSON(const TxOut& txout);
     JSONValue PeerToJSON(const Peer& peer);
