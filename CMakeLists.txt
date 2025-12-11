@@ -59,7 +59,7 @@ find_package(RocksDB 10.7.5)
 find_library(OQS_LIB oqs)
 find_path(OQS_INCLUDE_DIR oqs/oqs.h)
 
-# RandomX
+# RandomX (1.2.1+) - ASIC-resistant PoW algorithm
 find_library(RANDOMX_LIB randomx
     PATHS
         $ENV{HOME}/.local/lib
