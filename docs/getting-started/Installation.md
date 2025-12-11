@@ -354,8 +354,7 @@ cmake .. \
   -DBUILD_FAUCET=ON \               # Build testnet faucet
   -DENABLE_LIGHTNING=OFF \          # Enable Lightning Network
   -DENABLE_TOR=OFF \                # Enable Tor support
-  -DENABLE_I2P=OFF \                # Enable I2P support
-  -DENABLE_GPU_MINING=OFF           # Enable GPU mining
+  -DENABLE_I2P=OFF                  # Enable I2P support
 ```
 
 ### Build Commands

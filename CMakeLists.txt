@@ -26,7 +26,6 @@ option(BUILD_FAUCET "Build testnet faucet" ON)
 option(ENABLE_LIGHTNING "Enable Lightning Network" OFF)  # Deferred
 option(ENABLE_TOR "Enable Tor support" OFF)
 option(ENABLE_I2P "Enable I2P support" OFF)
-option(ENABLE_GPU_MINING "Enable GPU mining" OFF)
 
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -355,6 +354,5 @@ message(STATUS "  Tests: ${BUILD_TESTS}")
 message(STATUS "  Lightning Network: ${ENABLE_LIGHTNING}")
 message(STATUS "  Tor: ${ENABLE_TOR}")
 message(STATUS "  I2P: ${ENABLE_I2P}")
-message(STATUS "  GPU Mining: ${ENABLE_GPU_MINING}")
 message(STATUS "========================================")
 message(STATUS "")

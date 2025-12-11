@@ -32,7 +32,8 @@ INTcoin uses **RandomX** as its Proof-of-Work (PoW) algorithm, providing ASIC-re
 - ✅ Solo and pool mining support
 - ✅ Stratum protocol
 - ✅ Real-time statistics
-- ⏳ GPU mining (planned for future release)
+
+**Note**: GPU mining is not supported. RandomX is specifically designed to be CPU-optimal and GPU-resistant, making GPU mining unprofitable compared to CPU mining.
 
 **Network Parameters**:
 - **Block Time**: 2 minutes (120 seconds)
@@ -462,7 +463,6 @@ Uptime: 3600 seconds
 - Integration testing
 - Performance optimization
 - Pool server implementation (optional)
-- GPU mining support (future)
 
 ---
 

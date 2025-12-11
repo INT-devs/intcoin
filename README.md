@@ -162,9 +162,6 @@ intcoin/
 - **libtor** - Tor network integration (privacy layer)
 - **libi2pd** - I2P network integration (anonymity layer)
 
-**Mining Performance** (Future):
-- **CUDA** / **OpenCL** - GPU mining support (deferred to v2.0)
-
 ---
 
 ## 🚀 Build Instructions
@@ -351,7 +348,6 @@ cmake -DBUILD_DAEMON=ON \          # Build intcoind daemon (default: ON)
       -DENABLE_LIGHTNING=ON \       # Enable Lightning Network (default: OFF)
       -DENABLE_TOR=OFF \            # Enable Tor support (default: OFF)
       -DENABLE_I2P=OFF \            # Enable I2P support (default: OFF)
-      -DENABLE_GPU_MINING=OFF \     # Enable GPU mining (default: OFF)
       -DCMAKE_BUILD_TYPE=Release \  # Build type: Debug, Release, RelWithDebInfo
       ..
 ```
