@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2.0)
+cmake_minimum_required(VERSION 4.2.1)
 
 project(INTcoin
     VERSION 1.0.0
@@ -49,13 +49,13 @@ find_package(Boost 1.89.0 COMPONENTS
     program_options
 )
 
-find_package(OpenSSL 3.5.4)
+find_package(OpenSSL 3.6.0)
 find_package(Threads REQUIRED)
 
-# RocksDB
-find_package(RocksDB)
+# RocksDB (10.7.5+)
+find_package(RocksDB 10.7.5)
 
-# liboqs (Open Quantum Safe)
+# liboqs (Open Quantum Safe) - 0.15.0+
 find_library(OQS_LIB oqs)
 find_path(OQS_INCLUDE_DIR oqs/oqs.h)
 
@@ -73,17 +73,17 @@ find_path(RANDOMX_INCLUDE_DIR randomx.h
         /usr/local/include
 )
 
-# ZeroMQ
+# ZeroMQ (4.3.5+)
 find_library(ZMQ_LIB zmq)
 find_path(ZMQ_INCLUDE_DIR zmq.h)
 
-# libevent
+# libevent (2.1.12+)
 find_library(EVENT_LIB event)
 find_path(EVENT_INCLUDE_DIR event2/event.h)
 
 # Qt6 (optional)
 if(BUILD_WALLET_QT)
-    find_package(Qt6 6.8 COMPONENTS
+    find_package(Qt6 6.9.3 COMPONENTS
         Core
         Widgets
         Network
