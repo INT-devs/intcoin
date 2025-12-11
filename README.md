@@ -125,7 +125,7 @@ intcoin/
 │   ├── test_ml.cpp         # Machine learning tests (✅ 8/8 passing)
 │   ├── test_wallet.cpp     # Wallet tests (✅ 12/12 passing)
 │   ├── test_fuzz.cpp       # Fuzzing tests (✅ 5/5 passing, ~3,500 iterations)
-│   └── test_integration.cpp # Integration tests (✅ 4/6 passing)
+│   └── test_integration.cpp # Integration tests (✅ 6/6 passing)
 ├── docs/                   # Project documentation
 ├── branding/               # Brand assets and guidelines
 └── scripts/                # Build and installation scripts
