@@ -1,8 +1,8 @@
 # INTcoin Brand Guidelines
 
-**Copyright (c) 2025 INTcoin Core (Maddison Lane)**
+**Copyright (c) 2025 INTcoin Core (Neil Adamson)**
 
-**Version**: 2.0 - Accessibility Edition
+**Version**: 2.0
 **Last Updated**: January 2025
 
 ---
@@ -55,17 +55,13 @@ Maintain a clear space around the logo equal to the height of the "I" in "INT" t
 
 ## 🎨 Color Palette
 
-**Accessibility Standards**: All colors meet WCAG 2.1 Level AA minimum (4.5:1 contrast for normal text). Most colors achieve Level AAA (7:1 contrast) for enhanced accessibility.
-
 ### Primary Colors
 
 #### Quantum Blue
-- **Standard (AA)**: `#0066cc` - RGB(0, 102, 204)
-  - **Contrast**: 4.65:1 on white background
+- **Standard**: `#0066cc` - RGB(0, 102, 204)
   - **Use**: Primary buttons, links, interactive elements
 
-- **Dark (AAA)**: `#004d99` - RGB(0, 77, 153)
-  - **Contrast**: 7.16:1 on white background
+- **Dark**: `#004d99` - RGB(0, 77, 153)
   - **Use**: Primary button backgrounds, high-emphasis text
 
 - **Light**: `#3399ff` - RGB(51, 153, 255)
@@ -74,12 +70,10 @@ Maintain a clear space around the logo equal to the height of the "I" in "INT" t
 **Meaning**: Innovation, technology, trust
 
 #### Deep Purple
-- **Standard (AAA)**: `#5a21b6` - RGB(90, 33, 182)
-  - **Contrast**: 7.28:1 on white background
+- **Standard**: `#5a21b6` - RGB(90, 33, 182)
   - **Use**: Secondary accents, branding elements
 
-- **Dark (AAA)**: `#3c0f7c` - RGB(60, 15, 124)
-  - **Contrast**: 11.26:1 on white background
+- **Dark**: `#3c0f7c` - RGB(60, 15, 124)
   - **Use**: High-emphasis elements, dark mode accents
 
 - **Light**: `#8b5cf6` - RGB(139, 92, 246)
@@ -90,39 +84,31 @@ Maintain a clear space around the logo equal to the height of the "I" in "INT" t
 ### Semantic Colors
 
 #### Success/Active (Green)
-- **Standard (AA)**: `#0a7d3e` - RGB(10, 125, 62)
-  - **Contrast**: 4.81:1 on white
+- **Standard**: `#0a7d3e` - RGB(10, 125, 62)
   - **Use**: Success messages, active states
 
-- **Dark (AAA)**: `#065a2d` - RGB(6, 90, 45)
-  - **Contrast**: 7.24:1 on white
+- **Dark**: `#065a2d` - RGB(6, 90, 45)
   - **Use**: High-emphasis success indicators
 
 #### Warning/Caution (Orange)
-- **Standard (AA)**: `#b45309` - RGB(180, 83, 9)
-  - **Contrast**: 4.87:1 on white
+- **Standard**: `#b45309` - RGB(180, 83, 9)
   - **Use**: Warning messages, caution states
 
-- **Dark (AAA)**: `#92400e` - RGB(146, 64, 14)
-  - **Contrast**: 6.52:1 on white
+- **Dark**: `#92400e` - RGB(146, 64, 14)
   - **Use**: High-emphasis warnings
 
 #### Error/Danger (Red)
-- **Standard (AA+)**: `#c81e1e` - RGB(200, 30, 30)
-  - **Contrast**: 5.51:1 on white
+- **Standard**: `#c81e1e` - RGB(200, 30, 30)
   - **Use**: Error messages, destructive actions
 
-- **Dark (AAA)**: `#991b1b` - RGB(153, 27, 27)
-  - **Contrast**: 7.89:1 on white
+- **Dark**: `#991b1b` - RGB(153, 27, 27)
   - **Use**: High-emphasis errors
 
 #### Info (Blue)
-- **Standard (AAA)**: `#0369a1` - RGB(3, 105, 161)
-  - **Contrast**: 5.82:1 on white
+- **Standard**: `#0369a1` - RGB(3, 105, 161)
   - **Use**: Informational messages
 
-- **Dark (AAA)**: `#075985` - RGB(7, 89, 133)
-  - **Contrast**: 7.61:1 on white
+- **Dark**: `#075985` - RGB(7, 89, 133)
   - **Use**: High-emphasis information
 
 ### Neutral Colors (Text & Backgrounds)
@@ -131,15 +117,12 @@ Maintain a clear space around the logo equal to the height of the "I" in "INT" t
 
 **Text Colors**:
 - **Primary**: `#0f172a` - RGB(15, 23, 42)
-  - **Contrast**: 16.93:1 on white (AAA)
   - **Use**: Headings, primary text
 
 - **Secondary**: `#475569` - RGB(71, 85, 105)
-  - **Contrast**: 8.59:1 on white (AAA)
   - **Use**: Body text, secondary information
 
 - **Tertiary**: `#64748b` - RGB(100, 116, 139)
-  - **Contrast**: 5.76:1 on white (AA+)
   - **Use**: Muted text, captions
 
 **Background Colors**:
@@ -161,13 +144,10 @@ Maintain a clear space around the logo equal to the height of the "I" in "INT" t
 
 **Text Colors**:
 - **Primary**: `#f8fafc` - RGB(248, 250, 252)
-  - **Contrast**: 18.26:1 on dark (AAA)
 
 - **Secondary**: `#cbd5e1` - RGB(203, 213, 225)
-  - **Contrast**: 13.89:1 on dark (AAA)
 
 - **Tertiary**: `#94a3b8` - RGB(148, 163, 184)
-  - **Contrast**: 9.21:1 on dark (AAA)
 
 ### Border & Divider Colors
 
@@ -179,17 +159,16 @@ Maintain a clear space around the logo equal to the height of the "I" in "INT" t
 - Primary: `#334155` - RGB(51, 65, 85)
 - Secondary: `#475569` - RGB(71, 85, 105)
 
-### Accessible Color Usage Rules
+### Color Usage Rules
 
-**IMPORTANT**: For maximum accessibility:
+**IMPORTANT**: For best readability:
 
-1. **Never use gradient text** - Gradients reduce readability and fail WCAG
+1. **Never use gradient text** - Gradients reduce readability
 2. **Always use solid colors for text** - Use standard or dark variants
-3. **Minimum contrast**: 4.5:1 for normal text, 3:1 for large text (18px+)
-4. **Preferred contrast**: 7:1 or higher (AAA) for critical content
-5. **Links must be underlined** - Color alone is insufficient for accessibility
-6. **Focus indicators required** - 3px minimum, high contrast
-7. **Test for colorblindness** - Don't rely on color alone to convey information
+3. **Use high contrast colors** - Ensure text is easily readable
+4. **Links must be underlined** - Color alone is insufficient
+5. **Focus indicators required** - 3px minimum, high contrast
+6. **Don't rely on color alone** - Use icons, text labels, or patterns as well
 
 ---
 
@@ -211,10 +190,10 @@ Maintain a clear space around the logo equal to the height of the "I" in "INT" t
 
 ### Font Sizes
 
-**Accessibility Requirements**:
-- **Minimum body text**: 16px (1rem) - WCAG recommended
+**Requirements**:
+- **Minimum body text**: 16px (1rem)
 - **Recommended body text**: 18px (1.125rem) - Enhanced readability
-- **Line height**: 1.5 minimum (WCAG 1.4.12) - Improves readability
+- **Line height**: 1.5 minimum - Improves readability
 - **Letter spacing**: Normal or slightly increased for small text
 
 ```css
@@ -233,7 +212,7 @@ Captions: 14px / 0.875rem (Minimum for any text)
 
 /* Line Heights */
 --intcoin-leading-tight: 1.25   (Headings only)
---intcoin-leading-normal: 1.5   (Body text - WCAG recommended)
+--intcoin-leading-normal: 1.5   (Body text)
 --intcoin-leading-relaxed: 1.75 (Enhanced readability)
 ```
 
@@ -246,8 +225,8 @@ Captions: 14px / 0.875rem (Minimum for any text)
 1. **Modern & Clean**: Minimalist design with purpose
 2. **Tech-Forward**: Embrace futuristic, digital aesthetics
 3. **Trustworthy**: Professional, reliable visual language
-4. **Accessible First**: WCAG 2.1 Level AA minimum, AAA preferred
-   - High contrast text (4.5:1 minimum, 7:1 preferred)
+4. **User-Friendly**: Intuitive and accessible design
+   - High contrast text for readability
    - Keyboard navigable with visible focus indicators
    - Screen reader compatible
    - Colorblind-friendly palette
@@ -257,15 +236,15 @@ Captions: 14px / 0.875rem (Minimum for any text)
 
 #### Buttons
 
-**Accessibility Requirements**:
-- Minimum size: 44x44px (touch target - WCAG 2.5.5)
+**Requirements**:
+- Minimum size: 44x44px (touch target)
 - Clear focus indicator: 3px outline
-- Sufficient contrast: 4.5:1 minimum
+- Sufficient contrast for readability
 - Descriptive text (no "click here" or icon-only without labels)
 
 **Primary Button**:
 ```css
-background: var(--intcoin-quantum-blue-dark); /* #004d99 - AAA compliant */
+background: var(--intcoin-quantum-blue-dark); /* #004d99 */
 color: var(--intcoin-bg-primary); /* white */
 padding: 12px 24px;
 border-radius: 6px;
@@ -365,11 +344,11 @@ transition: all 0.2s ease;
 
 #### Links
 
-**Accessibility**: Links must be visually distinct from regular text.
+Links must be visually distinct from regular text.
 
 ```css
 a {
-  color: var(--intcoin-quantum-blue-dark); /* #004d99 - AAA */
+  color: var(--intcoin-quantum-blue-dark); /* #004d99 */
   text-decoration: underline;
   text-decoration-thickness: 2px; /* Thick underline */
   text-underline-offset: 3px;
@@ -390,7 +369,7 @@ a:focus {
 
 #### Focus Indicators
 
-**Required for accessibility** - All interactive elements must have visible focus indicators.
+All interactive elements must have visible focus indicators.
 
 ```css
 /* Global focus styles */
@@ -450,7 +429,7 @@ a:focus {
 
 ### Dark Mode
 
-INTcoin supports both light and dark themes with full WCAG AAA compliance in both modes.
+INTcoin supports both light and dark themes.
 
 **Dark Mode Implementation**:
 ```css
@@ -460,9 +439,9 @@ INTcoin supports both light and dark themes with full WCAG AAA compliance in bot
     --intcoin-bg-secondary: #1e293b;    /* Elevated surfaces */
     --intcoin-bg-tertiary: #334155;     /* Hover states */
 
-    --intcoin-text-primary: #f8fafc;    /* 18.26:1 contrast (AAA) */
-    --intcoin-text-secondary: #cbd5e1;  /* 13.89:1 contrast (AAA) */
-    --intcoin-text-tertiary: #94a3b8;   /* 9.21:1 contrast (AAA) */
+    --intcoin-text-primary: #f8fafc;
+    --intcoin-text-secondary: #cbd5e1;
+    --intcoin-text-tertiary: #94a3b8;
 
     --intcoin-border-primary: #334155;
     --intcoin-border-secondary: #475569;
@@ -488,8 +467,6 @@ INTcoin supports both light and dark themes with full WCAG AAA compliance in bot
 ### Animations
 
 Use subtle animations for enhanced UX, but **respect user preferences**.
-
-**Accessibility Requirement**: Disable animations for users with vestibular disorders.
 
 ```css
 /* Respect reduced motion preference */
@@ -601,9 +578,8 @@ Use subtle animations for enhanced UX, but **respect user preferences**.
 - Scale logos proportionally
 - Use approved fonts
 
-**Accessibility**:
-- Use WCAG AA compliant colors minimum (4.5:1 contrast)
-- Prefer WCAG AAA colors (7:1 contrast) for important content
+**Design Best Practices**:
+- Use high contrast colors for readability
 - Include visible focus indicators (3px minimum)
 - Underline all links (2px minimum thickness)
 - Test with keyboard navigation
@@ -611,7 +587,7 @@ Use subtle animations for enhanced UX, but **respect user preferences**.
 - Provide text alternatives for images
 - Use semantic HTML
 - Respect user preferences (reduced motion, high contrast, dark mode)
-- Test for colorblindness (protanopia, deuteranopia, tritanopia)
+- Test for colorblindness
 - Ensure minimum touch target size (44x44px)
 - Use descriptive link text (not "click here")
 
@@ -629,10 +605,10 @@ Use subtle animations for enhanced UX, but **respect user preferences**.
 - Combine with other brand elements
 - Use unapproved fonts for official materials
 
-**Accessibility Violations**:
-- Use gradient text (fails WCAG, hard to read)
+**Design Violations**:
+- Use gradient text (hard to read)
 - Use color alone to convey information
-- Use low contrast colors (below 4.5:1)
+- Use low contrast colors
 - Remove focus indicators
 - Use links without underlines
 - Use text smaller than 14px (except in rare cases)
@@ -681,177 +657,6 @@ For each logo:
 
 ---
 
-## ♿ Accessibility Guidelines
-
-**INTcoin is committed to WCAG 2.1 Level AA minimum compliance, with AAA preferred.**
-
-### Color Accessibility
-
-**Contrast Requirements**:
-- **Normal Text** (under 18px): Minimum 4.5:1 (AA), prefer 7:1 (AAA)
-- **Large Text** (18px+ or 14px+ bold): Minimum 3:1 (AA), prefer 4.5:1 (AAA)
-- **UI Components**: Minimum 3:1 contrast against adjacent colors
-- **Focus Indicators**: Minimum 3:1 contrast against background
-
-**Testing Tools**:
-- WebAIM Contrast Checker (https://webaim.org/resources/contrastchecker/)
-- Chrome DevTools Lighthouse accessibility audit
-- Color Oracle (colorblindness simulator)
-
-**Colorblindness Considerations**:
-- Never use color alone to convey information
-- Supplement color with icons, text labels, or patterns
-- Test with protanopia, deuteranopia, and tritanopia simulators
-- INTcoin's blue/purple palette is generally safe for most types
-
-### Keyboard Navigation
-
-**Requirements**:
-- All interactive elements must be keyboard accessible
-- Logical tab order (left-to-right, top-to-bottom)
-- Skip to main content link for long navigation
-- Visible focus indicators at all times (3px minimum)
-- No keyboard traps (users must be able to navigate away)
-- Support standard keyboard shortcuts (Tab, Shift+Tab, Enter, Space, Esc)
-
-**Implementation**:
-```html
-<!-- Skip link (hidden until focused) -->
-<a href="#main-content" class="skip-link">
-  Skip to main content
-</a>
-
-<!-- Proper button markup -->
-<button type="button" class="intcoin-btn-primary">
-  Send Transaction
-</button>
-
-<!-- Accessible form inputs -->
-<label for="amount">Amount (INT)</label>
-<input
-  type="number"
-  id="amount"
-  name="amount"
-  aria-describedby="amount-help"
-  required
->
-<div id="amount-help">Enter the amount to send</div>
-```
-
-### Screen Reader Compatibility
-
-**Requirements**:
-- Use semantic HTML (`<nav>`, `<main>`, `<article>`, `<button>`, etc.)
-- Provide text alternatives for images (`alt` attributes)
-- Use ARIA labels when necessary
-- Announce dynamic content changes
-- Provide clear form labels and error messages
-
-**Examples**:
-```html
-<!-- Logo with alt text -->
-<img src="logo.svg" alt="INTcoin - Quantum-Resistant Cryptocurrency">
-
-<!-- Icon button with label -->
-<button aria-label="Close notification">
-  <svg><!-- Close icon --></svg>
-</button>
-
-<!-- Loading state announcement -->
-<div role="status" aria-live="polite" aria-atomic="true">
-  <span class="sr-only">Loading transaction history...</span>
-</div>
-
-<!-- Error message linked to input -->
-<input
-  type="text"
-  aria-invalid="true"
-  aria-describedby="address-error"
->
-<div id="address-error" role="alert">
-  Invalid INTcoin address format
-</div>
-```
-
-### Motion and Animation
-
-**Requirements**:
-- Respect `prefers-reduced-motion` setting
-- No auto-playing videos with sound
-- Provide pause/stop controls for animations
-- Avoid flashing content (risk of seizures)
-- Never flash more than 3 times per second
-
-### Touch Targets
-
-**Requirements**:
-- Minimum size: 44x44 CSS pixels (WCAG 2.5.5 Level AAA)
-- Recommended: 48x48 pixels for better usability
-- Adequate spacing between targets (8px minimum)
-
-### Text and Typography
-
-**Requirements**:
-- Minimum font size: 16px for body text
-- Line height: 1.5 minimum (WCAG 1.4.12)
-- Allow text zoom up to 200% without loss of functionality
-- Don't justify text (causes uneven spacing)
-- Use sufficient letter spacing
-- Avoid all-caps for long text (harder to read)
-
-### Forms and Input
-
-**Requirements**:
-- Clear, descriptive labels for all inputs
-- Group related inputs with `<fieldset>` and `<legend>`
-- Provide clear error messages
-- Indicate required fields
-- Use appropriate input types (`email`, `number`, `tel`, etc.)
-- Provide helpful placeholder examples (but don't rely on them)
-- Allow sufficient time for form completion
-
-**Example**:
-```html
-<fieldset>
-  <legend>Send Transaction</legend>
-
-  <div class="form-group">
-    <label for="recipient">
-      Recipient Address <span aria-label="required">*</span>
-    </label>
-    <input
-      type="text"
-      id="recipient"
-      name="recipient"
-      placeholder="e.g., int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
-      aria-required="true"
-      aria-describedby="recipient-help"
-    >
-    <div id="recipient-help" class="help-text">
-      Enter a valid INTcoin address
-    </div>
-  </div>
-</fieldset>
-```
-
-### Testing Checklist
-
-Before releasing any INTcoin interface:
-
-- [ ] Run automated accessibility tests (Lighthouse, axe DevTools)
-- [ ] Test keyboard navigation (unplug mouse, navigate entire interface)
-- [ ] Test with screen reader (VoiceOver on Mac, NVDA on Windows)
-- [ ] Verify color contrast with WebAIM Contrast Checker
-- [ ] Test with colorblindness simulators
-- [ ] Verify reduced motion preference is respected
-- [ ] Test text zoom at 200%
-- [ ] Test on mobile with touch targets
-- [ ] Review focus indicators on all interactive elements
-- [ ] Validate HTML (semantic structure)
-- [ ] Test form error handling and announcements
-
----
-
 ## 🔗 Usage Examples
 
 ### Website Header
@@ -888,21 +693,19 @@ For brand assets or usage questions:
 
 ## 📜 License
 
-INTcoin branding and logos are © 2025 INTcoin Core (Maddison Lane).
+INTcoin branding and logos are © 2025 INTcoin Core (Neil Adamson).
 
 **Usage**: Free to use for INTcoin-related projects and promotions. Do not use to imply official endorsement without permission.
 
 ---
 
-**Version**: 2.0 - Accessibility Edition
+**Version**: 2.0
 **Last Updated**: January 2025
 **Next Review**: June 2025
 
 **Major Changes in v2.0**:
-- Complete color palette overhaul for WCAG 2.1 AA/AAA compliance
-- All colors now documented with contrast ratios
-- Added comprehensive accessibility guidelines section
-- Enhanced button, link, and UI component specifications
+- Enhanced color palette with multiple variants
+- Improved button, link, and UI component specifications
 - Added support for high contrast mode and reduced motion
 - Updated typography requirements (16px minimum, 1.5 line height)
-- Added accessibility testing checklist
+- Enhanced design best practices

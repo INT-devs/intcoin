@@ -246,7 +246,7 @@ A: **INT** (INTcoin)
 
 ## License
 
-Copyright (c) 2025 INTcoin Core (Maddison Lane)
+Copyright (c) 2025 INTcoin Core (Neil Adamson)
 Distributed under the MIT software license.
 
 ---

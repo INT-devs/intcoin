@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2.1)
+cmake_minimum_required(VERSION 3.28.3)
 
 project(INTcoin
     VERSION 1.0.0
@@ -38,6 +38,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -march=native
         -O3
     )
+    # GCC-specific warnings
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        add_compile_options(
+            -Wno-stringop-overflow
+            -Wno-uninitialized
+            -Wno-maybe-uninitialized
+        )
+    endif()
 endif()
 
 # Find dependencies (currently optional for initial build)
@@ -300,7 +308,7 @@ find_library(ROCKSDB_LIB rocksdb REQUIRED)
 add_executable(mine_genesis
     tools/mine_genesis.cpp
 )
-target_link_libraries(mine_genesis intcoin_core ${ROCKSDB_LIB})
+target_link_libraries(mine_genesis intcoin_core ${ROCKSDB_LIB} ssl crypto)
 
 # Block Explorer
 # if(BUILD_EXPLORER)

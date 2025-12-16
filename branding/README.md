@@ -1,6 +1,6 @@
 # INTcoin Brand Assets
 
-**Copyright (c) 2025 INTcoin Core (Maddison Lane)**
+**Copyright (c) 2025 INTcoin Core (Neil Adamson)**
 
 This directory contains all official INTcoin brand assets, logos, colors, and design guidelines.
 
@@ -288,7 +288,7 @@ For brand asset questions or custom design requests:
 
 ## 📜 License
 
-INTcoin brand assets © 2025 INTcoin Core (Maddison Lane)
+INTcoin brand assets © 2025 INTcoin Core (Neil Adamson)
 
 **Usage Policy**: Free to use for INTcoin-related projects, community content, and educational purposes. Commercial use or use that implies official endorsement requires permission.
 

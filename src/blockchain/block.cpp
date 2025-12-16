@@ -348,7 +348,14 @@ Block CreateGenesisBlock() {
     header.prev_block_hash = uint256(); // Zero hash
     header.timestamp = 1732627080; // 26 November 2025 13:18:00 UTC
     header.bits = consensus::MIN_DIFFICULTY_BITS;
-    header.nonce = 0;
+    header.nonce = 1827011ULL; // Mined nonce
+
+    // Hardcoded mined values
+    auto randomx_key_result = HexToUint256("5c497a03c63d4997bee117045fbfe407806b74350f96f30918a3dcd5c870ae2d");
+    header.randomx_key = randomx_key_result.IsOk() ? *randomx_key_result.value : uint256();
+
+    auto merkle_root_result = HexToUint256("9ee7e90a6fbcb10de930064946ca16a1b2434a5d2cc9ce8a49aa2bda0ce89d69");
+    header.merkle_root = merkle_root_result.IsOk() ? *merkle_root_result.value : uint256();
 
     // Create coinbase transaction with genesis message
     // Timestamp: 13:18, 26 November 2025

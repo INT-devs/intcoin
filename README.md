@@ -88,7 +88,8 @@ INTcoin is a quantum-resistant cryptocurrency designed for long-term security in
 | **RPC Port (Testnet)** | 12212 |
 | **Lightning P2P Port** | 2213 |
 | **Lightning RPC Port** | 2214 |
-| **Testnet Faucet Port** | 8080 |
+| **I2P SAM Port** | 7656 |
+| **Testnet Faucet Port** | 2215 |
 
 ---
 
@@ -527,19 +528,20 @@ intcoin-lightning closechannel <channel_id>
 ### Mainnet
 
 - **Website**: `https://international-coin.org`
-- **P2P**: `seed-uk.international-coin.org:2210`, `seed-us.international-coin.org:2210`
+- **P2P**: `seed-uk.international-coin.org:2211`, `seed-us.international-coin.org:2211`
 - **RPC**: `rpc.international-coin.org:2212`
 - **Explorer**: `https://explorer.international-coin.org`
 - **Lightning**: Port 2213 (P2P), Port 2214 (RPC)
-- **Tor Hidden Service**: `intcoinxxx...onion:2211` (auto-created)
-- **I2P Destination**: `intcoinxxx...b32.i2p` (auto-created)
+- **Tor Hidden Service**: `kdzg6kum4imiwtttihl63ktdq6vz7ofy6ngibv2j6nuvzsjf5a4bzuid.onion:2211`
+- **I2P Destination**: `bkunkckztijd6zqgqhud7cv5kg6xgvcbytz2ppnihpjl5udo6b5a.b32.i2p:2211`
 
 ### Testnet
 
-- **P2P**: `test-uk.international-coin.org:2212`, `test-us.international-coin.org:2212`
-- **RPC**: `testrpc.international-coin.org:2213`
+- **P2P**: `test-uk.international-coin.org:12211`, `test-us.international-coin.org:12211`
+- **RPC**: `testrpc.international-coin.org:12212`
 - **Explorer**: `https://testnet-explorer.international-coin.org`
-- **Faucet**: `http://faucet.international-coin.org:8080`
+- **Faucet**: `http://faucet.international-coin.org:2215`
+- **Tor Hidden Service**: `r7klr25sqfpsx5sug64a5p3y46bjvvm6e67jtfl255l4lqca7c4dbhyd.onion:12211`
 
 ---
 
@@ -756,7 +758,7 @@ Copyright (c) 2025 INTcoin Team (Neil Adamson)
 - **Security**: security@international-coin.org
 - **Discord**: https://discord.gg/7p4VmS2z
 - **Telegram**: https://t.me/intcoin_official
-- **X (Twitter)**: https://x.com/intcoin_crypto
+- **X (Twitter)**: https://x.com/INTcoin_team
 - **Reddit**: https://reddit.com/r/intcoin
 
 ## 🌟 Project Status

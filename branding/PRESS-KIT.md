@@ -2,7 +2,7 @@
 
 **Version**: 1.0
 **Last Updated**: January 2025
-**Copyright**: © 2025 INTcoin Core (Maddison Lane)
+**Copyright**: © 2025 INTcoin Core (Neil Adamson)
 
 ---
 
@@ -15,7 +15,7 @@
 | **Category** | Cryptocurrency, Blockchain, Post-Quantum Cryptography |
 | **Founded** | 2025 |
 | **License** | MIT (Open Source) |
-| **Creator** | Maddison Lane |
+| **Creator** | Neil Adamson |
 | **Website** | https://international-coin.org |
 | **Repository** | https://gitlab.com/intcoin/crypto |
 
@@ -259,7 +259,7 @@ Slate Gray:     #64748b  (Body text)
 
 > "The quantum threat to cryptocurrency is not theoretical—it's inevitable. INTcoin represents a fundamental shift in how we think about long-term cryptographic security. We're not just building for today; we're building for the next century."
 >
-> **— Maddison Lane, Lead Developer, INTcoin Core**
+> **— Neil Adamson, Lead Developer, INTcoin Core**
 
 ### Technical
 
@@ -343,7 +343,7 @@ INTcoin is a next-generation cryptocurrency designed to resist attacks from quan
 ### Long (200 words)
 INTcoin is a quantum-resistant cryptocurrency that addresses the existential threat quantum computers pose to blockchain security. While traditional cryptocurrencies like Bitcoin and Ethereum use ECDSA signatures that can be broken by Shor's algorithm on a quantum computer, INTcoin employs CRYSTALS-Dilithium5 and Kyber1024—NIST-standardized post-quantum algorithms achieving the highest security level (Level 5).
 
-Founded in 2025 by developer Maddison Lane, INTcoin was designed quantum-resistant from genesis, avoiding the complex migration challenges facing existing cryptocurrencies. The project implements ASIC-resistant SHA-256 proof-of-work mining to maintain decentralization, Lightning Network support for instant payments, and native TOR integration for privacy-conscious users.
+Founded in 2025 by developer Neil Adamson, INTcoin was designed quantum-resistant from genesis, avoiding the complex migration challenges facing existing cryptocurrencies. The project implements ASIC-resistant SHA-256 proof-of-work mining to maintain decentralization, Lightning Network support for instant payments, and native TOR integration for privacy-conscious users.
 
 INTcoin adheres to Bitcoin's proven security model: pure Proof of Work with no staking, governance, or pre-mine. The entire 221 trillion INT supply is distributed through mining rewards over approximately 256 years, with halvings every 4 years. Built with modern C++23 and comprehensive test coverage, INTcoin's open-source codebase (MIT license) ensures transparency and community-driven development.
 
@@ -373,7 +373,7 @@ With cryptographically-relevant quantum computers expected by 2030-2035, INTcoin
 
 ## Legal & Licensing
 
-**Copyright**: © 2025 INTcoin Core (Maddison Lane)
+**Copyright**: © 2025 INTcoin Core (Neil Adamson)
 **License**: MIT License
 **Trademark**: INTcoin™ is a trademark of INTcoin Core
 

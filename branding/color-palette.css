@@ -1,57 +1,56 @@
 /**
- * INTcoin Accessible Color Palette
- * Copyright (c) 2025 INTcoin Core (Maddison Lane)
+ * INTcoin Color Palette
+ * Copyright (c) 2025 INTcoin Core (Neil Adamson)
  *
- * WCAG AA/AAA Compliant Colors for Accessibility
- * All colors meet or exceed WCAG 2.1 Level AA contrast requirements
+ * High Contrast Colors for Readability
  * Colorblind-friendly palette
  */
 
 :root {
   /* ========================================
-     PRIMARY COLORS - WCAG AA/AAA Compliant
+     PRIMARY COLORS
      ======================================== */
 
   /* Quantum Blue - Darker for better contrast */
-  --intcoin-quantum-blue: #0066cc;           /* 4.65:1 on white (AA) */
-  --intcoin-quantum-blue-dark: #004d99;      /* 7.16:1 on white (AAA) */
+  --intcoin-quantum-blue: #0066cc;
+  --intcoin-quantum-blue-dark: #004d99;
   --intcoin-quantum-blue-light: #3399ff;     /* For dark backgrounds */
 
   /* Deep Purple - Enhanced contrast */
-  --intcoin-deep-purple: #5a21b6;            /* 7.28:1 on white (AAA) */
-  --intcoin-dark-purple: #3c0f7c;            /* 11.26:1 on white (AAA) */
+  --intcoin-deep-purple: #5a21b6;
+  --intcoin-dark-purple: #3c0f7c;
   --intcoin-light-purple: #8b5cf6;           /* For dark backgrounds */
 
   /* ========================================
      SECONDARY COLORS
      ======================================== */
 
-  /* Electric Cyan - Accessible version */
-  --intcoin-electric-cyan: #0055cc;          /* 6.11:1 on white (AA+) */
-  --intcoin-violet: #5b3fc8;                 /* 6.42:1 on white (AA+) */
+  /* Electric Cyan */
+  --intcoin-electric-cyan: #0055cc;
+  --intcoin-violet: #5b3fc8;
 
   /* ========================================
      SEMANTIC COLORS - High Contrast
      ======================================== */
 
-  /* Success/Active - Meets WCAG AA */
-  --intcoin-success: #0a7d3e;                /* 4.81:1 on white (AA) */
-  --intcoin-success-dark: #065a2d;           /* 7.24:1 on white (AAA) */
+  /* Success/Active */
+  --intcoin-success: #0a7d3e;
+  --intcoin-success-dark: #065a2d;
   --intcoin-success-light: #10b75f;          /* For dark backgrounds */
 
-  /* Warning/Caution - High visibility */
-  --intcoin-warning: #b45309;                /* 4.87:1 on white (AA) */
-  --intcoin-warning-dark: #92400e;           /* 6.52:1 on white (AAA) */
+  /* Warning/Caution */
+  --intcoin-warning: #b45309;
+  --intcoin-warning-dark: #92400e;
   --intcoin-warning-light: #f59e0b;          /* For dark backgrounds */
 
-  /* Error/Danger - Enhanced visibility */
-  --intcoin-error: #c81e1e;                  /* 5.51:1 on white (AA+) */
-  --intcoin-error-dark: #991b1b;             /* 7.89:1 on white (AAA) */
+  /* Error/Danger */
+  --intcoin-error: #c81e1e;
+  --intcoin-error-dark: #991b1b;
   --intcoin-error-light: #ef4444;            /* For dark backgrounds */
 
-  /* Info - Accessible blue */
-  --intcoin-info: #0369a1;                   /* 5.68:1 on white (AA+) */
-  --intcoin-info-dark: #075985;              /* 7.06:1 on white (AAA) */
+  /* Info */
+  --intcoin-info: #0369a1;
+  --intcoin-info-dark: #075985;
   --intcoin-info-light: #0ea5e9;             /* For dark backgrounds */
 
   /* ========================================
@@ -59,25 +58,25 @@
      ======================================== */
 
   /* Light Theme */
-  --intcoin-text-primary: #0f172a;           /* 16.93:1 on white (AAA) */
-  --intcoin-text-secondary: #475569;         /* 8.59:1 on white (AAA) */
-  --intcoin-text-tertiary: #64748b;          /* 5.76:1 on white (AA+) */
+  --intcoin-text-primary: #0f172a;
+  --intcoin-text-secondary: #475569;
+  --intcoin-text-tertiary: #64748b;
 
   --intcoin-bg-primary: #ffffff;
   --intcoin-bg-secondary: #f8fafc;
   --intcoin-bg-tertiary: #f1f5f9;
 
-  --intcoin-border-primary: #cbd5e1;         /* 1.78:1 on white */
-  --intcoin-border-secondary: #e2e8f0;       /* 1.31:1 on white */
+  --intcoin-border-primary: #cbd5e1;
+  --intcoin-border-secondary: #e2e8f0;
 
   /* Dark Theme - High Contrast */
   --intcoin-dark-bg-primary: #0a0f1e;        /* True dark for OLED */
   --intcoin-dark-bg-secondary: #141b2e;
   --intcoin-dark-bg-tertiary: #1e2842;
 
-  --intcoin-dark-text-primary: #f8fafc;      /* 18.26:1 on dark (AAA) */
-  --intcoin-dark-text-secondary: #cbd5e1;    /* 11.26:1 on dark (AAA) */
-  --intcoin-dark-text-tertiary: #94a3b8;     /* 7.11:1 on dark (AAA) */
+  --intcoin-dark-text-primary: #f8fafc;
+  --intcoin-dark-text-secondary: #cbd5e1;
+  --intcoin-dark-text-tertiary: #94a3b8;
 
   --intcoin-dark-border-primary: #334155;
   --intcoin-dark-border-secondary: #1e293b;
@@ -87,10 +86,10 @@
      ======================================== */
 
   /* For users who need extra contrast */
-  --intcoin-hc-text: #000000;                /* 21:1 on white (AAA+) */
-  --intcoin-hc-bg: #ffffff;                  /* 21:1 with black text */
-  --intcoin-hc-accent: #0050b3;              /* 8.13:1 on white (AAA) */
-  --intcoin-hc-border: #000000;              /* Maximum contrast */
+  --intcoin-hc-text: #000000;
+  --intcoin-hc-bg: #ffffff;
+  --intcoin-hc-accent: #0050b3;
+  --intcoin-hc-border: #000000;
 
   /* ========================================
      ACCESSIBLE GRADIENTS
@@ -177,7 +176,7 @@
 
   /* Line Heights - Improved readability */
   --intcoin-leading-tight: 1.25;
-  --intcoin-leading-normal: 1.5;   /* WCAG recommended */
+  --intcoin-leading-normal: 1.5;
   --intcoin-leading-relaxed: 1.75;
   --intcoin-leading-loose: 2;
 
@@ -246,7 +245,7 @@
 }
 
 /* ========================================
-   UTILITY CLASSES - Accessible
+   UTILITY CLASSES
    ======================================== */
 
 /* Text on solid backgrounds only - no gradient text */
@@ -272,7 +271,7 @@
 }
 
 /* ========================================
-   BUTTON STYLES - WCAG Compliant
+   BUTTON STYLES
    ======================================== */
 
 .intcoin-btn-primary {
@@ -364,7 +363,7 @@ a:visited {
 }
 
 /* ========================================
-   ACCESSIBILITY UTILITIES
+   UTILITIES
    ======================================== */
 
 /* Screen reader only */

@@ -19,7 +19,7 @@ namespace intcoin {
 
 HTLC::HTLC() : id(0), amount(0), cltv_expiry(0), incoming(false), fulfilled(false) {}
 HTLC::HTLC(uint64_t id_, uint64_t amt, const uint256& hash, uint32_t expiry, bool inc)
-    : id(id_), amount(amt), payment_hash(hash), cltv_expiry(expiry), incoming(inc), fulfilled(false) {}
+    : id(id_), amount(amt), payment_hash(hash), cltv_expiry(expiry), incoming(inc), fulfilled(false), preimage() {}
 std::vector<uint8_t> HTLC::Serialize() const { return std::vector<uint8_t>(); }
 Result<HTLC> HTLC::Deserialize(const std::vector<uint8_t>& data) { return Result<HTLC>::Ok(HTLC()); }
 

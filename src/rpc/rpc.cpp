@@ -13,6 +13,7 @@
 #include <condition_variable>
 #include <queue>
 #include <cstring>
+#include <cmath>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

@@ -15,6 +15,7 @@
 #include <fstream>
 #include <mutex>
 #include <cstdarg>
+#include <cstring>
 #include <filesystem>
 
 namespace intcoin {

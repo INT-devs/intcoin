@@ -481,7 +481,7 @@ uint64_t CalculateShareDifficulty(const uint256& hash) {
     }
 
     // Minimum difficulty of 1
-    return std::max(difficulty, 1ULL);
+    return std::max(difficulty, static_cast<uint64_t>(1));
 }
 
 uint256 GenerateJobID() {
