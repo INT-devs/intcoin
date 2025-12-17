@@ -223,6 +223,19 @@ All security reports are available as GitLab artifacts:
 
 ## Pipeline Configuration
 
+### GitLab Runners
+
+**Runner Type:** GitLab.com Free Shared Runners
+
+The pipeline uses GitLab's free shared runners which are automatically available on GitLab.com:
+- **No custom runner setup required**
+- **Docker support enabled by default**
+- **Automatic scaling and availability**
+- **Free tier allocation:** 400 CI/CD minutes per month
+- **Architecture:** Linux x86_64 with Docker executor
+
+All jobs run on gitlab.com's shared runner fleet without requiring any `tags` configuration.
+
 ### Variables
 
 ```yaml
@@ -230,6 +243,8 @@ BUILD_TYPE: "Release"                  # CMake build type
 CMAKE_BUILD_PARALLEL_LEVEL: "4"        # Parallel compilation jobs
 SAST_EXCLUDED_PATHS: "build/,deps/,external/,third_party/"
 SECURE_LOG_LEVEL: "info"
+DOCKER_DRIVER: "overlay2"              # Docker storage driver
+DOCKER_TLS_CERTDIR: "/certs"           # Docker TLS certificate directory
 ```
 
 ### Triggers
