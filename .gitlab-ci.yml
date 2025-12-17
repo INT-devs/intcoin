@@ -72,21 +72,15 @@ include:
 build:ubuntu-22.04:
   <<: *build_template
   image: ubuntu:22.04
-  tags:
-    - docker
 
 build:ubuntu-24.04:
   <<: *build_template
   image: ubuntu:24.04
-  tags:
-    - docker
   allow_failure: true
 
 build:debian-12:
   <<: *build_template
   image: debian:12
-  tags:
-    - docker
 
 # ============================================================================
 # Test Stage
@@ -112,8 +106,6 @@ test:crypto:
   script:
     - cd build
     - ./tests/test_crypto --gtest_output=xml:test-results/test_crypto.xml
-  tags:
-    - docker
 
 test:randomx:
   <<: *test_template
@@ -121,8 +113,6 @@ test:randomx:
   script:
     - cd build
     - ./tests/test_randomx --gtest_output=xml:test-results/test_randomx.xml
-  tags:
-    - docker
 
 test:bech32:
   <<: *test_template
@@ -130,8 +120,6 @@ test:bech32:
   script:
     - cd build
     - ./tests/test_bech32 --gtest_output=xml:test-results/test_bech32.xml
-  tags:
-    - docker
 
 test:serialization:
   <<: *test_template
@@ -139,8 +127,6 @@ test:serialization:
   script:
     - cd build
     - ./tests/test_serialization --gtest_output=xml:test-results/test_serialization.xml
-  tags:
-    - docker
 
 test:storage:
   <<: *test_template
@@ -148,8 +134,6 @@ test:storage:
   script:
     - cd build
     - ./tests/test_storage --gtest_output=xml:test-results/test_storage.xml
-  tags:
-    - docker
 
 test:validation:
   <<: *test_template
@@ -157,8 +141,6 @@ test:validation:
   script:
     - cd build
     - ./tests/test_validation --gtest_output=xml:test-results/test_validation.xml
-  tags:
-    - docker
 
 test:genesis:
   <<: *test_template
@@ -166,8 +148,6 @@ test:genesis:
   script:
     - cd build
     - ./tests/test_genesis --gtest_output=xml:test-results/test_genesis.xml
-  tags:
-    - docker
 
 test:network:
   <<: *test_template
@@ -175,8 +155,6 @@ test:network:
   script:
     - cd build
     - ./tests/test_network --gtest_output=xml:test-results/test_network.xml
-  tags:
-    - docker
 
 test:ml:
   <<: *test_template
@@ -184,8 +162,6 @@ test:ml:
   script:
     - cd build
     - ./tests/test_ml --gtest_output=xml:test-results/test_ml.xml
-  tags:
-    - docker
 
 test:wallet:
   <<: *test_template
@@ -193,8 +169,6 @@ test:wallet:
   script:
     - cd build
     - ./tests/test_wallet --gtest_output=xml:test-results/test_wallet.xml
-  tags:
-    - docker
 
 test:fuzz:
   <<: *test_template
@@ -202,8 +176,6 @@ test:fuzz:
   script:
     - cd build
     - timeout 300 ./tests/test_fuzz --gtest_output=xml:test-results/test_fuzz.xml || true
-  tags:
-    - docker
   allow_failure: true
 
 test:integration:
@@ -212,8 +184,6 @@ test:integration:
   script:
     - cd build
     - ./tests/test_integration --gtest_output=xml:test-results/test_integration.xml
-  tags:
-    - docker
 
 # ============================================================================
 # Security Stage - SAST
@@ -231,8 +201,6 @@ semgrep-sast:
     paths:
       - gl-sast-report.json
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
 
 # Flawfinder - C/C++ security scanner
@@ -249,8 +217,6 @@ flawfinder-sast:
       - flawfinder-report.html
       - flawfinder-critical.txt
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
 
 # Cppcheck - Static analysis for C/C++
@@ -268,8 +234,6 @@ cppcheck-sast:
       - cppcheck-report.xml
       - cppcheck-report.txt
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
 
 # Clang-Tidy - C++ linter and static analyzer
@@ -289,8 +253,6 @@ clang-tidy-sast:
     paths:
       - clang-tidy-report.txt
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
 
 # GitLab SAST (uses multiple analyzers)
@@ -340,8 +302,6 @@ gitleaks-scan:
     paths:
       - gitleaks-report.json
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
 
 # ============================================================================
@@ -366,8 +326,6 @@ dast-setup:
     paths:
       - build/.intcoin/
     expire_in: 1 day
-  tags:
-    - docker
   allow_failure: true
 
 # DAST scanning (requires running service)
@@ -402,8 +360,6 @@ zap-scan:
     paths:
       - zap-reports/
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
@@ -423,8 +379,6 @@ trivy-scan:
     paths:
       - trivy-report.json
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
 
 # ============================================================================
@@ -453,8 +407,6 @@ license-check:
     paths:
       - LICENSE
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
 
 # ============================================================================
@@ -477,8 +429,6 @@ code_quality:
     paths:
       - gl-code-quality-report.json
     expire_in: 1 week
-  tags:
-    - docker
   allow_failure: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
@@ -537,8 +487,6 @@ security-summary:
     paths:
       - security-summary.md
     expire_in: 1 month
-  tags:
-    - docker
   allow_failure: true
   when: always
 
@@ -564,8 +512,6 @@ package:release:
     paths:
       - intcoin-*.tar.gz
     expire_in: 1 month
-  tags:
-    - docker
   rules:
     - if: '$CI_COMMIT_TAG'
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -581,8 +527,6 @@ upload:package:
       curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \
            --upload-file intcoin-$CI_COMMIT_REF_NAME-linux-x86_64.tar.gz \
            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/intcoin/${CI_COMMIT_REF_NAME}/intcoin-$CI_COMMIT_REF_NAME-linux-x86_64.tar.gz"
-  tags:
-    - docker
   rules:
     - if: '$CI_COMMIT_TAG'
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -596,6 +540,4 @@ cleanup:
   script:
     - echo "Pipeline completed successfully"
     - echo "Security reports available in artifacts"
-  tags:
-    - docker
   when: always
