@@ -69,7 +69,7 @@ include:
     - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
     - make -j4 && make install
     - ldconfig
-    - cd /builds/intcoin/crypto
+    - cd $CI_PROJECT_DIR
   script:
     - mkdir -p build
     - cd build
@@ -118,7 +118,7 @@ build:debian-12:
     - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
     - make -j4 && make install
     - ldconfig
-    - cd /builds/intcoin/crypto
+    - cd $CI_PROJECT_DIR
 
 # ============================================================================
 # Test Stage
