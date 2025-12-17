@@ -446,17 +446,9 @@ license-check:
   image: alpine:latest
   script:
     - echo "=== INTcoin License Audit ==="
-    - echo "Primary License: MIT"
-    - echo ""
-    - echo "Third-Party Dependencies:"
-    - echo "  - liboqs: MIT"
-    - echo "  - RandomX: BSD-3-Clause"
-    - echo "  - RocksDB: Apache-2.0/GPL-2.0"
-    - echo "  - Boost: Boost Software License"
-    - echo "  - OpenSSL: Apache-2.0"
-    - echo "  - Qt6: LGPL-3.0"
-    - echo ""
-    - echo "✅ All licenses compatible with MIT"
+    - echo "Primary License MIT"
+    - echo "Third-Party Dependencies - liboqs MIT, RandomX BSD-3-Clause, RocksDB Apache-2.0/GPL-2.0, Boost BSL, OpenSSL Apache-2.0, Qt6 LGPL-3.0"
+    - echo "All licenses compatible with MIT"
   artifacts:
     paths:
       - LICENSE
