@@ -50,7 +50,13 @@ include:
   stage: build
   before_script:
     - apt-get update -qq
+    - apt-get install -y -qq wget gnupg software-properties-common
+    # Install CMake 3.28+ from Kitware's official repository
+    - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+    - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+    - apt-get update -qq
     - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev qt6-base-dev libqt6core6 libqt6widgets6 libqt6gui6 libqt6network6
+    - cmake --version
   script:
     - mkdir -p build
     - cd build
@@ -66,8 +72,6 @@ include:
       - build/intcoin-faucet
       - build/tests/test_*
     expire_in: 1 week
-    reports:
-      dotenv: build/build.env
 
 build:ubuntu-22.04:
   <<: *build_template
@@ -81,6 +85,15 @@ build:ubuntu-24.04:
 build:debian-12:
   <<: *build_template
   image: debian:12
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq wget gnupg software-properties-common
+    # Install CMake 3.28+ from Kitware's official repository (Debian bookworm)
+    - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+    - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+    - apt-get update -qq
+    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev qt6-base-dev libqt6core6 libqt6widgets6 libqt6gui6 libqt6network6
+    - cmake --version
 
 # ============================================================================
 # Test Stage
