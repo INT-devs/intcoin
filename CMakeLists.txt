@@ -95,6 +95,7 @@ if(BUILD_WALLET_QT)
         Widgets
         Network
         Gui
+        PrintSupport
         REQUIRED
     )
 endif()
@@ -273,6 +274,7 @@ if(BUILD_WALLET_QT)
         src/qt/transactionspage.cpp
         src/qt/addressbookpage.cpp
         src/qt/settingspage.cpp
+        src/qt/mnemonicDialog.cpp
         include/intcoin/qt/mainwindow.h
         include/intcoin/qt/overviewpage.h
         include/intcoin/qt/sendcoinspage.h
@@ -280,6 +282,7 @@ if(BUILD_WALLET_QT)
         include/intcoin/qt/transactionspage.h
         include/intcoin/qt/addressbookpage.h
         include/intcoin/qt/settingspage.h
+        include/intcoin/qt/mnemonicDialog.h
     )
     target_link_libraries(intcoin-qt
         intcoin_core
@@ -288,6 +291,7 @@ if(BUILD_WALLET_QT)
         Qt6::Widgets
         Qt6::Network
         Qt6::Gui
+        Qt6::PrintSupport
     )
     install(TARGETS intcoin-qt DESTINATION bin)
 endif()
@@ -304,11 +308,12 @@ if(BUILD_FAUCET)
 endif()
 
 # Genesis Block Miner Tool (development/testing)
-find_library(ROCKSDB_LIB rocksdb REQUIRED)
-add_executable(mine_genesis
-    tools/mine_genesis.cpp
-)
-target_link_libraries(mine_genesis intcoin_core ${ROCKSDB_LIB} ssl crypto)
+# Disabled - file moved or removed
+# find_library(ROCKSDB_LIB rocksdb REQUIRED)
+# add_executable(mine_genesis
+#     tools/mine_genesis.cpp
+# )
+# target_link_libraries(mine_genesis intcoin_core ${ROCKSDB_LIB} ssl crypto)
 
 # Block Explorer
 # if(BUILD_EXPLORER)

@@ -2,6 +2,7 @@
 // MIT License
 
 #include "intcoin/qt/mainwindow.h"
+#include "intcoin/qt/mnemonicDialog.h"
 #include "intcoin/wallet.h"
 #include "intcoin/blockchain.h"
 #include "intcoin/network.h"
@@ -44,11 +45,23 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
 
+            // Get the mnemonic words
+            auto mnemonicWords = mnemonicResult.GetValue();
+
             // Create wallet with mnemonic
-            auto createResult = wallet->Create(mnemonicResult.GetValue());
+            auto createResult = wallet->Create(mnemonicWords);
             if (!createResult.IsOk()) {
                 QMessageBox::critical(nullptr, QObject::tr("Error"),
                     QObject::tr("Failed to create wallet."));
+                return 1;
+            }
+
+            // IMPORTANT: Show mnemonic to user for backup
+            // This dialog forces user to confirm they've backed up their seed
+            intcoin::qt::MnemonicDialog mnemonicDialog(mnemonicWords);
+            if (mnemonicDialog.exec() != QDialog::Accepted) {
+                QMessageBox::critical(nullptr, QObject::tr("Wallet Not Backed Up"),
+                    QObject::tr("You must backup your recovery seed before using the wallet."));
                 return 1;
             }
         }
