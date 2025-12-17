@@ -224,16 +224,18 @@
 4. ✅ Block template generation for mining
 5. ✅ Block submission via RPC
 6. ✅ Network hashrate calculation (GetNetworkHashRate)
+7. ✅ Wallet encryption implementation (AES-256-GCM + PBKDF2-HMAC-SHA256)
+8. ✅ Passphrase verification and key decryption
+9. ✅ Hex to uint256 conversion utility
+10. ✅ Amount parsing utility
+11. ✅ Platform-specific data directories
+12. ✅ Secure mnemonic display dialog (print-enabled, clipboard-disabled)
+13. ✅ Qt6 wallet integration with mandatory seed backup
 
 **In Progress**:
 - Documentation updates (README, ROADMAP, TECHNICAL_REQUIREMENTS, CONTRIBUTING)
 
-**Next Week (Dec 16-22, 2025)**:
-- [ ] Wallet encryption implementation (Kyber768 or AES-256)
-- [ ] Passphrase verification and key decryption
-- [ ] Hex to uint256 conversion utility
-- [ ] Amount parsing utility
-- [ ] Platform-specific data directories
+**Next Week (Dec 23-29, 2025)**:
 
 ### December 23-31, 2025
 **Focus**: Networking & Mining Pool
