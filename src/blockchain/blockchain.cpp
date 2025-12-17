@@ -554,7 +554,7 @@ Result<void> Blockchain::Reorganize(const std::vector<Block>& new_chain) {
         const auto& block = new_chain[i];
         auto existing_block = GetBlockByHeight(i);
 
-        if (!existing_block.IsOk() || existing_block.GetValue().header.hash != block.header.hash) {
+        if (!existing_block.IsOk() || existing_block.GetValue().GetHash() != block.GetHash()) {
             fork_height = i;
             break;
         }
@@ -569,9 +569,11 @@ Result<void> Blockchain::Reorganize(const std::vector<Block>& new_chain) {
     }
 
     // **51% Attack Protection: Check checkpoints**
-    for (const auto& block : new_chain) {
-        uint64_t height = block.header.height;
-        if (ChainValidator::IsCheckpoint(height, block.header.hash)) {
+    for (size_t i = 0; i < new_chain.size(); ++i) {
+        const auto& block = new_chain[i];
+        uint64_t height = i; // Height is the index in the chain
+
+        if (ChainValidator::IsCheckpoint(height, block.GetHash())) {
             // Checkpoint validation passed
             continue;
         }
@@ -606,7 +608,7 @@ Result<void> Blockchain::Reorganize(const std::vector<Block>& new_chain) {
             // Remove outputs created by this transaction
             for (size_t i = 0; i < tx.outputs.size(); ++i) {
                 OutPoint outpoint{tx.GetHash(), static_cast<uint32_t>(i)};
-                impl_->utxo_set_.Remove(outpoint);
+                impl_->utxo_set_.erase(outpoint);
             }
 
             // Restore spent outputs (except coinbase)
