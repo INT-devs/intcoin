@@ -55,12 +55,12 @@ include:
     - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
     - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
     - apt-get update -qq
-    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev qt6-base-dev libqt6core6 libqt6widgets6 libqt6gui6 libqt6network6
+    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev
     - cmake --version
   script:
     - mkdir -p build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+    - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_WALLET_QT=OFF ..
     - cmake --build . --parallel $CMAKE_BUILD_PARALLEL_LEVEL
     - ls -lh intcoin* || true
   artifacts:
@@ -68,7 +68,6 @@ include:
       - build/intcoind
       - build/intcoin-cli
       - build/intcoin-miner
-      - build/intcoin-qt
       - build/intcoin-faucet
       - build/tests/test_*
     expire_in: 1 week
@@ -92,7 +91,7 @@ build:debian-12:
     - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
     - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
     - apt-get update -qq
-    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev qt6-base-dev libqt6core6 libqt6widgets6 libqt6gui6 libqt6network6
+    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev
     - cmake --version
 
 # ============================================================================
@@ -518,7 +517,7 @@ package:release:
     - apt-get install -y -qq tar gzip
   script:
     - mkdir -p release
-    - cp build/intcoind build/intcoin-cli build/intcoin-miner build/intcoin-qt build/intcoin-faucet release/ || true
+    - cp build/intcoind build/intcoin-cli build/intcoin-miner build/intcoin-faucet release/ || true
     - tar -czf intcoin-$CI_COMMIT_REF_NAME-linux-x86_64.tar.gz -C release .
     - ls -lh intcoin-*.tar.gz
   artifacts:
