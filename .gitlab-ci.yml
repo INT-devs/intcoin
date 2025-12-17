@@ -386,9 +386,8 @@ dast:
   dependencies:
     - dast-setup
   allow_failure: true
-  only:
-    - main
-    - develop
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
 
 # OWASP ZAP - Dynamic security scanner
 zap-scan:
@@ -406,9 +405,8 @@ zap-scan:
   tags:
     - docker
   allow_failure: true
-  only:
-    - main
-    - develop
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
 
 # ============================================================================
 # Security Stage - Container Scanning
@@ -494,9 +492,8 @@ code_quality:
   tags:
     - docker
   allow_failure: true
-  only:
-    - main
-    - develop
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
 
 # ============================================================================
 # Security Summary Report
@@ -578,9 +575,9 @@ package:release:
     expire_in: 1 month
   tags:
     - docker
-  only:
-    - tags
-    - main
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == "main"'
 
 # Upload to GitLab Package Registry
 upload:package:
@@ -595,9 +592,9 @@ upload:package:
            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/intcoin/${CI_COMMIT_REF_NAME}/intcoin-$CI_COMMIT_REF_NAME-linux-x86_64.tar.gz"
   tags:
     - docker
-  only:
-    - tags
-    - main
+  rules:
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_COMMIT_BRANCH == "main"'
 
 # ============================================================================
 # Cleanup
