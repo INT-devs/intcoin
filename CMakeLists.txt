@@ -90,7 +90,7 @@ find_path(EVENT_INCLUDE_DIR event2/event.h)
 
 # Qt6 (optional)
 if(BUILD_WALLET_QT)
-    find_package(Qt6 6.9.3 COMPONENTS
+    find_package(Qt6 6.2 COMPONENTS
         Core
         Widgets
         Network
