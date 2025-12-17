@@ -550,7 +550,10 @@ intcoin-lightning closechannel <channel_id>
 ### Responsible Disclosure
 
 Found a security vulnerability? Please report it privately to:
+
+**Security Contact**: Neil Adamson
 - **Email**: security@international-coin.org
+- **PGP Fingerprint**: `4E5A A9F8 A4C2 F245 E3FC  9381 BCFB 6274 A3AF EEE9`
 - **GPG Key**: [Download](https://international-coin.org/security.asc)
 
 **Do not** create public GitHub/GitLab issues for security vulnerabilities.

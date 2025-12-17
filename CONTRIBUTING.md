@@ -40,7 +40,7 @@ Found a bug or have a feature request? Please open an issue on GitLab:
    - For features: clear description, use case, and benefits
 4. **Be responsive** to follow-up questions
 
-**Security Issues**: Please report security vulnerabilities privately to [security@international-coin.org](mailto:security@international-coin.org)
+**Security Issues**: Please report security vulnerabilities privately to Neil Adamson at [security@international-coin.org](mailto:security@international-coin.org). PGP fingerprint: `4E5A A9F8 A4C2 F245 E3FC  9381 BCFB 6274 A3AF EEE9`. See [SECURITY.md](SECURITY.md) for details.
 
 ### Suggesting Enhancements
 
