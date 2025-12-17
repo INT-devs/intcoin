@@ -60,8 +60,9 @@ include:
     # Build and install liboqs (post-quantum cryptography)
     - git clone --depth 1 --branch 0.7.2 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
     - cd /tmp/liboqs && mkdir build && cd build
-    - cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
-    - ninja && ninja install
+    - cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
+    - make -j4
+    - make install
     - ldconfig
     - ls -la /usr/local/include/oqs/ || echo "liboqs headers not found!"
     - ls -la /usr/local/lib/liboqs.* || echo "liboqs library not found!"
@@ -112,8 +113,9 @@ build:debian-12:
     # Build and install liboqs (post-quantum cryptography)
     - git clone --depth 1 --branch 0.7.2 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
     - cd /tmp/liboqs && mkdir build && cd build
-    - cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
-    - ninja && ninja install
+    - cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
+    - make -j4
+    - make install
     - ldconfig
     - ls -la /usr/local/include/oqs/ || echo "liboqs headers not found!"
     - ls -la /usr/local/lib/liboqs.* || echo "liboqs library not found!"
