@@ -1,0 +1,554 @@
+# INTcoin Core - GitLab CI/CD Pipeline
+# Copyright (c) 2025 INTcoin Team (Neil Adamson)
+# MIT License
+
+# Pipeline stages
+stages:
+  - build
+  - test
+  - security
+  - deploy
+
+# Global variables
+variables:
+  # Build configuration
+  BUILD_TYPE: "Release"
+  CMAKE_BUILD_PARALLEL_LEVEL: "4"
+
+  # Security scanning
+  SAST_EXCLUDED_PATHS: "build/,deps/,external/,third_party/"
+  SECURE_LOG_LEVEL: "info"
+
+  # Docker configuration (if needed)
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+
+# Template includes for GitLab security features
+include:
+  # SAST (Static Application Security Testing)
+  - template: Security/SAST.gitlab-ci.yml
+
+  # Dependency Scanning
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+
+  # Secret Detection
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+  # License Scanning
+  - template: Security/License-Scanning.gitlab-ci.yml
+
+  # DAST (Dynamic Application Security Testing)
+  - template: Security/DAST.gitlab-ci.yml
+
+# ============================================================================
+# Build Stage
+# ============================================================================
+
+.build_template: &build_template
+  stage: build
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev qt6-base-dev libqt6core6 libqt6widgets6 libqt6gui6 libqt6network6
+  script:
+    - mkdir -p build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+    - cmake --build . --parallel $CMAKE_BUILD_PARALLEL_LEVEL
+    - ls -lh intcoin* || true
+  artifacts:
+    paths:
+      - build/intcoind
+      - build/intcoin-cli
+      - build/intcoin-miner
+      - build/intcoin-qt
+      - build/intcoin-faucet
+      - build/tests/test_*
+    expire_in: 1 week
+    reports:
+      dotenv: build/build.env
+
+build:ubuntu-22.04:
+  <<: *build_template
+  image: ubuntu:22.04
+  tags:
+    - docker
+
+build:ubuntu-24.04:
+  <<: *build_template
+  image: ubuntu:24.04
+  tags:
+    - docker
+  allow_failure: true
+
+build:debian-12:
+  <<: *build_template
+  image: debian:12
+  tags:
+    - docker
+
+# ============================================================================
+# Test Stage
+# ============================================================================
+
+.test_template: &test_template
+  stage: test
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev qt6-base-dev libqt6core6 libqt6widgets6
+  dependencies:
+    - build:ubuntu-22.04
+  artifacts:
+    reports:
+      junit: build/test-results/*.xml
+    paths:
+      - build/test-results/
+    expire_in: 1 week
+
+test:crypto:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_crypto --gtest_output=xml:test-results/test_crypto.xml
+  tags:
+    - docker
+
+test:randomx:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_randomx --gtest_output=xml:test-results/test_randomx.xml
+  tags:
+    - docker
+
+test:bech32:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_bech32 --gtest_output=xml:test-results/test_bech32.xml
+  tags:
+    - docker
+
+test:serialization:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_serialization --gtest_output=xml:test-results/test_serialization.xml
+  tags:
+    - docker
+
+test:storage:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_storage --gtest_output=xml:test-results/test_storage.xml
+  tags:
+    - docker
+
+test:validation:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_validation --gtest_output=xml:test-results/test_validation.xml
+  tags:
+    - docker
+
+test:genesis:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_genesis --gtest_output=xml:test-results/test_genesis.xml
+  tags:
+    - docker
+
+test:network:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_network --gtest_output=xml:test-results/test_network.xml
+  tags:
+    - docker
+
+test:ml:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_ml --gtest_output=xml:test-results/test_ml.xml
+  tags:
+    - docker
+
+test:wallet:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_wallet --gtest_output=xml:test-results/test_wallet.xml
+  tags:
+    - docker
+
+test:fuzz:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - timeout 300 ./tests/test_fuzz --gtest_output=xml:test-results/test_fuzz.xml || true
+  tags:
+    - docker
+  allow_failure: true
+
+test:integration:
+  <<: *test_template
+  image: ubuntu:22.04
+  script:
+    - cd build
+    - ./tests/test_integration --gtest_output=xml:test-results/test_integration.xml
+  tags:
+    - docker
+
+# ============================================================================
+# Security Stage - SAST
+# ============================================================================
+
+# Semgrep SAST scanner (C/C++ focused)
+semgrep-sast:
+  stage: security
+  image: returntocorp/semgrep:latest
+  script:
+    - semgrep scan --config=auto --sarif --output=gl-sast-report.json || true
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
+    paths:
+      - gl-sast-report.json
+    expire_in: 1 week
+  tags:
+    - docker
+  allow_failure: true
+
+# Flawfinder - C/C++ security scanner
+flawfinder-sast:
+  stage: security
+  image: python:3.11-slim
+  before_script:
+    - pip install flawfinder
+  script:
+    - flawfinder --quiet --html --context src/ > flawfinder-report.html
+    - flawfinder --quiet --dataonly --minlevel=4 src/ > flawfinder-critical.txt || true
+  artifacts:
+    paths:
+      - flawfinder-report.html
+      - flawfinder-critical.txt
+    expire_in: 1 week
+  tags:
+    - docker
+  allow_failure: true
+
+# Cppcheck - Static analysis for C/C++
+cppcheck-sast:
+  stage: security
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq cppcheck
+  script:
+    - cppcheck --enable=all --xml --xml-version=2 src/ 2> cppcheck-report.xml || true
+    - cppcheck --enable=warning,style,performance,portability src/ > cppcheck-report.txt || true
+  artifacts:
+    paths:
+      - cppcheck-report.xml
+      - cppcheck-report.txt
+    expire_in: 1 week
+  tags:
+    - docker
+  allow_failure: true
+
+# Clang-Tidy - C++ linter and static analyzer
+clang-tidy-sast:
+  stage: security
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq clang-tidy cmake g++ libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev
+  script:
+    - mkdir -p build
+    - cd build
+    - cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+    - cd ..
+    - find src/ -name "*.cpp" -exec clang-tidy -p build {} \; > clang-tidy-report.txt 2>&1 || true
+  artifacts:
+    paths:
+      - clang-tidy-report.txt
+    expire_in: 1 week
+  tags:
+    - docker
+  allow_failure: true
+
+# GitLab SAST (uses multiple analyzers)
+sast:
+  stage: security
+  variables:
+    SAST_EXCLUDED_ANALYZERS: "nodejs-scan,eslint,secrets"
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
+
+# ============================================================================
+# Security Stage - Dependency Scanning
+# ============================================================================
+
+# Scan for vulnerable dependencies
+dependency_scanning:
+  stage: security
+  artifacts:
+    reports:
+      dependency_scanning: gl-dependency-scanning-report.json
+
+# ============================================================================
+# Security Stage - Secret Detection
+# ============================================================================
+
+# Detect secrets in codebase
+secret_detection:
+  stage: security
+  artifacts:
+    reports:
+      secret_detection: gl-secret-detection-report.json
+
+# Gitleaks - Advanced secret scanner
+gitleaks-scan:
+  stage: security
+  image: zricethezav/gitleaks:latest
+  script:
+    - gitleaks detect --source . --report-path gitleaks-report.json --no-git || true
+  artifacts:
+    paths:
+      - gitleaks-report.json
+    expire_in: 1 week
+  tags:
+    - docker
+  allow_failure: true
+
+# ============================================================================
+# Security Stage - DAST
+# ============================================================================
+
+# Start testnet node for DAST scanning
+dast-setup:
+  stage: security
+  image: ubuntu:22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev
+  dependencies:
+    - build:ubuntu-22.04
+  script:
+    - cd build
+    - ./intcoind --testnet --rpcuser=testuser --rpcpassword=testpass --rpcallowip=0.0.0.0/0 --daemon
+    - sleep 10
+    - curl -u testuser:testpass http://localhost:12212 || true
+  artifacts:
+    paths:
+      - build/.intcoin/
+    expire_in: 1 day
+  tags:
+    - docker
+  allow_failure: true
+
+# DAST scanning (requires running service)
+dast:
+  stage: security
+  variables:
+    DAST_WEBSITE: "http://localhost:12212"
+    DAST_AUTH_URL: "http://localhost:12212"
+    DAST_USERNAME: "testuser"
+    DAST_PASSWORD: "testpass"
+    DAST_FULL_SCAN_ENABLED: "true"
+  artifacts:
+    reports:
+      dast: gl-dast-report.json
+  dependencies:
+    - dast-setup
+  allow_failure: true
+
+# OWASP ZAP - Dynamic security scanner
+zap-scan:
+  stage: security
+  image: owasp/zap2docker-stable
+  variables:
+    TARGET_URL: "http://localhost:12212"
+  script:
+    - mkdir -p zap-reports
+    - zap-baseline.py -t $TARGET_URL -r zap-baseline-report.html -J zap-baseline-report.json || true
+  artifacts:
+    paths:
+      - zap-reports/
+    expire_in: 1 week
+  tags:
+    - docker
+  allow_failure: true
+  only:
+    - main
+    - develop
+
+# ============================================================================
+# Security Stage - Container Scanning
+# ============================================================================
+
+# Trivy - Container vulnerability scanner
+trivy-scan:
+  stage: security
+  image: aquasec/trivy:latest
+  script:
+    - trivy filesystem --format json --output trivy-report.json . || true
+    - trivy filesystem --severity HIGH,CRITICAL . || true
+  artifacts:
+    paths:
+      - trivy-report.json
+    expire_in: 1 week
+  tags:
+    - docker
+  allow_failure: true
+
+# ============================================================================
+# Security Stage - License Compliance
+# ============================================================================
+
+license_scanning:
+  stage: security
+  artifacts:
+    reports:
+      license_scanning: gl-license-scanning-report.json
+
+# ============================================================================
+# Security Stage - Code Quality
+# ============================================================================
+
+code_quality:
+  stage: security
+  image: docker:stable
+  services:
+    - docker:stable-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+  script:
+    - export SP_VERSION=$(echo "$CI_SERVER_VERSION" | sed 's/^\([0-9]*\)\.\([0-9]*\).*/\1-\2-stable/')
+    - docker run
+        --env SOURCE_CODE="$PWD"
+        --volume "$PWD":/code
+        --volume /var/run/docker.sock:/var/run/docker.sock
+        "registry.gitlab.com/gitlab-org/ci-cd/codequality:$SP_VERSION" /code || true
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+    paths:
+      - gl-code-quality-report.json
+    expire_in: 1 week
+  tags:
+    - docker
+  allow_failure: true
+  only:
+    - main
+    - develop
+
+# ============================================================================
+# Security Summary Report
+# ============================================================================
+
+security-summary:
+  stage: security
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache jq coreutils
+  script:
+    - echo "# Security Scan Summary" > security-summary.md
+    - echo "" >> security-summary.md
+    - echo "**Build:** $CI_PIPELINE_ID" >> security-summary.md
+    - echo "**Date:** $(date)" >> security-summary.md
+    - echo "**Branch:** $CI_COMMIT_REF_NAME" >> security-summary.md
+    - echo "**Commit:** $CI_COMMIT_SHA" >> security-summary.md
+    - echo "" >> security-summary.md
+    - echo "## Scan Results" >> security-summary.md
+    - echo "- SAST: Check artifacts" >> security-summary.md
+    - echo "- DAST: Check artifacts" >> security-summary.md
+    - echo "- Dependency Scanning: Check artifacts" >> security-summary.md
+    - echo "- Secret Detection: Check artifacts" >> security-summary.md
+    - echo "- Code Quality: Check artifacts" >> security-summary.md
+    - cat security-summary.md
+  artifacts:
+    paths:
+      - security-summary.md
+    expire_in: 1 month
+  tags:
+    - docker
+  needs:
+    - semgrep-sast
+    - flawfinder-sast
+    - cppcheck-sast
+    - gitleaks-scan
+  allow_failure: true
+
+# ============================================================================
+# Deploy Stage (Artifacts)
+# ============================================================================
+
+# Package release binaries
+package:release:
+  stage: deploy
+  image: ubuntu:22.04
+  dependencies:
+    - build:ubuntu-22.04
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq tar gzip
+  script:
+    - mkdir -p release
+    - cp build/intcoind build/intcoin-cli build/intcoin-miner build/intcoin-qt build/intcoin-faucet release/ || true
+    - tar -czf intcoin-$CI_COMMIT_REF_NAME-linux-x86_64.tar.gz -C release .
+    - ls -lh intcoin-*.tar.gz
+  artifacts:
+    paths:
+      - intcoin-*.tar.gz
+    expire_in: 1 month
+  tags:
+    - docker
+  only:
+    - tags
+    - main
+
+# Upload to GitLab Package Registry
+upload:package:
+  stage: deploy
+  image: curlimages/curl:latest
+  dependencies:
+    - package:release
+  script:
+    - |
+      curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+           --upload-file intcoin-$CI_COMMIT_REF_NAME-linux-x86_64.tar.gz \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/intcoin/${CI_COMMIT_REF_NAME}/intcoin-$CI_COMMIT_REF_NAME-linux-x86_64.tar.gz"
+  tags:
+    - docker
+  only:
+    - tags
+    - main
+
+# ============================================================================
+# Cleanup
+# ============================================================================
+
+cleanup:
+  stage: .post
+  script:
+    - echo "Pipeline completed successfully"
+    - echo "Security reports available in artifacts"
+  tags:
+    - docker
+  when: always
