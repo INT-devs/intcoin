@@ -63,17 +63,20 @@ include:
     - cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
     - ninja && ninja install
     - ldconfig
+    - ls -la /usr/local/include/oqs/ || echo "liboqs headers not found!"
+    - ls -la /usr/local/lib/liboqs.* || echo "liboqs library not found!"
     # Build and install RandomX (PoW algorithm)
     - git clone --depth 1 https://github.com/tevador/RandomX.git /tmp/RandomX
     - cd /tmp/RandomX && mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
     - make -j4 && make install
     - ldconfig
+    - ls -la /usr/local/include/randomx.h || echo "RandomX headers not found!"
     - cd $CI_PROJECT_DIR
   script:
     - mkdir -p build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_WALLET_QT=OFF ..
+    - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_WALLET_QT=OFF -DCMAKE_PREFIX_PATH=/usr/local ..
     - cmake --build . --parallel $CMAKE_BUILD_PARALLEL_LEVEL
     - ls -lh intcoin* || true
   artifacts:
@@ -112,12 +115,15 @@ build:debian-12:
     - cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
     - ninja && ninja install
     - ldconfig
+    - ls -la /usr/local/include/oqs/ || echo "liboqs headers not found!"
+    - ls -la /usr/local/lib/liboqs.* || echo "liboqs library not found!"
     # Build and install RandomX (PoW algorithm)
     - git clone --depth 1 https://github.com/tevador/RandomX.git /tmp/RandomX
     - cd /tmp/RandomX && mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
     - make -j4 && make install
     - ldconfig
+    - ls -la /usr/local/include/randomx.h || echo "RandomX headers not found!"
     - cd $CI_PROJECT_DIR
 
 # ============================================================================
