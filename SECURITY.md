@@ -163,7 +163,7 @@ Download from:
 ## Contact
 
 For security-related questions that are not vulnerability reports:
-- **General Inquiries**: contact@international-coin.org
+- **General Inquiries**: admin@international-coin.org
 - **Security Team**: security@international-coin.org (PGP encrypted preferred)
 
 ---

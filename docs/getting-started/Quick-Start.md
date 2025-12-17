@@ -313,7 +313,7 @@ cp ~/.intcoin/wallets/wallet.dat ~/backup/
 - **Documentation**: https://international-coin.org/docs
 - **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/
 - **Issues**: https://gitlab.com/intcoin/crypto/-/issues
-- **Email**: support@international-coin.org
+- **Email**: admin@international-coin.org
 
 ## Next Steps
 

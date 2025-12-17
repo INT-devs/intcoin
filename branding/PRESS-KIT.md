@@ -325,7 +325,7 @@ INTcoin was designed quantum-resistant from the start, avoiding these migration 
 
 For press inquiries, interviews, or additional information:
 
-**Email**: press@international-coin.org
+**Email**: team@international-coin.org
 **GPG Key**: `85A2 19E7 98EE E017 2669 450B E7FC C378 2A41 8E33`
 
 **Response Time**: Within 24 hours for media inquiries
