@@ -502,6 +502,74 @@ Result<void> ConsensusValidator::ValidateTimestamp(uint64_t timestamp,
 }
 
 // ============================================================================
+// ChainValidator - 51% Attack Protection
+// ============================================================================
+
+const std::map<uint64_t, uint256>& ChainValidator::GetCheckpoints() {
+    // Checkpoints are hard-coded block hashes at specific heights
+    // These prevent reorganizations before these points
+    static const std::map<uint64_t, uint256> checkpoints = {
+        // Genesis block (height 0)
+        {0, uint256("0000000000000000000000000000000000000000000000000000000000000000")},
+
+        // TODO: Add real checkpoints as the network grows
+        // Example format:
+        // {5040, uint256("...")},  // ~1 week
+        // {10080, uint256("...")}, // ~2 weeks
+        // {50400, uint256("...")}, // ~10 weeks
+    };
+    return checkpoints;
+}
+
+bool ChainValidator::IsCheckpoint(uint64_t height, const uint256& hash) {
+    const auto& checkpoints = GetCheckpoints();
+    auto it = checkpoints.find(height);
+
+    if (it == checkpoints.end()) {
+        return false; // No checkpoint at this height
+    }
+
+    // Verify the hash matches the checkpoint
+    return it->second == hash;
+}
+
+Result<void> ChainValidator::ValidateReorgDepth(uint64_t current_height,
+                                                uint64_t fork_height) {
+    // Calculate reorganization depth
+    uint64_t reorg_depth = current_height - fork_height;
+
+    // Check if reorg depth exceeds maximum allowed
+    if (reorg_depth > consensus::MAX_REORG_DEPTH) {
+        return Result<void>::Error(
+            "Reorganization depth (" + std::to_string(reorg_depth) +
+            " blocks) exceeds maximum allowed (" +
+            std::to_string(consensus::MAX_REORG_DEPTH) + " blocks). " +
+            "This may indicate a 51% attack attempt."
+        );
+    }
+
+    // Warn about deep reorganizations
+    if (reorg_depth >= consensus::DEEP_REORG_WARNING_THRESHOLD) {
+        // TODO: Add logging system
+        // LOG_WARNING("Deep reorganization detected: " + std::to_string(reorg_depth) + " blocks");
+    }
+
+    // Check if fork point is after a checkpoint
+    const auto& checkpoints = GetCheckpoints();
+    for (const auto& [checkpoint_height, checkpoint_hash] : checkpoints) {
+        if (checkpoint_height > fork_height && checkpoint_height <= current_height) {
+            return Result<void>::Error(
+                "Cannot reorganize past checkpoint at height " +
+                std::to_string(checkpoint_height) +
+                ". This blockchain is protected by checkpoints."
+            );
+        }
+    }
+
+    return Result<void>::Ok();
+}
+
+// ============================================================================
 // Consensus Parameters
 // ============================================================================
 

@@ -10,6 +10,7 @@
 #include "block.h"
 #include <cstdint>
 #include <vector>
+#include <map>
 
 namespace intcoin {
 
@@ -67,6 +68,22 @@ constexpr uint32_t MAX_DIFFICULTY_BITS = 0x03010000;
 
 /// Maximum nonce value
 constexpr uint64_t MAX_NONCE = 0xFFFFFFFFFFFFFFFFULL;
+
+/// ========================================================================
+/// 51% Attack Protection
+/// ========================================================================
+
+/// Maximum reorganization depth (protect against deep reorgs)
+constexpr uint64_t MAX_REORG_DEPTH = 100; // blocks
+
+/// Deep reorganization warning threshold
+constexpr uint64_t DEEP_REORG_WARNING_THRESHOLD = 6; // blocks
+
+/// Checkpoint interval (every ~1 week: 5040 blocks at 2 min/block)
+constexpr uint64_t CHECKPOINT_INTERVAL = 5040;
+
+/// Minimum confirmations for finality
+constexpr uint64_t FINALITY_DEPTH = 100; // blocks
 
 } // namespace consensus
 
@@ -267,6 +284,17 @@ public:
     /// Compare chain work (for reorg)
     static bool HasMoreWork(const class Blockchain& chain1,
                            const class Blockchain& chain2);
+
+    // 51% Attack Protection
+    /// Check if block is at a checkpoint
+    static bool IsCheckpoint(uint64_t height, const uint256& hash);
+
+    /// Check if reorganization depth is allowed
+    static Result<void> ValidateReorgDepth(uint64_t current_height,
+                                          uint64_t fork_height);
+
+    /// Get checkpoints map
+    static const std::map<uint64_t, uint256>& GetCheckpoints();
 };
 
 // ============================================================================

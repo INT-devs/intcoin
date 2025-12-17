@@ -542,8 +542,99 @@ uint64_t Blockchain::GetBlockConfirmations(const uint256& block_hash) const {
 // ------------------------------------------------------------------------
 
 Result<void> Blockchain::Reorganize(const std::vector<Block>& new_chain) {
-    // TODO: Implement chain reorganization
-    return Result<void>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    if (new_chain.empty()) {
+        return Result<void>::Error("Cannot reorganize to empty chain");
+    }
+
+    // Find fork point
+    uint64_t fork_height = 0;
+    for (size_t i = 0; i < new_chain.size(); ++i) {
+        const auto& block = new_chain[i];
+        auto existing_block = GetBlockByHeight(i);
+
+        if (!existing_block.IsOk() || existing_block.GetValue().header.hash != block.header.hash) {
+            fork_height = i;
+            break;
+        }
+    }
+
+    uint64_t current_height = GetBestHeight();
+
+    // **51% Attack Protection: Validate reorganization depth**
+    auto reorg_check = ChainValidator::ValidateReorgDepth(current_height, fork_height);
+    if (!reorg_check.IsOk()) {
+        return reorg_check; // Reject deep reorganizations
+    }
+
+    // **51% Attack Protection: Check checkpoints**
+    for (const auto& block : new_chain) {
+        uint64_t height = block.header.height;
+        if (ChainValidator::IsCheckpoint(height, block.header.hash)) {
+            // Checkpoint validation passed
+            continue;
+        }
+        // If there's a checkpoint at this height but hash doesn't match, reject
+        const auto& checkpoints = ChainValidator::GetCheckpoints();
+        if (checkpoints.find(height) != checkpoints.end()) {
+            return Result<void>::Error(
+                "Block at checkpoint height " + std::to_string(height) +
+                " has incorrect hash. Expected checkpoint hash."
+            );
+        }
+    }
+
+    // Log deep reorganization warning
+    uint64_t reorg_depth = current_height - fork_height;
+    if (reorg_depth >= consensus::DEEP_REORG_WARNING_THRESHOLD) {
+        // TODO: Add logging system
+        // LOG_WARNING("Deep reorganization: " + std::to_string(reorg_depth) +
+        //             " blocks from height " + std::to_string(fork_height));
+    }
+
+    // Disconnect blocks from current chain back to fork point
+    for (uint64_t h = current_height; h > fork_height; --h) {
+        auto block_result = GetBlockByHeight(h);
+        if (!block_result.IsOk()) {
+            return Result<void>::Error("Failed to get block at height " + std::to_string(h));
+        }
+        const auto& block = block_result.GetValue();
+
+        // Reverse UTXO changes (add spent outputs, remove new outputs)
+        for (const auto& tx : block.transactions) {
+            // Remove outputs created by this transaction
+            for (size_t i = 0; i < tx.outputs.size(); ++i) {
+                OutPoint outpoint{tx.GetHash(), static_cast<uint32_t>(i)};
+                impl_->utxo_set_.Remove(outpoint);
+            }
+
+            // Restore spent outputs (except coinbase)
+            if (!tx.IsCoinbase()) {
+                // TODO: Need to restore spent UTXOs from database
+                // This requires storing spent outputs for reorganization support
+            }
+        }
+    }
+
+    // Connect blocks from new chain
+    for (size_t i = fork_height; i < new_chain.size(); ++i) {
+        const auto& block = new_chain[i];
+
+        // Validate block before adding
+        auto validation = ValidateBlock(block);
+        if (!validation.IsOk()) {
+            return validation;
+        }
+
+        // Add block to chain
+        auto add_result = AddBlock(block);
+        if (!add_result.IsOk()) {
+            return add_result;
+        }
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<uint256> Blockchain::FindForkPoint(const uint256& hash1, const uint256& hash2) const {

@@ -9,10 +9,10 @@
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20FreeBSD-lightgrey?style=for-the-badge)
 
 ![Language](https://img.shields.io/badge/C%2B%2B-23-00599C?style=flat-square&logo=cplusplus)
-![CMake](https://img.shields.io/badge/CMake-4.2+-064F8C?style=flat-square&logo=cmake)
+![CMake](https://img.shields.io/badge/CMake-3.28+-064F8C?style=flat-square&logo=cmake)
 ![Qt](https://img.shields.io/badge/Qt-6.8-41CD52?style=flat-square&logo=qt)
-![RocksDB](https://img.shields.io/badge/RocksDB-10.7-blue?style=flat-square)
-![OpenSSL](https://img.shields.io/badge/OpenSSL-3.5.4-red?style=flat-square&logo=openssl)
+![RocksDB](https://img.shields.io/badge/RocksDB-7.0-blue?style=flat-square)
+![OpenSSL](https://img.shields.io/badge/OpenSSL-3-red?style=flat-square&logo=openssl)
 
 ![Quantum Resistant](https://img.shields.io/badge/quantum-resistant-purple?style=flat-square)
 ![ASIC Resistant](https://img.shields.io/badge/ASIC-resistant-orange?style=flat-square)
@@ -88,6 +88,7 @@ INTcoin is a quantum-resistant cryptocurrency designed for long-term security in
 | **RPC Port (Testnet)** | 12212 |
 | **Lightning P2P Port** | 2213 |
 | **Lightning RPC Port** | 2214 |
+| **Tor SOCKS5 Proxy** | 9050 |
 | **I2P SAM Port** | 7656 |
 | **Testnet Faucet Port** | 2215 |
 
@@ -139,7 +140,7 @@ intcoin/
 ### Required Dependencies
 
 **Build System**:
-- **CMake** >= 3.28.3 (**3.28+ required** - auto-installed in GitLab CI from Kitware repository)
+- **CMake** >= 3.28.3 (**3.28+ required**)
 - **C++ Compiler**: GCC 11+, Clang 14+, or Apple Clang 15+ (C++23 support required)
 - **Threads** - Multi-threading support (POSIX threads)
 
@@ -155,7 +156,7 @@ intcoin/
 - **libevent** >= 2.1.12 (event-driven networking)
 
 **GUI (Desktop Wallet)**:
-- **Qt6** >= 6.2 (cross-platform GUI framework - **optional**, disabled in CI builds)
+- **Qt6** >= 6.2 (cross-platform GUI framework - **optional**)
 
 ### Optional Dependencies
 

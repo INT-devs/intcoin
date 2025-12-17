@@ -55,8 +55,21 @@ include:
     - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
     - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
     - apt-get update -qq
-    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev
+    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev ninja-build
     - cmake --version
+    # Build and install liboqs (post-quantum cryptography)
+    - git clone --depth 1 --branch 0.7.2 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+    - cd /tmp/liboqs && mkdir build && cd build
+    - cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
+    - ninja && ninja install
+    - ldconfig
+    # Build and install RandomX (PoW algorithm)
+    - git clone --depth 1 https://github.com/tevador/RandomX.git /tmp/RandomX
+    - cd /tmp/RandomX && mkdir build && cd build
+    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+    - make -j4 && make install
+    - ldconfig
+    - cd /builds/intcoin/crypto
   script:
     - mkdir -p build
     - cd build
@@ -91,8 +104,21 @@ build:debian-12:
     - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
     - echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list >/dev/null
     - apt-get update -qq
-    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev
+    - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev librocksdb-dev libzmq3-dev libevent-dev ninja-build
     - cmake --version
+    # Build and install liboqs (post-quantum cryptography)
+    - git clone --depth 1 --branch 0.7.2 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+    - cd /tmp/liboqs && mkdir build && cd build
+    - cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
+    - ninja && ninja install
+    - ldconfig
+    # Build and install RandomX (PoW algorithm)
+    - git clone --depth 1 https://github.com/tevador/RandomX.git /tmp/RandomX
+    - cd /tmp/RandomX && mkdir build && cd build
+    - cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local ..
+    - make -j4 && make install
+    - ldconfig
+    - cd /builds/intcoin/crypto
 
 # ============================================================================
 # Test Stage
