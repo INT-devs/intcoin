@@ -139,23 +139,23 @@ intcoin/
 ### Required Dependencies
 
 **Build System**:
-- **CMake** >= 4.2.0
-- **C++ Compiler**: GCC 13+, Clang 16+, or Apple Clang 15+ (full C++23 support required)
+- **CMake** >= 3.28.3 (**3.28+ required** - auto-installed in GitLab CI from Kitware repository)
+- **C++ Compiler**: GCC 11+, Clang 14+, or Apple Clang 15+ (C++23 support required)
 - **Threads** - Multi-threading support (POSIX threads)
 
 **Core Libraries**:
-- **OpenSSL** >= 3.5.4 (SHA3-256 hashing)
-- **liboqs** >= 0.10.0 (NIST PQC - Dilithium3, Kyber768) ✅ **Integrated**
+- **OpenSSL** >= 3.0 (SHA3-256 hashing)
+- **liboqs** >= 0.7.0 (NIST PQC - Dilithium3, Kyber768) ✅ **Integrated**
 - **RandomX** >= 1.2.0 (ASIC-resistant PoW) ✅ **Integrated**
 
 **Storage & Networking**:
-- **RocksDB** >= 10.7 (high-performance blockchain database)
-- **Boost** >= 1.89.0 (utilities, filesystem, threading)
+- **RocksDB** >= 7.0 (high-performance blockchain database)
+- **Boost** >= 1.74 (utilities, filesystem, threading)
 - **libzmq** >= 4.3 (ZeroMQ messaging for RPC)
-- **libevent** >= 2.1 (event-driven networking)
+- **libevent** >= 2.1.12 (event-driven networking)
 
 **GUI (Desktop Wallet)**:
-- **Qt6** >= 6.8 (cross-platform GUI framework)
+- **Qt6** >= 6.2 (cross-platform GUI framework - **optional**, disabled in CI builds)
 
 ### Optional Dependencies
 
@@ -728,6 +728,49 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 **Note**: Mobile wallets and Web wallet will be developed as separate projects.
 
 **Current Status**: ✅ **100% Feature Complete**. All core features implemented and tested. Quantum-resistant cryptography, Lightning Network, Tor/I2P privacy, Qt wallet, mining pool, block explorer all operational. Comprehensive documentation and test suites complete. Ready for testnet deployment.
+
+---
+
+## 🔬 CI/CD & Quality Assurance
+
+### GitLab CI/CD Pipeline
+- **Runner**: GitLab.com free shared runners (400 CI/CD minutes/month)
+- **Platforms**: Ubuntu 22.04, 24.04, Debian 12
+- **Stages**: Build → Test → Security → Deploy
+- **CMake**: Auto-installs CMake 3.28+ from Kitware repository
+- **Build Time**: ~5-10 minutes per platform
+- **Documentation**: See [docs/CI-CD-PIPELINE.md](docs/CI-CD-PIPELINE.md)
+
+### Security Scanning (SAST/DAST)
+**SAST Tools**:
+- ✅ Semgrep - Code pattern analysis
+- ✅ Flawfinder - C/C++ security vulnerabilities
+- ✅ Cppcheck - Static code analysis
+- ✅ Clang-Tidy - C++ linter and analyzer
+
+**DAST Tools**:
+- ✅ OWASP ZAP - Dynamic security scanning
+
+**Additional Scanning**:
+- ✅ Gitleaks - Secret detection
+- ✅ Trivy - Container filesystem scanning
+- ✅ License compliance - Manual MIT license audit
+
+### Testing Infrastructure
+- **12 Test Suites**: Comprehensive unit and integration tests
+- **Code Coverage**: Target 90%+ coverage
+- **Sanitizers**: AddressSanitizer, UndefinedBehaviorSanitizer
+- **Fuzzing**: Continuous fuzz testing for security vulnerabilities
+- **JUnit Reports**: Integrated with GitLab Test Reports UI
+- **Test Results**: Artifacts retained for 1 week
+
+### Built Artifacts (CI)
+- `intcoind` - Full node daemon (7.2 MB)
+- `intcoin-cli` - Command-line interface (73 KB)
+- `intcoin-miner` - CPU miner (7.0 MB)
+- `intcoin-faucet` - Testnet faucet server
+
+**Note**: Qt6 wallet GUI (`intcoin-qt`) disabled in CI builds due to Qt6 package availability. Build locally using installation scripts for full GUI wallet.
 
 ---
 
