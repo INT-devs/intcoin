@@ -99,7 +99,9 @@ function Install-VcpkgDependencies {
         "openssl:x64-windows",
         "rocksdb:x64-windows",
         "zeromq:x64-windows",
-        "libevent:x64-windows"
+        "libevent:x64-windows",
+        "qt6-base:x64-windows",
+        "qt6-tools:x64-windows"
     )
 
     foreach ($package in $packages) {
@@ -212,6 +214,7 @@ function Build-Intcoin {
     Write-Info "Binaries located at: $BinDir"
     Write-Info "  - intcoind.exe"
     Write-Info "  - intcoin-cli.exe"
+    Write-Info "  - intcoin-qt.exe"
     Write-Info "  - intcoin-miner.exe"
 }
 
@@ -231,6 +234,7 @@ function Create-Installer {
     # Copy binaries
     Copy-Item "$BinDir\intcoind.exe" "$PackageDir\bin\"
     Copy-Item "$BinDir\intcoin-cli.exe" "$PackageDir\bin\"
+    Copy-Item "$BinDir\intcoin-qt.exe" "$PackageDir\bin\"
     Copy-Item "$BinDir\intcoin-miner.exe" "$PackageDir\bin\"
 
     # Copy configuration template
@@ -324,6 +328,7 @@ function Print-Summary {
     Write-Host "Binaries:" -ForegroundColor Cyan
     Write-Host "  - intcoind.exe      : Full node daemon"
     Write-Host "  - intcoin-cli.exe   : Command-line interface"
+    Write-Host "  - intcoin-qt.exe    : Desktop wallet (GUI)"
     Write-Host "  - intcoin-miner.exe : Mining software"
     Write-Host ""
     Write-Host "Next steps:" -ForegroundColor Cyan

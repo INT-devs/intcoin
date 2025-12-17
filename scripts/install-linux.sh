@@ -91,6 +91,11 @@ install_dependencies() {
                 librocksdb-dev \
                 libzmq3-dev \
                 libevent-dev \
+                qt6-base-dev \
+                libqt6core6 \
+                libqt6widgets6 \
+                libqt6gui6 \
+                libqt6network6 \
                 astyle \
                 ninja-build \
                 doxygen
@@ -110,6 +115,8 @@ install_dependencies() {
                 rocksdb-devel \
                 zeromq-devel \
                 libevent-devel \
+                qt6-qtbase-devel \
+                qt6-qtbase \
                 astyle \
                 ninja-build \
                 doxygen
@@ -127,6 +134,7 @@ install_dependencies() {
                 rocksdb \
                 zeromq \
                 libevent \
+                qt6-base \
                 astyle \
                 ninja \
                 doxygen
@@ -357,6 +365,7 @@ print_summary() {
     echo -e "${BLUE}Installed binaries:${NC}"
     echo "  - intcoind      : $INSTALL_PREFIX/bin/intcoind"
     echo "  - intcoin-cli   : $INSTALL_PREFIX/bin/intcoin-cli"
+    echo "  - intcoin-qt    : $INSTALL_PREFIX/bin/intcoin-qt"
     echo "  - intcoin-miner : $INSTALL_PREFIX/bin/intcoin-miner"
     echo ""
     echo -e "${BLUE}Configuration:${NC}"

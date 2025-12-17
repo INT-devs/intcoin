@@ -71,6 +71,8 @@ install_dependencies() {
         rocksdb \
         zeromq \
         libevent \
+        qt6-base \
+        qt6-tools \
         astyle \
         ninja \
         doxygen
@@ -315,6 +317,7 @@ print_summary() {
     echo "Installed binaries:"
     echo "  - intcoind      : $INSTALL_PREFIX/bin/intcoind"
     echo "  - intcoin-cli   : $INSTALL_PREFIX/bin/intcoin-cli"
+    echo "  - intcoin-qt    : $INSTALL_PREFIX/bin/intcoin-qt"
     echo "  - intcoin-miner : $INSTALL_PREFIX/bin/intcoin-miner"
     echo ""
     echo "Configuration:"
