@@ -67,6 +67,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
             -Wno-stringop-overflow
             -Wno-uninitialized
             -Wno-maybe-uninitialized
+            -Wno-restrict
+            -Wno-array-bounds
         )
     endif()
 endif()
