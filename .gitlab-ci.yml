@@ -58,7 +58,7 @@ include:
     - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev libssl3 librocksdb-dev libzmq3-dev libevent-dev ninja-build pkg-config
     - cmake --version
     # Build and install liboqs (post-quantum cryptography)
-    - git clone --depth 1 --branch 0.7.2 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+    - git clone --depth 1 --branch 0.11.0 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
     - cd /tmp/liboqs && mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
     - make -j4
@@ -111,7 +111,7 @@ build:debian-12:
     - apt-get install -y -qq cmake g++ git libboost-all-dev libssl-dev libssl3 librocksdb-dev libzmq3-dev libevent-dev ninja-build pkg-config
     - cmake --version
     # Build and install liboqs (post-quantum cryptography)
-    - git clone --depth 1 --branch 0.7.2 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
+    - git clone --depth 1 --branch 0.11.0 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs
     - cd /tmp/liboqs && mkdir build && cd build
     - cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local ..
     - make -j4
