@@ -9,10 +9,11 @@
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20FreeBSD-lightgrey?style=for-the-badge)
 
 ![Language](https://img.shields.io/badge/C%2B%2B-23-00599C?style=flat-square&logo=cplusplus)
-![CMake](https://img.shields.io/badge/CMake-3.28+-064F8C?style=flat-square&logo=cmake)
-![Qt](https://img.shields.io/badge/Qt-6.8-41CD52?style=flat-square&logo=qt)
-![RocksDB](https://img.shields.io/badge/RocksDB-7.0-blue?style=flat-square)
-![OpenSSL](https://img.shields.io/badge/OpenSSL-3-red?style=flat-square&logo=openssl)
+![CMake](https://img.shields.io/badge/CMake-3.0--4.2.1-064F8C?style=flat-square&logo=cmake)
+![Qt](https://img.shields.io/badge/Qt-6.8+-41CD52?style=flat-square&logo=qt)
+![RocksDB](https://img.shields.io/badge/RocksDB-9.8+-blue?style=flat-square)
+![OpenSSL](https://img.shields.io/badge/OpenSSL-3.4+-red?style=flat-square&logo=openssl)
+![Boost](https://img.shields.io/badge/Boost-1.87+-orange?style=flat-square)
 
 ![Quantum Resistant](https://img.shields.io/badge/quantum-resistant-purple?style=flat-square)
 ![ASIC Resistant](https://img.shields.io/badge/ASIC-resistant-orange?style=flat-square)

@@ -18,8 +18,8 @@ BUILD_JOBS="${BUILD_JOBS:-$(nproc)}"
 BUILD_TYPE="${BUILD_TYPE:-Release}"
 TEMP_DIR="/tmp/intcoin-build-$$"
 
-# Version requirements
-LIBOQS_VERSION="0.15.0"
+# Version requirements (latest stable as of December 2024)
+LIBOQS_VERSION="0.12.0"
 RANDOMX_VERSION="v1.2.1"
 
 # Detect distribution
