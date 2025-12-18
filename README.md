@@ -664,6 +664,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - [x] HD wallet (BIP32/44 for Dilithium3) ✅
 - [x] BIP39 mnemonic support ✅
 - [x] Wallet database (RocksDB) ✅
+- [x] Automatic directory setup (platform-specific paths) ✅
 - [x] Transaction creation and signing ✅
 - [x] UTXO management ✅
 - [x] Balance tracking ✅
