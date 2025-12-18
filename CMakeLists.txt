@@ -15,6 +15,10 @@ project(INTcoin
     LANGUAGES CXX
 )
 
+# Set alpha version suffix
+set(INTCOIN_VERSION_SUFFIX "-alpha")
+set(INTCOIN_VERSION_FULL "${PROJECT_VERSION}${INTCOIN_VERSION_SUFFIX}")
+
 # Only support 64-bit systems
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "INTcoin requires a 64-bit system")
@@ -357,7 +361,7 @@ install(TARGETS intcoin_core DESTINATION lib)
 
 # Package
 set(CPACK_PACKAGE_NAME "INTcoin")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_VERSION "${INTCOIN_VERSION_FULL}")
 set(CPACK_PACKAGE_VENDOR "INTcoin Team")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Quantum-Resistant Cryptocurrency")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "INTcoin")
@@ -371,7 +375,7 @@ message(STATUS "")
 message(STATUS "========================================")
 message(STATUS "INTcoin Configuration")
 message(STATUS "========================================")
-message(STATUS "  Version: ${PROJECT_VERSION}")
+message(STATUS "  Version: ${INTCOIN_VERSION_FULL}")
 message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C++ Standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "  Install prefix: ${CMAKE_INSTALL_PREFIX}")
