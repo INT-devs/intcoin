@@ -243,8 +243,22 @@ function Create-Installer {
 
 # Network settings
 #testnet=0
-#port=9333
-#rpcport=9332
+#port=12211        # Mainnet P2P port
+#rpcport=12212     # Mainnet RPC port
+
+# Testnet settings (uncomment if using testnet)
+#testnet=1
+#port=22211        # Testnet P2P port
+#rpcport=22212     # Testnet RPC port
+
+# Lightning Network (if enabled)
+#lightning=0
+#lightning.port=2213     # Lightning P2P port
+#lightning.rpcport=2214  # Lightning RPC port
+
+# Tor settings (if enabled)
+#tor=0
+#tor.proxy=127.0.0.1:9050  # Tor SOCKS5 proxy
 
 # Connection settings
 #rpcuser=intcoinrpc

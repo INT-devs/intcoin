@@ -1,4 +1,13 @@
-cmake_minimum_required(VERSION 3.28.3)
+# Minimum CMake 3.0, prefer latest stable 4.x series
+# Note: CMake 4.2.1 is the latest stable version as of documentation
+cmake_minimum_required(VERSION 3.0...4.2.1)
+
+# Set CMake policies for modern behavior
+if(${CMAKE_VERSION} VERSION_LESS 3.28)
+    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
+else()
+    cmake_policy(VERSION 3.28)
+endif()
 
 project(INTcoin
     VERSION 1.0.0
@@ -11,6 +20,16 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "INTcoin requires a 64-bit system")
 endif()
 
+# ============================================================================
+# C++ Standard Configuration
+# ============================================================================
+# Current: C++23 (required)
+# TODO: Upgrade to latest C++ standard (C++26) when widely available
+# NOTE: C++17 and C++18 support has been DROPPED as of v1.0.0
+#       - C++17 is deprecated and no longer supported
+#       - C++18 does not exist (C++20 was next after C++17)
+#       - Minimum requirement is now C++23 for post-quantum crypto features
+# ============================================================================
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
