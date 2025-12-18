@@ -453,10 +453,10 @@ End-to-end component interaction testing:
 - ✅ **Transaction Flow**: Creation, serialization, deserialization, and round-trip validation
 - ✅ **Network + Mempool**: Transaction propagation and duplicate detection
 - ✅ **Mining + Consensus**: Block reward calculation and halving verification
-- ⚠️ **Wallet Integration**: HD wallet operations (requires directory setup)
-- ⚠️ **End-to-End Flow**: Full transaction lifecycle (requires UTXO setup)
+- ✅ **Wallet Integration**: HD wallet operations with automatic directory setup
+- ✅ **End-to-End Flow**: Full transaction lifecycle with UTXO management
 
-**Results**: Core integration tests (4/6) pass, demonstrating solid component interaction. Wallet tests require additional directory structure setup.
+**Results**: All core integration tests (6/6) pass, demonstrating solid component interaction across the entire stack.
 
 ### Coverage Report
 
