@@ -1,9 +1,11 @@
 # Building INTcoin from Source
 
 **Version**: 1.0.0-alpha
-**Last Updated**: November 26, 2025
+**Last Updated**: December 18, 2025
 
 Complete guide for building INTcoin on all supported platforms.
+
+**Note**: Automated installation scripts are available in `scripts/` for Linux and FreeBSD. See [Automated Installation](#automated-installation) below.
 
 ---
 
@@ -28,11 +30,11 @@ Complete guide for building INTcoin on all supported platforms.
 |-----------|-------------|
 | **OS** | macOS 10.15+, Linux 4.x+, FreeBSD 12+, Windows 10+ |
 | **Architecture** | 64-bit (x86_64 or ARM64) |
-| **CMake** | 4.2.0 or higher |
-| **Compiler** | GCC 15.2+, Clang 17+, MSVC 2022+, Apple Clang 17+ |
+| **CMake** | 3.28 or higher (latest stable from Kitware) |
+| **Compiler** | GCC 13+, Clang 16+, MSVC 2022+, Apple Clang 15+ |
 | **RAM** | 4 GB minimum, 8 GB recommended |
 | **Disk Space** | 2 GB for build, 50+ GB for full node |
-| **C++ Standard** | C++20 |
+| **C++ Standard** | C++23 (required) |
 
 ### Recommended Specifications
 
@@ -49,9 +51,9 @@ Complete guide for building INTcoin on all supported platforms.
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| **CMake** | ≥ 4.2.0 | Build system |
-| **OpenSSL** | ≥ 3.5.4 | SHA3-256 hashing |
-| **liboqs** | ≥ 0.15.0 | Post-quantum cryptography (Dilithium3, Kyber768) |
+| **CMake** | ≥ 3.28 | Build system (latest from Kitware) |
+| **OpenSSL** | ≥ 3.5.4 | SHA3-256 hashing (built from source) |
+| **liboqs** | ≥ 0.12.0 | Post-quantum cryptography (Dilithium3, Kyber768) |
 | **RandomX** | ≥ 1.2.1 | ASIC-resistant Proof-of-Work |
 | **Threads** | System | Multi-threading support |
 
@@ -84,13 +86,13 @@ brew install cmake
 brew install boost openssl rocksdb qt6 zeromq libevent
 ```
 
-### Build liboqs 0.15.0
+### Build liboqs 0.12.0
 
 ```bash
 # Clone and checkout
 git clone https://github.com/open-quantum-safe/liboqs.git
 cd liboqs
-git checkout 0.15.0
+git checkout 0.12.0
 
 # Build and install
 mkdir build && cd build
@@ -173,13 +175,13 @@ sudo apt install -y \
     libevent-dev
 ```
 
-### Build liboqs 0.15.0
+### Build liboqs 0.12.0
 
 ```bash
 # Clone and checkout
 git clone https://github.com/open-quantum-safe/liboqs.git
 cd liboqs
-git checkout 0.15.0
+git checkout 0.12.0
 
 # Build and install
 mkdir build && cd build
@@ -270,13 +272,13 @@ sudo pkg install \
     libevent
 ```
 
-### Build liboqs 0.15.0
+### Build liboqs 0.12.0
 
 ```bash
 # Clone and checkout
 git clone https://github.com/open-quantum-safe/liboqs.git
 cd liboqs
-git checkout 0.15.0
+git checkout 0.12.0
 
 # Build and install
 mkdir build && cd build
@@ -585,6 +587,140 @@ which intcoind
 which intcoin-cli
 which intcoin-qt
 ```
+
+---
+
+## Automated Installation
+
+**Status**: ✅ Available for Linux and FreeBSD
+
+INTcoin provides automated installation scripts that handle all dependency installation, building from source, and system configuration.
+
+### Linux Installation Script
+
+**Script**: `scripts/install-linux.sh`
+
+**Supported Distributions**:
+- Ubuntu 20.04, 22.04, 24.04
+- Debian 11, 12
+- Fedora (latest)
+- CentOS/RHEL 8+
+- Arch Linux/Manjaro
+
+**Features**:
+- Installs latest CMake 3.28+ from Kitware repositories
+- Builds and installs OpenSSL 3.5.4 from source
+- Builds and installs liboqs 0.12.0 (post-quantum crypto)
+- Builds and installs RandomX 1.2.1 (ASIC-resistant PoW)
+- Builds INTcoin from source
+- Creates systemd service for intcoind
+- Sets up configuration files and directories
+
+**Usage**:
+```bash
+cd /path/to/intcoin
+sudo ./scripts/install-linux.sh
+
+# Installation process:
+# 1. Detects Linux distribution automatically
+# 2. Installs build tools and dependencies
+# 3. Downloads and builds OpenSSL 3.5.4
+# 4. Downloads and builds liboqs 0.12.0
+# 5. Downloads and builds RandomX 1.2.1
+# 6. Builds INTcoin with all features
+# 7. Runs test suite
+# 8. Installs binaries to /usr/local/bin
+# 9. Creates systemd service
+# 10. Sets up config in /etc/intcoin/
+
+# After installation:
+sudo systemctl enable intcoind  # Enable service
+sudo systemctl start intcoind   # Start daemon
+sudo systemctl status intcoind  # Check status
+```
+
+### FreeBSD Installation Script
+
+**Script**: `scripts/install-freebsd.sh`
+
+**Supported Versions**:
+- FreeBSD 12.x
+- FreeBSD 13.x
+- FreeBSD 14.x
+
+**Features**:
+- Installs dependencies via pkg
+- Builds OpenSSL 3.5.4 from source
+- Builds liboqs 0.12.0 and RandomX 1.2.1
+- Builds INTcoin from source
+- Creates rc.d service for intcoind
+- Sets up configuration and log directories
+
+**Usage**:
+```bash
+cd /path/to/intcoin
+sudo ./scripts/install-freebsd.sh
+
+# Installation process similar to Linux script
+# Uses FreeBSD-specific tools:
+# - pkg instead of apt/dnf
+# - gmake instead of make
+# - fetch instead of wget
+# - rc.d instead of systemd
+
+# After installation:
+sudo sysrc intcoind_enable=YES  # Enable service
+sudo service intcoind start     # Start daemon
+sudo service intcoind status    # Check status
+```
+
+### Script Configuration
+
+Both scripts support environment variables for customization:
+
+```bash
+# Set custom install prefix (default: /usr/local)
+export INSTALL_PREFIX=/opt/intcoin
+
+# Set build parallelism (default: all CPU cores)
+export BUILD_JOBS=4
+
+# Set build type (default: Release)
+export BUILD_TYPE=Release
+
+# Run installation
+sudo -E ./scripts/install-linux.sh
+```
+
+### What Gets Installed
+
+After running the installation scripts:
+
+**Binaries** (`/usr/local/bin/`):
+- `intcoind` - Full node daemon (7.2 MB)
+- `intcoin-cli` - Command-line interface (73 KB)
+- `intcoin-qt` - Qt desktop wallet (180 KB)
+- `intcoin-miner` - CPU miner (7.0 MB)
+- `wallet-tool` - Wallet management utility
+
+**Libraries** (`/usr/local/lib/`):
+- `libintcoin_core.a` - Core library
+- `liboqs.a` - Post-quantum crypto
+- `librandomx.a` - RandomX PoW
+- `libssl.so.3` - OpenSSL 3.5.4
+- `libcrypto.so.3` - OpenSSL crypto
+
+**Configuration** (Linux: `/etc/intcoin/`, FreeBSD: `/usr/local/etc/intcoin/`):
+- `intcoin.conf` - Default configuration file
+
+**Data Directories** (Linux: `/var/lib/intcoin`, FreeBSD: `/var/db/intcoin`):
+- Blockchain data
+- Wallet databases
+- Transaction index
+
+**Logs** (`/var/log/intcoin/`):
+- `debug.log` - Daemon logs
+- `error.log` - Error logs
 
 ---
 

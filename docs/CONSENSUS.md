@@ -1,8 +1,8 @@
 # INTcoin Consensus Mechanism
 
-**Status**: 🟡 Partial (RandomX Complete, Digishield Pending)
+**Status**: 🟢 Complete (RandomX + Coinbase Validation)
 **Tests**: 6/6 RandomX tests passing
-**Last Updated**: November 26, 2025
+**Last Updated**: December 18, 2025
 
 INTcoin uses a hybrid consensus mechanism combining RandomX Proof-of-Work with Digishield V3 dynamic difficulty adjustment.
 
@@ -384,6 +384,189 @@ uint64_t GetSupplyAtHeight(uint64_t height) {
 
     return supply;
 }
+```
+
+---
+
+## Coinbase Transaction Validation
+
+### Overview
+
+Coinbase transactions are special transactions that create new coins and collect transaction fees. They must be validated to prevent inflation attacks and ensure fair reward distribution.
+
+**Status**: ✅ Complete (100%)
+
+### Why Coinbase Validation?
+
+1. **Inflation Prevention**: Ensures miners don't create more coins than allowed
+2. **Economic Security**: Maintains the emission schedule and total supply cap
+3. **Fee Collection**: Validates miners can only claim fees from included transactions
+4. **Attack Prevention**: Prevents double-spending of block rewards
+
+### Validation Rules
+
+```cpp
+// Coinbase validation checks:
+1. Transaction must be a coinbase (1 input with prevout index = 0xFFFFFFFF)
+2. Calculate block subsidy with halving based on height
+3. Total output ≤ (subsidy + transaction fees)
+4. Outputs must exist and have valid scripts
+5. Miners may claim less than full reward (burns allowed)
+```
+
+### Implementation
+
+**Source**: [src/consensus/consensus.cpp:537-587](../src/consensus/consensus.cpp#L537-L587)
+
+```cpp
+Result<void> ConsensusValidator::ValidateCoinbase(const Transaction& coinbase,
+                                                 uint64_t height,
+                                                 uint64_t total_fees) {
+    // 1. Check if this is actually a coinbase transaction
+    if (!coinbase.IsCoinbase()) {
+        return Result<void>::Error("Transaction is not a coinbase transaction");
+    }
+
+    // 2. Calculate block subsidy with halving
+    uint64_t subsidy = 0;
+    uint64_t halving_count = height / consensus::HALVING_INTERVAL;
+
+    if (halving_count >= consensus::MAX_HALVINGS) {
+        // After max halvings, no more subsidy (only fees)
+        subsidy = 0;
+    } else {
+        // Halve the reward for each halving period using bit shift
+        subsidy = consensus::INITIAL_BLOCK_REWARD >> halving_count;
+    }
+
+    // 3. Calculate expected reward (subsidy + fees)
+    uint64_t expected_reward = subsidy + total_fees;
+
+    // 4. Validate outputs exist
+    if (coinbase.outputs.empty()) {
+        return Result<void>::Error("Coinbase transaction has no outputs");
+    }
+
+    // 5. Validate output scripts are not empty
+    for (const auto& output : coinbase.outputs) {
+        if (output.script_pubkey.bytes.empty()) {
+            return Result<void>::Error("Coinbase output has empty script");
+        }
+    }
+
+    // 6. Check total output value doesn't exceed expected reward
+    uint64_t total_output = coinbase.GetTotalOutputValue();
+
+    if (total_output > expected_reward) {
+        return Result<void>::Error(
+            "Coinbase output value exceeds expected reward (got " +
+            std::to_string(total_output) + ", expected max " +
+            std::to_string(expected_reward) + ")"
+        );
+    }
+
+    // Note: It's acceptable for miners to claim less than the full reward
+    // (this is sometimes done intentionally or due to bugs)
+
+    return Result<void>::Ok();
+}
+```
+
+### Halving Calculation
+
+The block subsidy uses efficient bit-shift operations for halving:
+
+```cpp
+// Every 1,051,200 blocks (~4 years), reward halves
+uint64_t halving_count = height / 1051200;
+
+// Bit shift right = divide by 2^n
+// subsidy >>= 1  means subsidy = subsidy / 2
+// subsidy >> n   means subsidy = subsidy / 2^n
+
+uint64_t subsidy = 105113636 >> halving_count;
+
+// Examples:
+// Height 0:         105113636 >> 0 = 105,113,636 INT
+// Height 1,051,200: 105113636 >> 1 =  52,556,818 INT
+// Height 2,102,400: 105113636 >> 2 =  26,278,409 INT
+// Height 3,153,600: 105113636 >> 3 =  13,139,204 INT
+```
+
+### Error Cases
+
+The validation returns specific error messages for different failure scenarios:
+
+| Error | Cause | Impact |
+|-------|-------|--------|
+| `Transaction is not a coinbase transaction` | `IsCoinbase()` returns false | Block rejected |
+| `Coinbase transaction has no outputs` | Empty outputs vector | Block rejected |
+| `Coinbase output has empty script` | Invalid script_pubkey | Block rejected |
+| `Coinbase output value exceeds expected reward` | Output > (subsidy + fees) | Block rejected (inflation attempt) |
+
+### Security Considerations
+
+1. **Overflow Protection**: Uses 64-bit integers for all calculations
+2. **Halving Limit**: After 64 halvings, subsidy = 0 (only fees remain)
+3. **Underflow Allowed**: Miners can claim less than full reward (intentional burns)
+4. **Fee Calculation**: Caller must compute `total_fees` from all transactions
+
+### API Usage
+
+```cpp
+#include "intcoin/consensus.h"
+
+// Validate a block's coinbase transaction
+Block block;
+uint64_t total_fees = 0;
+
+// Calculate fees from all non-coinbase transactions
+for (size_t i = 1; i < block.transactions.size(); i++) {
+    const auto& tx = block.transactions[i];
+
+    // Get input value
+    uint64_t input_value = 0;
+    for (const auto& input : tx.inputs) {
+        auto utxo = blockchain.GetUTXO(input.prevout);
+        if (utxo.IsOk()) {
+            input_value += utxo.value->amount;
+        }
+    }
+
+    // Get output value
+    uint64_t output_value = tx.GetTotalOutputValue();
+
+    // Fee = input - output
+    if (input_value > output_value) {
+        total_fees += (input_value - output_value);
+    }
+}
+
+// Validate coinbase
+auto result = ConsensusValidator::ValidateCoinbase(
+    block.transactions[0],  // Coinbase must be first transaction
+    block.header.height,
+    total_fees
+);
+
+if (result.IsError()) {
+    std::cerr << "Coinbase validation failed: " << result.error << "\n";
+    // Reject block
+}
+```
+
+### Test Coverage
+
+Coinbase validation is tested as part of the consensus validation test suite:
+
+```bash
+./tests/test_validation
+# Tests include:
+# - Valid coinbase with exact reward
+# - Valid coinbase with less than full reward
+# - Invalid coinbase with excessive output
+# - Invalid coinbase with empty outputs
+# - Coinbase validation across halving boundaries
 ```
 
 ---
