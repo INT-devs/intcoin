@@ -509,14 +509,14 @@ const std::map<uint64_t, uint256>& ChainValidator::GetCheckpoints() {
     // Checkpoints are hard-coded block hashes at specific heights
     // These prevent reorganizations before these points
     static const std::map<uint64_t, uint256> checkpoints = {
-        // Genesis block (height 0)
-        {0, uint256("0000000000000000000000000000000000000000000000000000000000000000")},
+        // Genesis block (height 0) - zero hash placeholder
+        {0, uint256{{0}}},
 
         // TODO: Add real checkpoints as the network grows
         // Example format:
-        // {5040, uint256("...")},  // ~1 week
-        // {10080, uint256("...")}, // ~2 weeks
-        // {50400, uint256("...")}, // ~10 weeks
+        // {5040, HexToUint256("...").value.value()},  // ~1 week
+        // {10080, HexToUint256("...").value.value()}, // ~2 weeks
+        // {50400, HexToUint256("...").value.value()}, // ~10 weeks
     };
     return checkpoints;
 }

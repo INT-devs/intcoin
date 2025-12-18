@@ -496,6 +496,31 @@ bool DirectoryExists(const std::string& path) {
     }
 }
 
+Result<void> CreateDirectory(const std::string& path) {
+    // Create directory recursively using C++17 filesystem
+    try {
+        std::filesystem::path p(path);
+
+        // Check if directory already exists
+        if (std::filesystem::exists(p)) {
+            if (std::filesystem::is_directory(p)) {
+                return Result<void>::Ok();
+            } else {
+                return Result<void>::Error("Path exists but is not a directory: " + path);
+            }
+        }
+
+        // Create all parent directories as needed
+        if (!std::filesystem::create_directories(p)) {
+            return Result<void>::Error("Failed to create directory: " + path);
+        }
+
+        return Result<void>::Ok();
+    } catch (const std::filesystem::filesystem_error& e) {
+        return Result<void>::Error("Filesystem error creating directory '" + path + "': " + e.what());
+    }
+}
+
 // ============================================================================
 // Serialization Utilities
 // ============================================================================

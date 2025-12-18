@@ -1590,6 +1590,18 @@ Result<void> Wallet::Create(const std::vector<std::string>& mnemonic,
     impl_->master_key = master_result.value.value();
     impl_->mnemonic_words = mnemonic;
 
+    // Ensure wallet directory exists
+    auto dir_result = CreateDirectory(impl_->config.data_dir);
+    if (!dir_result.IsOk()) {
+        return Result<void>::Error("Failed to create wallet directory: " + dir_result.error);
+    }
+
+    // Ensure backup directory exists
+    auto backup_dir_result = CreateDirectory(impl_->config.backup_dir);
+    if (!backup_dir_result.IsOk()) {
+        return Result<void>::Error("Failed to create backup directory: " + backup_dir_result.error);
+    }
+
     // Create database
     impl_->db = std::make_unique<WalletDB>(impl_->config.data_dir + "/wallet.db");
     auto open_result = impl_->db->Open();
@@ -1625,6 +1637,18 @@ Result<void> Wallet::Create(const std::vector<std::string>& mnemonic,
 Result<void> Wallet::Load() {
     if (impl_->is_loaded) {
         return Result<void>::Error("Wallet already loaded");
+    }
+
+    // Ensure wallet directory exists
+    auto dir_result = CreateDirectory(impl_->config.data_dir);
+    if (!dir_result.IsOk()) {
+        return Result<void>::Error("Failed to create wallet directory: " + dir_result.error);
+    }
+
+    // Ensure backup directory exists
+    auto backup_dir_result = CreateDirectory(impl_->config.backup_dir);
+    if (!backup_dir_result.IsOk()) {
+        return Result<void>::Error("Failed to create backup directory: " + backup_dir_result.error);
     }
 
     // Open database
