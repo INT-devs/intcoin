@@ -14,6 +14,8 @@ TEMP_DIR="/tmp/intcoin-build-$$"
 # Version requirements (latest stable as of December 2024)
 LIBOQS_VERSION="0.12.0"
 RANDOMX_VERSION="v1.2.1"
+OPENSSL_VERSION="3.5.4"
+CMAKE_MIN_VERSION="3.28"
 
 # Print banner
 print_banner() {
@@ -21,8 +23,11 @@ print_banner() {
     echo "╔═══════════════════════════════════════════════════════╗"
     echo "║         INTcoin FreeBSD Installation Script          ║"
     echo "║                                                       ║"
-    echo "║  This script will install INTcoin and dependencies   ║"
-    echo "║  on your FreeBSD system                              ║"
+    echo "║  This script will install INTcoin and dependencies:  ║"
+    echo "║  - Latest CMake from pkg (3.28+)                     ║"
+    echo "║  - OpenSSL ${OPENSSL_VERSION} from source                       ║"
+    echo "║  - liboqs ${LIBOQS_VERSION} (Post-quantum crypto)              ║"
+    echo "║  - RandomX ${RANDOMX_VERSION} (ASIC-resistant PoW)             ║"
     echo "╚═══════════════════════════════════════════════════════╝"
     echo ""
 }
@@ -78,6 +83,50 @@ install_dependencies() {
         doxygen
 
     success "Dependencies installed"
+}
+
+# Install latest CMake from pkg
+install_cmake() {
+    info "Ensuring latest CMake is installed..."
+
+    # FreeBSD pkg usually has recent CMake versions
+    pkg install -y cmake
+
+    # Verify CMake version
+    CMAKE_VERSION=$(cmake --version | head -n1 | awk '{print $3}')
+    success "CMake $CMAKE_VERSION installed"
+}
+
+# Build and install OpenSSL from source
+install_openssl() {
+    info "Building and installing OpenSSL $OPENSSL_VERSION..."
+
+    cd "$TEMP_DIR"
+
+    # Download OpenSSL
+    if [ ! -f "openssl-${OPENSSL_VERSION}.tar.gz" ]; then
+        fetch "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+    fi
+
+    # Extract
+    tar xzvf "openssl-${OPENSSL_VERSION}.tar.gz"
+    cd "openssl-${OPENSSL_VERSION}"
+
+    # Configure with RPATH support
+    ./config -Wl,--enable-new-dtags,-rpath,'$(LIBRPATH)'
+
+    # Build
+    gmake -j"$BUILD_JOBS"
+
+    # Install
+    gmake install
+
+    # Update library cache
+    /sbin/ldconfig -m "$INSTALL_PREFIX/lib"
+
+    # Verify installation
+    OPENSSL_INSTALLED_VERSION=$(/usr/local/bin/openssl version | awk '{print $2}')
+    success "OpenSSL $OPENSSL_INSTALLED_VERSION installed"
 }
 
 # Build and install liboqs
@@ -136,8 +185,8 @@ install_randomx() {
 install_intcoin() {
     info "Building INTcoin..."
 
-    # Assume we're running from the intcoin source directory
-    INTCOIN_DIR="$(cd "$(dirname "$0")" && pwd)"
+    # Get the parent directory of the scripts directory
+    INTCOIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
     cd "$INTCOIN_DIR"
 
     # Create build directory
@@ -328,6 +377,12 @@ print_summary() {
     echo "║          Installation Complete!                       ║"
     echo "╚═══════════════════════════════════════════════════════╝"
     echo ""
+    echo "Installed versions:"
+    echo "  - CMake         : $(cmake --version | head -n1 | awk '{print $3}')"
+    echo "  - OpenSSL       : $(/usr/local/bin/openssl version 2>/dev/null | awk '{print $2}' || echo 'system')"
+    echo "  - liboqs        : $LIBOQS_VERSION"
+    echo "  - RandomX       : ${RANDOMX_VERSION#v}"
+    echo ""
     echo "Installed binaries:"
     echo "  - intcoind      : $INSTALL_PREFIX/bin/intcoind"
     echo "  - intcoin-cli   : $INSTALL_PREFIX/bin/intcoin-cli"
@@ -367,6 +422,8 @@ main() {
 
     # Install steps
     install_dependencies
+    install_cmake
+    install_openssl
     install_liboqs
     install_randomx
     install_intcoin

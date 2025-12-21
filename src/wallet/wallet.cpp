@@ -647,18 +647,126 @@ Result<ExtendedKey> HDKeyDerivation::Neuter(const ExtendedKey& private_key) {
 }
 
 std::string ExtendedKey::SerializeBase58() const {
-    // TODO: Implement Base58Check serialization
-    // Note: Implementation ready but requires SHA3_256 function to be linked
-    // See util.cpp for Base58 encode/decode functions
-    return "xprv_placeholder";
+    std::vector<uint8_t> data;
+    data.reserve(78);
+
+    // Version bytes (4 bytes)
+    // 0x0488ADE4 for xprv (mainnet private), 0x0488B21E for xpub (mainnet public)
+    uint32_t version = IsPrivate() ? 0x0488ADE4 : 0x0488B21E;
+    data.push_back((version >> 24) & 0xFF);
+    data.push_back((version >> 16) & 0xFF);
+    data.push_back((version >> 8) & 0xFF);
+    data.push_back(version & 0xFF);
+
+    // Depth (1 byte)
+    data.push_back(depth);
+
+    // Parent fingerprint (4 bytes)
+    data.push_back((parent_fingerprint >> 24) & 0xFF);
+    data.push_back((parent_fingerprint >> 16) & 0xFF);
+    data.push_back((parent_fingerprint >> 8) & 0xFF);
+    data.push_back(parent_fingerprint & 0xFF);
+
+    // Child index (4 bytes)
+    data.push_back((child_index >> 24) & 0xFF);
+    data.push_back((child_index >> 16) & 0xFF);
+    data.push_back((child_index >> 8) & 0xFF);
+    data.push_back(child_index & 0xFF);
+
+    // Chain code (32 bytes)
+    for (size_t i = 0; i < 32; i++) {
+        data.push_back(chain_code[i]);
+    }
+
+    // Key data (33 bytes)
+    if (IsPrivate()) {
+        // Private key: 0x00 + 32 bytes
+        data.push_back(0x00);
+        for (size_t i = 0; i < 32; i++) {
+            data.push_back(private_key->data[i]);
+        }
+    } else {
+        // Public key: compressed format (33 bytes)
+        for (size_t i = 0; i < 33; i++) {
+            data.push_back(public_key->data[i]);
+        }
+    }
+
+    return Base58CheckEncode(data);
 }
 
 Result<ExtendedKey> ExtendedKey::DeserializeBase58(const std::string& str) {
-    // TODO: Implement Base58Check deserialization
-    // Note: Implementation ready but requires SHA3_256 function to be linked
-    // See util.cpp for Base58 encode/decode functions
-    (void)str;
-    return Result<ExtendedKey>::Error("Not implemented - requires SHA3_256 linkage");
+    // Base58Check decode
+    auto decode_result = Base58CheckDecode(str);
+    if (!decode_result.IsOk()) {
+        return Result<ExtendedKey>::Error(decode_result.error);
+    }
+
+    std::vector<uint8_t> data = decode_result.value.value();
+
+    // Verify length (78 bytes)
+    if (data.size() != 78) {
+        return Result<ExtendedKey>::Error("Invalid extended key length");
+    }
+
+    ExtendedKey key;
+
+    // Parse version
+    uint32_t version = (static_cast<uint32_t>(data[0]) << 24) |
+                       (static_cast<uint32_t>(data[1]) << 16) |
+                       (static_cast<uint32_t>(data[2]) << 8) |
+                       static_cast<uint32_t>(data[3]);
+
+    bool is_private = (version == 0x0488ADE4);  // xprv
+    bool is_public = (version == 0x0488B21E);   // xpub
+
+    if (!is_private && !is_public) {
+        return Result<ExtendedKey>::Error("Invalid version bytes");
+    }
+
+    // Parse depth
+    key.depth = data[4];
+
+    // Parse parent fingerprint
+    key.parent_fingerprint = (static_cast<uint32_t>(data[5]) << 24) |
+                             (static_cast<uint32_t>(data[6]) << 16) |
+                             (static_cast<uint32_t>(data[7]) << 8) |
+                             static_cast<uint32_t>(data[8]);
+
+    // Parse child index
+    key.child_index = (static_cast<uint32_t>(data[9]) << 24) |
+                      (static_cast<uint32_t>(data[10]) << 16) |
+                      (static_cast<uint32_t>(data[11]) << 8) |
+                      static_cast<uint32_t>(data[12]);
+
+    // Parse chain code
+    for (size_t i = 0; i < 32; i++) {
+        key.chain_code[i] = data[13 + i];
+    }
+
+    // Parse key
+    if (is_private) {
+        // Private key (skip 0x00 prefix)
+        if (data[45] != 0x00) {
+            return Result<ExtendedKey>::Error("Invalid private key prefix");
+        }
+        SecretKey priv_key;
+        for (size_t i = 0; i < 32; i++) {
+            priv_key.data[i] = data[46 + i];
+        }
+        key.private_key = priv_key;
+        key.public_key = std::nullopt;
+    } else {
+        // Public key
+        PublicKey pub_key;
+        for (size_t i = 0; i < 33; i++) {
+            pub_key.data[i] = data[45 + i];
+        }
+        key.public_key = pub_key;
+        key.private_key = std::nullopt;
+    }
+
+    return Result<ExtendedKey>::Ok(key);
 }
 
 // ============================================================================
@@ -722,11 +830,13 @@ Result<void> Mnemonic::Validate(const std::vector<std::string>& words) {
         return Result<void>::Error("Invalid word count");
     }
 
-    // Check each word is in wordlist
+    // Check each word is in wordlist and convert to indices
+    std::vector<size_t> indices;
     for (const auto& word : words) {
         bool found = false;
-        for (const auto& valid_word : BIP39_WORDLIST) {
-            if (word == valid_word) {
+        for (size_t i = 0; i < BIP39_WORDLIST.size(); i++) {
+            if (word == BIP39_WORDLIST[i]) {
+                indices.push_back(i);
                 found = true;
                 break;
             }
@@ -736,7 +846,53 @@ Result<void> Mnemonic::Validate(const std::vector<std::string>& words) {
         }
     }
 
-    // TODO: Validate checksum
+    // Validate checksum
+    // Convert indices to bits (11 bits per word)
+    size_t total_bits = words.size() * 11;
+    size_t checksum_bits = total_bits / 33;  // Last 1/33 of bits is checksum
+    size_t entropy_bits = total_bits - checksum_bits;
+    size_t entropy_bytes = entropy_bits / 8;
+
+    // Extract entropy and checksum from bit stream
+    std::vector<uint8_t> all_bits((total_bits + 7) / 8, 0);
+    for (size_t i = 0; i < indices.size(); i++) {
+        uint16_t idx = static_cast<uint16_t>(indices[i]);
+        // Write 11 bits starting at bit position i * 11
+        size_t bit_pos = i * 11;
+        for (int j = 10; j >= 0; j--) {
+            if (idx & (1 << j)) {
+                size_t byte_pos = bit_pos / 8;
+                size_t bit_offset = 7 - (bit_pos % 8);
+                all_bits[byte_pos] |= (1 << bit_offset);
+            }
+            bit_pos++;
+        }
+    }
+
+    // Extract entropy
+    std::vector<uint8_t> entropy(all_bits.begin(), all_bits.begin() + entropy_bytes);
+
+    // Calculate expected checksum using SHA3-256
+    uint256 hash = SHA3_256(entropy);
+
+    // Extract actual checksum bits
+    uint8_t actual_checksum = 0;
+    for (size_t i = 0; i < checksum_bits; i++) {
+        size_t bit_pos = entropy_bits + i;
+        size_t byte_pos = bit_pos / 8;
+        size_t bit_offset = 7 - (bit_pos % 8);
+        if (all_bits[byte_pos] & (1 << bit_offset)) {
+            actual_checksum |= (1 << (checksum_bits - 1 - i));
+        }
+    }
+
+    // Extract expected checksum from hash (first checksum_bits of hash)
+    uint8_t expected_checksum = hash.data[0] >> (8 - checksum_bits);
+
+    // Compare checksums
+    if (actual_checksum != expected_checksum) {
+        return Result<void>::Error("Invalid mnemonic checksum");
+    }
 
     return Result<void>::Ok();
 }

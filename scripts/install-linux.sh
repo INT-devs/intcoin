@@ -21,6 +21,8 @@ TEMP_DIR="/tmp/intcoin-build-$$"
 # Version requirements (latest stable as of December 2024)
 LIBOQS_VERSION="0.12.0"
 RANDOMX_VERSION="v1.2.1"
+OPENSSL_VERSION="3.5.4"
+CMAKE_MIN_VERSION="3.28"
 
 # Detect distribution
 if [ -f /etc/os-release ]; then
@@ -38,8 +40,11 @@ print_banner() {
     echo "╔═══════════════════════════════════════════════════════╗"
     echo "║          INTcoin Linux Installation Script           ║"
     echo "║                                                       ║"
-    echo "║  This script will install INTcoin and dependencies   ║"
-    echo "║  on your Linux system                                ║"
+    echo "║  This script will install INTcoin and dependencies:  ║"
+    echo "║  - Latest CMake from Kitware (3.28+)                 ║"
+    echo "║  - OpenSSL ${OPENSSL_VERSION} from source                       ║"
+    echo "║  - liboqs ${LIBOQS_VERSION} (Post-quantum crypto)              ║"
+    echo "║  - RandomX ${RANDOMX_VERSION} (ASIC-resistant PoW)             ║"
     echo "╚═══════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -148,6 +153,116 @@ install_dependencies() {
     success "Dependencies installed"
 }
 
+# Install latest CMake from Kitware
+install_cmake() {
+    info "Installing latest CMake from Kitware..."
+
+    case "$DISTRO" in
+        ubuntu)
+            # Remove existing CMake
+            apt-get remove --purge -y cmake || true
+
+            # Install prerequisites
+            apt-get install -y ca-certificates gpg wget
+
+            # Determine Ubuntu codename
+            local UBUNTU_CODENAME=""
+            case "$DISTRO_VERSION" in
+                24.04)
+                    UBUNTU_CODENAME="noble"
+                    ;;
+                22.04)
+                    UBUNTU_CODENAME="jammy"
+                    ;;
+                20.04)
+                    UBUNTU_CODENAME="focal"
+                    ;;
+                *)
+                    warn "Unknown Ubuntu version $DISTRO_VERSION, defaulting to jammy"
+                    UBUNTU_CODENAME="jammy"
+                    ;;
+            esac
+
+            # Add Kitware repository
+            wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc | \
+                gpg --dearmor | \
+                tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $UBUNTU_CODENAME main" | \
+                tee /etc/apt/sources.list.d/kitware.list >/dev/null
+
+            # Update and install CMake
+            apt-get update
+            apt-get install -y cmake
+
+            ;;
+
+        debian)
+            # Remove existing CMake
+            apt-get remove --purge -y cmake || true
+
+            # Install prerequisites
+            apt-get install -y ca-certificates gpg wget
+
+            # Determine Debian codename (use Ubuntu jammy for Debian 12)
+            local DEBIAN_CODENAME="jammy"
+
+            # Add Kitware repository
+            wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc | \
+                gpg --dearmor | \
+                tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $DEBIAN_CODENAME main" | \
+                tee /etc/apt/sources.list.d/kitware.list >/dev/null
+
+            # Update and install CMake
+            apt-get update
+            apt-get install -y cmake
+
+            ;;
+
+        *)
+            info "CMake installation from Kitware not configured for $DISTRO, using system package"
+            ;;
+    esac
+
+    # Verify CMake version
+    local CMAKE_VERSION=$(cmake --version | head -n1 | awk '{print $3}')
+    success "CMake $CMAKE_VERSION installed"
+}
+
+# Build and install OpenSSL from source
+install_openssl() {
+    info "Building and installing OpenSSL $OPENSSL_VERSION..."
+
+    cd "$TEMP_DIR"
+
+    # Download OpenSSL
+    if [ ! -f "openssl-${OPENSSL_VERSION}.tar.gz" ]; then
+        wget "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+    fi
+
+    # Extract
+    tar xzvf "openssl-${OPENSSL_VERSION}.tar.gz"
+    cd "openssl-${OPENSSL_VERSION}"
+
+    # Configure with RPATH support
+    ./config -Wl,--enable-new-dtags,-rpath,'$(LIBRPATH)'
+
+    # Build
+    make -j"$BUILD_JOBS"
+
+    # Install
+    make install
+
+    # Update library cache
+    ldconfig
+
+    # Verify installation
+    local OPENSSL_INSTALLED_VERSION=$(/usr/local/bin/openssl version | awk '{print $2}')
+    success "OpenSSL $OPENSSL_INSTALLED_VERSION installed"
+}
+
 # Build and install liboqs
 install_liboqs() {
     info "Building and installing liboqs $LIBOQS_VERSION..."
@@ -204,8 +319,8 @@ install_randomx() {
 install_intcoin() {
     info "Building INTcoin..."
 
-    # Assume we're running from the intcoin source directory
-    INTCOIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # Get the parent directory of the scripts directory
+    INTCOIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     cd "$INTCOIN_DIR"
 
     # Create build directory
@@ -376,6 +491,12 @@ print_summary() {
     echo -e "${GREEN}║          Installation Complete!                       ║${NC}"
     echo -e "${GREEN}╚═══════════════════════════════════════════════════════╝${NC}"
     echo ""
+    echo -e "${BLUE}Installed versions:${NC}"
+    echo "  - CMake         : $(cmake --version | head -n1 | awk '{print $3}')"
+    echo "  - OpenSSL       : $(/usr/local/bin/openssl version 2>/dev/null | awk '{print $2}' || echo 'system')"
+    echo "  - liboqs        : $LIBOQS_VERSION"
+    echo "  - RandomX       : ${RANDOMX_VERSION#v}"
+    echo ""
     echo -e "${BLUE}Installed binaries:${NC}"
     echo "  - intcoind      : $INSTALL_PREFIX/bin/intcoind"
     echo "  - intcoin-cli   : $INSTALL_PREFIX/bin/intcoin-cli"
@@ -415,6 +536,8 @@ main() {
 
     # Install steps
     install_dependencies
+    install_cmake
+    install_openssl
     install_liboqs
     install_randomx
     install_intcoin

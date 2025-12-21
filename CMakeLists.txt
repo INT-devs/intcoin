@@ -333,6 +333,23 @@ if(BUILD_FAUCET)
     install(TARGETS intcoin-faucet DESTINATION bin)
 endif()
 
+# Wallet Tool
+find_library(ROCKSDB_LIB rocksdb REQUIRED)
+
+add_executable(wallet-tool
+    tools/wallet-tool.cpp
+)
+target_link_libraries(wallet-tool intcoin_core ${ROCKSDB_LIB})
+
+# Link OpenSSL if found
+if(OPENSSL_FOUND)
+    target_link_libraries(wallet-tool OpenSSL::SSL OpenSSL::Crypto)
+else()
+    target_link_libraries(wallet-tool ssl crypto)
+endif()
+
+install(TARGETS wallet-tool DESTINATION bin)
+
 # Genesis Block Miner Tool (development/testing)
 # Disabled - file moved or removed
 # find_library(ROCKSDB_LIB rocksdb REQUIRED)

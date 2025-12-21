@@ -462,8 +462,69 @@ Result<void> RandomXValidator::UpdateDataset(uint64_t height) {
 
 Result<void> ConsensusValidator::ValidateBlockHeader(const BlockHeader& header,
                                                     const Blockchain& chain) {
-    // TODO: Implement comprehensive header validation
-    return Result<void>::Error("Not implemented");
+    // 1. Validate version
+    if (header.version == 0) {
+        return Result<void>::Error("Invalid block version: 0");
+    }
+
+    // 2. Validate timestamp (not too far in the future)
+    uint64_t current_time = GetCurrentTime();
+    if (header.timestamp > current_time + consensus::MAX_FUTURE_BLOCK_TIME) {
+        return Result<void>::Error("Block timestamp too far in future");
+    }
+
+    // 3. Validate timestamp against median time past
+    uint64_t height = chain.GetBestHeight() + 1;
+    if (height > consensus::MEDIAN_TIME_SPAN) {
+        // Get median time past from last 11 blocks
+        std::vector<uint64_t> times;
+        for (uint64_t i = 0; i < consensus::MEDIAN_TIME_SPAN && i < height; i++) {
+            auto block_result = chain.GetBlockByHeight(height - i - 1);
+            if (block_result.IsOk() && block_result.value.has_value()) {
+                times.push_back(block_result.value.value().header.timestamp);
+            }
+        }
+
+        if (!times.empty()) {
+            std::sort(times.begin(), times.end());
+            uint64_t median_time = times[times.size() / 2];
+
+            auto timestamp_result = ValidateTimestamp(header.timestamp, median_time);
+            if (!timestamp_result.IsOk()) {
+                return timestamp_result;
+            }
+        }
+    }
+
+    // 4. Validate previous block hash (unless genesis)
+    if (height > 0) {
+        uint256 expected_prev_hash = chain.GetBestBlockHash();
+        if (header.previous_block_hash != expected_prev_hash) {
+            return Result<void>::Error("Previous block hash mismatch");
+        }
+    } else {
+        // Genesis block should have zero previous hash
+        uint256 zero_hash = {};
+        if (header.previous_block_hash != zero_hash) {
+            return Result<void>::Error("Genesis block must have zero previous hash");
+        }
+    }
+
+    // 5. Validate difficulty target
+    uint256 target = DifficultyBitsToTarget(header.difficulty_bits);
+    uint256 hash = header.GetHash();
+
+    if (hash > target) {
+        return Result<void>::Error("Block hash does not meet difficulty target");
+    }
+
+    // 6. Validate merkle root is not zero
+    uint256 zero_hash = {};
+    if (header.merkle_root == zero_hash) {
+        return Result<void>::Error("Invalid merkle root: all zeros");
+    }
+
+    return Result<void>::Ok();
 }
 
 Result<void> ConsensusValidator::ValidateBlockSize(const Block& block) {
@@ -476,13 +537,53 @@ Result<void> ConsensusValidator::ValidateBlockSize(const Block& block) {
 Result<void> ConsensusValidator::ValidateCoinbase(const Transaction& coinbase,
                                                  uint64_t height,
                                                  uint64_t total_fees) {
-    // TODO: Validate coinbase transaction
-    // Check:
-    // 1. Is coinbase transaction
-    // 2. Reward is correct (subsidy + fees)
-    // 3. Output scripts are valid
+    // 1. Check if this is actually a coinbase transaction
+    if (!coinbase.IsCoinbase()) {
+        return Result<void>::Error("Transaction is not a coinbase transaction");
+    }
 
-    return Result<void>::Error("Not implemented");
+    // 2. Calculate block subsidy with halving
+    uint64_t subsidy = 0;
+    uint64_t halving_count = height / consensus::HALVING_INTERVAL;
+
+    if (halving_count >= consensus::MAX_HALVINGS) {
+        // After max halvings, no more subsidy (only fees)
+        subsidy = 0;
+    } else {
+        // Halve the reward for each halving period
+        subsidy = consensus::INITIAL_BLOCK_REWARD >> halving_count;
+    }
+
+    // 3. Calculate expected reward (subsidy + fees)
+    uint64_t expected_reward = subsidy + total_fees;
+
+    // 4. Validate outputs exist
+    if (coinbase.outputs.empty()) {
+        return Result<void>::Error("Coinbase transaction has no outputs");
+    }
+
+    // 5. Validate output scripts are not empty
+    for (const auto& output : coinbase.outputs) {
+        if (output.script_pubkey.bytes.empty()) {
+            return Result<void>::Error("Coinbase output has empty script");
+        }
+    }
+
+    // 6. Check total output value doesn't exceed expected reward
+    uint64_t total_output = coinbase.GetTotalOutputValue();
+
+    if (total_output > expected_reward) {
+        return Result<void>::Error(
+            "Coinbase output value exceeds expected reward (got " +
+            std::to_string(total_output) + ", expected max " +
+            std::to_string(expected_reward) + ")"
+        );
+    }
+
+    // Note: It's acceptable for the miner to claim less than the full reward
+    // (this is sometimes done intentionally or due to bugs)
+
+    return Result<void>::Ok();
 }
 
 Result<void> ConsensusValidator::ValidateTimestamp(uint64_t timestamp,

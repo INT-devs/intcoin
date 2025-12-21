@@ -149,6 +149,10 @@ int main(int argc, char* argv[]) {
     rpc_config.allow_external = false;
 
     rpc::RPCServer rpc_server(rpc_config, blockchain, p2p_node);
+
+    // Register all RPC methods
+    rpc_server.RegisterAllMethods();
+
     auto rpc_result = rpc_server.Start();
     if (!rpc_result.IsOk()) {
         std::cerr << "ERROR: Failed to start RPC server: " << rpc_result.error << "\n";

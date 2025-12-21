@@ -404,17 +404,48 @@ Result<std::vector<uint8_t>> Base58Decode(const std::string& encoded) {
 }
 
 std::string Base58CheckEncode(const std::vector<uint8_t>& data) {
-    // TODO: Requires SHA3_256(vector) implementation for checksum calculation
-    // Implementation available but commented out until SHA3 is linked properly
-    (void)data;
-    return "Base58Check_not_implemented";
+    // Calculate double SHA3-256 checksum
+    uint256 hash = DoubleSHA3_256(data);
+
+    // Take first 4 bytes of hash as checksum
+    std::vector<uint8_t> with_checksum = data;
+    for (size_t i = 0; i < 4; i++) {
+        with_checksum.push_back(hash.data[i]);
+    }
+
+    // Base58 encode the data + checksum
+    return Base58Encode(with_checksum);
 }
 
 Result<std::vector<uint8_t>> Base58CheckDecode(const std::string& encoded) {
-    // TODO: Requires SHA3_256(vector) implementation for checksum verification
-    // Implementation available but commented out until SHA3 is linked properly
-    (void)encoded;
-    return Result<std::vector<uint8_t>>::Error("Base58Check decode not implemented - requires SHA3 linkage");
+    // Base58 decode
+    auto decode_result = Base58Decode(encoded);
+    if (!decode_result.IsOk()) {
+        return Result<std::vector<uint8_t>>::Error(decode_result.error);
+    }
+
+    std::vector<uint8_t> decoded = decode_result.value.value();
+
+    // Check minimum length (data + 4 byte checksum)
+    if (decoded.size() < 4) {
+        return Result<std::vector<uint8_t>>::Error("Decoded data too short for checksum");
+    }
+
+    // Split data and checksum
+    std::vector<uint8_t> data(decoded.begin(), decoded.end() - 4);
+    std::vector<uint8_t> checksum(decoded.end() - 4, decoded.end());
+
+    // Calculate expected checksum
+    uint256 hash = DoubleSHA3_256(data);
+
+    // Verify checksum
+    for (size_t i = 0; i < 4; i++) {
+        if (hash.data[i] != checksum[i]) {
+            return Result<std::vector<uint8_t>>::Error("Invalid checksum");
+        }
+    }
+
+    return Result<std::vector<uint8_t>>::Ok(data);
 }
 
 // ============================================================================
