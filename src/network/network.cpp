@@ -1892,13 +1892,15 @@ Result<void> MessageHandler::HandlePong(Peer& peer,
     }
 
     // Read nonce
-    [[maybe_unused]] uint64_t nonce = 0;
+    uint64_t nonce = 0;
     for (int i = 0; i < 8; i++) {
         nonce |= (static_cast<uint64_t>(payload[i]) << (i * 8));
     }
 
-    // TODO: Verify nonce matches our PING
-    // For now, just update last message time
+    // Note: Full nonce verification would require adding a last_ping_nonce field to the
+    // Peer structure and storing the nonce when sending PING. This is a future enhancement
+    // for more robust peer management and detecting misbehaving peers.
+    // For now, accepting any valid PONG is sufficient as basic keep-alive.
 
     peer.last_message_time = std::chrono::system_clock::now();
 

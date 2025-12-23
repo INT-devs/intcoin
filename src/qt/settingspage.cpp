@@ -12,6 +12,7 @@
 #include <QDir>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QSettings>
 
 namespace intcoin {
 namespace qt {
@@ -116,12 +117,39 @@ void SettingsPage::setupUi() {
 }
 
 void SettingsPage::loadSettings() {
-    // TODO: Load settings from configuration file
-    dataDirectoryEdit_->setText(QDir::homePath() + "/.intcoin");
+    // Load settings from QSettings (stored in platform-specific location)
+    QSettings settings("INTcoin", "INTcoin-Qt");
+
+    // General settings
+    startOnBootCheckBox_->setChecked(settings.value("startOnBoot", false).toBool());
+    minimizeToTrayCheckBox_->setChecked(settings.value("minimizeToTray", false).toBool());
+    dataDirectoryEdit_->setText(settings.value("dataDirectory", QDir::homePath() + "/.intcoin").toString());
+
+    // Network settings
+    enableUpnpCheckBox_->setChecked(settings.value("enableUPnP", true).toBool());
+    allowIncomingCheckBox_->setChecked(settings.value("allowIncoming", true).toBool());
+    maxConnectionsSpinBox_->setValue(settings.value("maxConnections", 8).toInt());
+    proxyEdit_->setText(settings.value("proxy", "").toString());
 }
 
 void SettingsPage::saveSettings() {
-    // TODO: Save settings to configuration file
+    // Save settings to QSettings (stored in platform-specific location)
+    QSettings settings("INTcoin", "INTcoin-Qt");
+
+    // General settings
+    settings.setValue("startOnBoot", startOnBootCheckBox_->isChecked());
+    settings.setValue("minimizeToTray", minimizeToTrayCheckBox_->isChecked());
+    settings.setValue("dataDirectory", dataDirectoryEdit_->text());
+
+    // Network settings
+    settings.setValue("enableUPnP", enableUpnpCheckBox_->isChecked());
+    settings.setValue("allowIncoming", allowIncomingCheckBox_->isChecked());
+    settings.setValue("maxConnections", maxConnectionsSpinBox_->value());
+    settings.setValue("proxy", proxyEdit_->text());
+
+    // Ensure settings are written to disk
+    settings.sync();
+
     QMessageBox::information(this, tr("Settings Saved"),
         tr("Settings saved successfully."));
 }

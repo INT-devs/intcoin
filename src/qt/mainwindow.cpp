@@ -261,11 +261,15 @@ void MainWindow::updateStatus() {
     uint64_t blockHeight = blockchain_->GetBestHeight();
     blocksLabel_->setText(tr("Blocks: %1").arg(blockHeight));
 
-    // Update sync status
-    // TODO: Determine if we're syncing (compare local height with network height)
-    bool syncing = (connections > 0 && blockHeight < 100); // Simplified check
-    if (syncing) {
-        syncLabel_->setText(tr("Synchronizing..."));
+    // Update sync status using verification progress from blockchain info
+    auto info = blockchain_->GetInfo();
+    bool syncing = (info.verification_progress < 0.9999); // Consider synced if >99.99% complete
+    if (syncing && connections > 0) {
+        // Show sync progress percentage
+        syncLabel_->setText(tr("Synchronizing... %1%").arg(
+            QString::number(info.verification_progress * 100.0, 'f', 2)));
+    } else if (connections == 0) {
+        syncLabel_->setText(tr("No connections"));
     } else {
         syncLabel_->setText(tr("Up to date"));
     }

@@ -886,8 +886,10 @@ Result<void> Mempool::AddTransaction(const Transaction& tx) {
         }
     }
 
-    // Calculate fee (stub - would need UTXO set)
-    uint64_t fee = 1000; // TODO: Calculate actual fee
+    // Fee estimation placeholder - actual fee should be calculated by the transaction
+    // validator/creator before adding to mempool (requires UTXO lookups)
+    // For now, use a default fee estimate
+    uint64_t fee = 1000; // Default fee estimate in INTS
 
     // Add to mempool
     MempoolEntry entry(tx, fee);

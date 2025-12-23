@@ -455,8 +455,40 @@ double Blockchain::GetDifficulty() const {
 }
 
 double Blockchain::GetNetworkHashRate() const {
-    // TODO: Implement network hashrate calculation
-    return 0.0;
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    uint64_t current_height = impl_->chain_state_.best_height;
+    if (current_height < 2) {
+        return 0.0; // Not enough blocks to calculate hashrate
+    }
+
+    // Use the last 120 blocks (approximately 4 hours at 2-minute blocks) for estimation
+    const uint64_t sample_blocks = std::min(static_cast<uint64_t>(120), current_height);
+    const uint64_t start_height = current_height - sample_blocks;
+
+    auto start_block_result = impl_->db_->GetBlockByHeight(start_height);
+    auto end_block_result = impl_->db_->GetBlockByHeight(current_height);
+
+    if (start_block_result.IsError() || end_block_result.IsError()) {
+        return 0.0;
+    }
+
+    // Calculate time difference
+    uint64_t time_diff = end_block_result.value->header.timestamp -
+                         start_block_result.value->header.timestamp;
+
+    if (time_diff == 0) {
+        return 0.0;
+    }
+
+    // Get current difficulty
+    double difficulty = DifficultyCalculator::GetDifficulty(end_block_result.value->header.bits);
+
+    // Network hashrate (hashes/second) = (difficulty × blocks) / time
+    // For RandomX, difficulty represents the hash complexity
+    double hashrate = (difficulty * sample_blocks) / static_cast<double>(time_diff);
+
+    return hashrate;
 }
 
 // ------------------------------------------------------------------------

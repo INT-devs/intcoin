@@ -613,11 +613,10 @@ const std::map<uint64_t, uint256>& ChainValidator::GetCheckpoints() {
         // Genesis block (height 0) - zero hash placeholder
         {0, uint256{{0}}},
 
-        // TODO: Add real checkpoints as the network grows
-        // Example format:
-        // {5040, HexToUint256("...").value.value()},  // ~1 week
-        // {10080, HexToUint256("...").value.value()}, // ~2 weeks
-        // {50400, HexToUint256("...").value.value()}, // ~10 weeks
+        // Checkpoints will be added as the network matures and stable blocks are confirmed
+        // Format: {height, block_hash}
+        // Recommended intervals: weekly (~5040 blocks), monthly (~21600 blocks)
+        // Example: {5040, HexToUint256("abc123...").value.value()}
     };
     return checkpoints;
 }

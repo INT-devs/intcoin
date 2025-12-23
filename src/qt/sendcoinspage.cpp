@@ -5,6 +5,7 @@
 #include "intcoin/wallet.h"
 #include "intcoin/blockchain.h"
 #include "intcoin/util.h"
+#include "intcoin/crypto.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -195,8 +196,8 @@ void SendCoinsPage::calculateFee() {
 }
 
 bool SendCoinsPage::validateAddress(const QString& address) {
-    // TODO: Implement proper address validation
-    return address.startsWith("int1") && address.length() > 40;
+    // Use AddressEncoder to properly validate Bech32 address format and checksum
+    return AddressEncoder::ValidateAddress(address.toStdString());
 }
 
 bool SendCoinsPage::validateAmount(double amount) {
