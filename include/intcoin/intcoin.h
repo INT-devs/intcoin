@@ -10,6 +10,7 @@
 // Core types and utilities
 #include "types.h"
 #include "util.h"
+#include "sanitize.h"
 
 // Cryptography
 #include "crypto.h"

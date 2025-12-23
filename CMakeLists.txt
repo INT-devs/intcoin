@@ -165,6 +165,7 @@ set(INTCOIN_CORE_SOURCES
     # Utilities
     src/util/types.cpp
     src/util/util.cpp
+    src/util/sanitize.cpp
 
     # Blockchain
     src/blockchain/block.cpp

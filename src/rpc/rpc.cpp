@@ -91,6 +91,25 @@ std::string JSONValue::ToJSONString() const {
 
 // Simple JSON parser (minimal implementation)
 Result<JSONValue> JSONValue::Parse(const std::string& json_str) {
+    // Input sanitization
+    if (json_str.empty()) {
+        return Result<JSONValue>::Error("Empty JSON string");
+    }
+
+    if (json_str.length() > sanitize::MAX_JSON_LENGTH) {
+        return Result<JSONValue>::Error("JSON string too large");
+    }
+
+    // Check for null bytes (potential injection)
+    if (json_str.find('\0') != std::string::npos) {
+        return Result<JSONValue>::Error("JSON contains null bytes");
+    }
+
+    // Validate JSON depth to prevent stack overflow
+    if (!sanitize::ValidateJSONDepth(json_str, 100)) {
+        return Result<JSONValue>::Error("JSON nesting too deep");
+    }
+
     size_t pos = 0;
 
     // Skip whitespace
@@ -465,6 +484,13 @@ public:
             std::string provided_user = credentials.substr(0, colon_pos);
             std::string provided_pass = credentials.substr(colon_pos + 1);
 
+            // Sanitize credentials (check for injection attempts)
+            if (sanitize::ContainsSuspiciousPatterns(provided_user) ||
+                sanitize::ContainsSuspiciousPatterns(provided_pass)) {
+                stats.auth_failures++;
+                return HTTPResponse::Unauthorized();
+            }
+
             // Verify credentials match configuration
             if (provided_user != config.rpc_user || provided_pass != config.rpc_password) {
                 stats.auth_failures++;
@@ -499,12 +525,30 @@ public:
     }
 
     RPCResponse HandleRPCRequest(const RPCRequest& request) {
+        // Sanitize method name
+        if (request.method.empty() || request.method.length() > sanitize::MAX_COMMAND_LENGTH) {
+            return RPCResponse::Error(
+                RPCErrorCode::INVALID_REQUEST,
+                "Invalid method name length",
+                request.id
+            );
+        }
+
+        // Check for suspicious patterns in method name
+        if (sanitize::ContainsSuspiciousPatterns(request.method)) {
+            return RPCResponse::Error(
+                RPCErrorCode::INVALID_REQUEST,
+                "Invalid method name format",
+                request.id
+            );
+        }
+
         // Find method
         auto it = methods.find(request.method);
         if (it == methods.end()) {
             return RPCResponse::Error(
                 RPCErrorCode::METHOD_NOT_FOUND,
-                "Method '" + request.method + "' not found",
+                "Method '" + sanitize::EscapeString(request.method) + "' not found",
                 request.id
             );
         }
