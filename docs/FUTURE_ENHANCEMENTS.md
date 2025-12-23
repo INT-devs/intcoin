@@ -124,15 +124,55 @@ The following features have been intentionally left for future development:
 ## Lightning Network
 
 ### Full BOLT Specification (v2.0)
-**Status**: Foundation implemented  
+**Status**: Foundation implemented, full spec deferred
 **Files**: `src/lightning/lightning.cpp:604`
 
-- [ ] Complete BOLT #2 (Peer Protocol)
-- [ ] Multi-path payments (MPP)
-- [ ] Atomic Multi-Path (AMP)
-- [ ] Watchtower integration
+#### Current Implementation
+- ✅ BOLT #8: Encrypted transport (partial)
+- ✅ Basic channel establishment
+- ✅ Simple payment routing
+- ✅ Invoice generation/parsing (simplified)
+- ✅ Post-quantum cryptography integration
 
-**Rationale**: Current implementation provides basic Lightning functionality. Full BOLT compliance requires extensive testing.
+#### Deferred to v2.0
+- [ ] **BOLT #1**: Base Protocol - Message framing and extensions
+- [ ] **BOLT #2**: Peer Protocol - Channel management lifecycle
+- [ ] **BOLT #3**: Bitcoin Transaction and Script Formats (adapted for INTcoin)
+- [ ] **BOLT #4**: Onion Routing Protocol - Complete implementation
+- [ ] **BOLT #5**: Recommendations for On-chain Transaction Handling
+- [ ] **BOLT #7**: P2P Node and Channel Discovery
+- [ ] **BOLT #9**: Assigned Feature Flags
+- [ ] **BOLT #10**: DNS Bootstrap and Assisted Node Location
+- [ ] **BOLT #11**: Invoice Protocol - Full Bech32 encoding
+- [ ] Multi-path payments (MPP/AMP)
+- [ ] Watchtower integration
+- [ ] Submarine swaps
+- [ ] Dual-funded channels
+- [ ] Anchor outputs
+- [ ] Taproot channels (adapted for Dilithium)
+
+#### Effort Estimate
+**Complexity**: Very High
+**Estimated Development**: 6-12 months
+**Lines of Code**: ~15,000-25,000
+**Testing Required**: Extensive interoperability testing
+
+#### Why Defer?
+1. **Foundation First**: Core blockchain must be stable before Layer 2
+2. **Quantum Adaptation**: BOLT specs assume ECDSA, we use Dilithium3
+3. **Testing Complexity**: Requires extensive network testing
+4. **Resource Intensive**: Needs dedicated Lightning Network team
+5. **Standards Evolution**: BOLT specs are still evolving
+
+#### Implementation Plan (v2.0+)
+1. **Phase 1** (3 months): Complete BOLT #1, #2, #3
+2. **Phase 2** (2 months): BOLT #4 (Onion Routing)
+3. **Phase 3** (2 months): BOLT #7, #10 (P2P Discovery)
+4. **Phase 4** (2 months): BOLT #11 (Full Invoice Protocol)
+5. **Phase 5** (2 months): MPP/AMP, Watchtowers
+6. **Phase 6** (3 months): Testing, optimization, security audit
+
+**Rationale**: Current implementation provides basic Lightning functionality for early testing. Full BOLT compliance requires extensive development, testing, and adaptation for post-quantum cryptography. Network must mature before deploying full Layer 2 solution.
 
 ---
 
