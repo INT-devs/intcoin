@@ -212,6 +212,8 @@ set(INTCOIN_CORE_SOURCES
     src/lightning/lightning.cpp
     src/lightning/bolt_messages.cpp
     src/lightning/bolt_transport.cpp
+    src/lightning/bolt_onion.cpp
+    src/lightning/bolt_invoice.cpp
 
     # Testnet Faucet
     src/faucet/faucet.cpp
