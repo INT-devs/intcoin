@@ -210,6 +210,8 @@ set(INTCOIN_CORE_SOURCES
 
     # Lightning Network
     src/lightning/lightning.cpp
+    src/lightning/bolt_messages.cpp
+    src/lightning/bolt_transport.cpp
 
     # Testnet Faucet
     src/faucet/faucet.cpp

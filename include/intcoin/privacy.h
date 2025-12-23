@@ -43,6 +43,7 @@ enum class PrivacyAddressType {
 // ============================================================================
 
 /// Tor configuration
+/// NOTE: Tor hidden services are DISABLED on testnet for security and simplicity
 struct TorConfig {
     std::string tor_proxy_host = "127.0.0.1";
     uint16_t tor_proxy_port = 9050;            // Default SOCKS5 port
@@ -51,6 +52,7 @@ struct TorConfig {
     std::string tor_cookie_auth_file;          // Cookie auth file path
     bool use_tor_stream_isolation = true;      // Stream isolation
     bool tor_only_mode = false;                // Disable clearnet
+    bool enable_hidden_service = false;        // Hidden services (mainnet only, disabled for testnet)
     std::string onion_service_dir;             // Hidden service directory
     std::vector<uint16_t> onion_service_ports; // Ports to expose
     int circuit_build_timeout = 60;            // Seconds
