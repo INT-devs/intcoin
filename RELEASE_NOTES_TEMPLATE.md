@@ -86,7 +86,7 @@ We would like to thank all contributors who participated in this release!
 
 ## 📦 Download
 
-- **Source Code**: https://gitlab.com/intcoin/crypto/-/releases/v[VERSION]
+- **Source Code**: https://github.com/INT-team/INTcoin/-/releases/v[VERSION]
 - **Binaries**:
   - Linux (x86_64): `intcoin-v[VERSION]-linux-x86_64.tar.gz`
   - macOS (ARM64): `intcoin-v[VERSION]-macos-arm64.tar.gz`
@@ -184,7 +184,7 @@ gpg --verify intcoin-v[VERSION]-linux-x86_64.tar.gz.asc
 
 - **Website**: https://international-coin.org
 - **Documentation**: https://international-coin.org/docs
-- **GitLab**: https://gitlab.com/intcoin/crypto
+- **GitLab**: https://github.com/INT-team/INTcoin
 - **Email**: team@international-coin.org
 - **Discord**: https://discord.gg/7p4VmS2z
 - **Telegram**: https://t.me/INTcoin_official
@@ -200,4 +200,4 @@ Copyright (c) 2025 INTcoin Team (Neil Adamson)
 
 ---
 
-**Full Changelog**: https://gitlab.com/intcoin/crypto/-/compare/v[PREVIOUS_VERSION]...v[VERSION]
+**Full Changelog**: https://github.com/INT-team/INTcoin/-/compare/v[PREVIOUS_VERSION]...v[VERSION]

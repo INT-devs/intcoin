@@ -352,7 +352,7 @@ Total: 100% passing (excluding wallet directory setup tests)
 - Discord: https://discord.gg/7p4VmS2z
 - Telegram: https://t.me/INTcoin_official
 - X (Twitter): https://x.com/INTcoin_team
-- GitLab: https://gitlab.com/intcoin/crypto
+- GitLab: https://github.com/INT-team/INTcoin
 
 ### Development Model
 - Open-source community development
@@ -395,7 +395,7 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 **Maintainer**: Neil Adamson
 **License**: MIT
-**Repository**: https://gitlab.com/intcoin/crypto
+**Repository**: https://github.com/INT-team/INTcoin
 **Status**: 100% Complete - Ready for Community Review & Testnet Deployment
 
 ---

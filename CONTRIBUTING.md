@@ -65,7 +65,7 @@ git clone https://gitlab.com/YOUR_USERNAME/crypto.git
 cd crypto
 
 # Add upstream remote
-git remote add upstream https://gitlab.com/intcoin/crypto.git
+git remote add upstream https://github.com/INT-team/INTcoin.git
 ```
 
 #### 2. Create a Branch

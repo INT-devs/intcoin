@@ -687,7 +687,7 @@ For brand assets or usage questions:
 
 **Email**: team@international-coin.org
 **Website**: https://international-coin.org
-**Repository**: https://gitlab.com/intcoin/crypto
+**Repository**: https://github.com/INT-team/INTcoin
 
 ---
 
