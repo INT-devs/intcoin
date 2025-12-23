@@ -136,8 +136,8 @@ int main(int argc, char* argv[]) {
 
         std::cout << "Wallet Information\n";
         std::cout << "══════════════════════════════════════════════════════\n";
-        std::cout << "Balance:              " << info.balance << " satoshis\n";
-        std::cout << "Unconfirmed Balance:  " << info.unconfirmed_balance << " satoshis\n";
+        std::cout << "Balance:              " << info.balance << " INTS\n";
+        std::cout << "Unconfirmed Balance:  " << info.unconfirmed_balance << " INTS\n";
         std::cout << "Addresses:            " << info.address_count << "\n";
         std::cout << "Transactions:         " << info.transaction_count << "\n";
         std::cout << "UTXOs:                " << info.utxo_count << "\n";

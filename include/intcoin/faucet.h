@@ -22,7 +22,7 @@ namespace faucet {
 
 /// Faucet configuration
 struct FaucetConfig {
-    /// Amount to send per request (in satoshis)
+    /// Amount to send per request (in INTS)
     uint64_t drip_amount;
 
     /// Cooldown period per IP address (seconds)
@@ -40,7 +40,7 @@ struct FaucetConfig {
     /// Maximum queue size
     size_t max_queue_size;
 
-    /// Transaction fee (in satoshis)
+    /// Transaction fee (in INTS)
     uint64_t transaction_fee;
 
     /// Enable CAPTCHA verification

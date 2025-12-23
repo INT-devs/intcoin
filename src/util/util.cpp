@@ -210,7 +210,7 @@ Result<uint64_t> ParseAmount(const std::string& str) {
         }
     }
 
-    // Convert to INTS (satoshis)
+    // Convert to INTS
     try {
         uint64_t int_value = int_part.empty() ? 0 : std::stoull(int_part);
         uint64_t frac_value = frac_part.empty() ? 0 : std::stoull(frac_part);

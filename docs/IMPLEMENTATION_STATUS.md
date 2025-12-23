@@ -290,8 +290,8 @@
 **Integration**: Post-quantum cryptography (Dilithium3, Kyber768, SHA3-256)
 
 #### Channel Capacity
-- Min: 100,000 satoshis (100K)
-- Max: 1,000,000,000 satoshis (1B)
+- Min: 100,000 INTS (100K)
+- Max: 1,000,000,000 INTS (1B)
 
 #### Deferred to v2.0
 - ⏳ Full BOLT specification compliance

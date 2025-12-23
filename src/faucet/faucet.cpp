@@ -22,7 +22,7 @@ namespace faucet {
 // ============================================================================
 
 FaucetConfig::FaucetConfig()
-    : drip_amount(1000000000)  // 10 INT (1 billion satoshis)
+    : drip_amount(1000000000)  // 10 INT (1 billion INTS)
     , ip_cooldown(3600)         // 1 hour
     , address_cooldown(86400)   // 24 hours
     , http_port(2215)           // Faucet HTTP port

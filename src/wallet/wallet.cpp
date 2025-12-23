@@ -2546,7 +2546,7 @@ Result<Transaction> Wallet::CreateTransaction(const std::vector<Recipient>& reci
             // - Goal: minimize waste or find exact match (waste = 0)
 
             // Define constants used in algorithm
-            const uint64_t DUST_THRESHOLD = 546; // Minimum output value (satoshis)
+            const uint64_t DUST_THRESHOLD = 546; // Minimum output value (INTS)
             const uint64_t CHANGE_OUTPUT_SIZE = 68; // Average change output size (bytes)
 
             // Sort UTXOs by descending value for better pruning

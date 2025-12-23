@@ -146,7 +146,7 @@ struct Miner {
     double total_hashrate;
 
     // Earnings
-    uint64_t unpaid_balance;          // Satoshis
+    uint64_t unpaid_balance;          // INTS
     uint64_t paid_balance;            // Total paid out
     uint64_t estimated_earnings;      // Estimated for current round
     std::chrono::system_clock::time_point last_payout;
@@ -193,7 +193,7 @@ struct PoolStatistics {
     double average_block_time;        // Seconds
 
     // Earnings
-    uint64_t total_paid;              // Total satoshis paid to miners
+    uint64_t total_paid;              // Total INTS paid to miners
     uint64_t total_unpaid;            // Total unpaid balance
     uint64_t pool_revenue;            // Pool fees collected
 

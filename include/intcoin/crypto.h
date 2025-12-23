@@ -182,9 +182,12 @@ public:
 class AddressEncoder {
 public:
     /// Encode public key hash to Bech32 address
-    static Result<std::string> EncodeAddress(const uint256& pubkey_hash);
+    /// @param pubkey_hash Public key hash to encode
+    /// @param testnet If true, use testnet prefix (intc1), otherwise mainnet (int1)
+    static Result<std::string> EncodeAddress(const uint256& pubkey_hash, bool testnet = false);
 
     /// Decode Bech32 address to public key hash
+    /// @param address Bech32 address to decode
     static Result<uint256> DecodeAddress(const std::string& address);
 
     /// Validate address format

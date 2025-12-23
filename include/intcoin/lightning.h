@@ -47,7 +47,7 @@ namespace lightning {
     constexpr uint32_t CLTV_EXPIRY_DELTA = 40;              // Safety margin
 
     // Fee parameters
-    constexpr uint64_t BASE_FEE = 1000;                     // Base fee (satoshis)
+    constexpr uint64_t BASE_FEE = 1000;                     // Base fee (INTS)
     constexpr uint64_t FEE_RATE = 1;                        // Fee rate (millionths)
 
     // Message types (BOLT #1)
@@ -92,7 +92,7 @@ enum class ChannelState {
 
 struct HTLC {
     uint64_t id;                    // HTLC identifier
-    uint64_t amount;                // Amount in satoshis
+    uint64_t amount;                // Amount in INTS
     uint256 payment_hash;           // Hash of payment preimage
     uint32_t cltv_expiry;          // CLTV expiry height
     std::vector<uint8_t> onion_routing_packet;  // Encrypted routing info
@@ -257,7 +257,7 @@ struct PaymentRoute {
 class Invoice {
 public:
     uint256 payment_hash;           // Payment hash
-    uint64_t amount;                // Amount in satoshis
+    uint64_t amount;                // Amount in INTS
     std::string description;        // Payment description
     uint32_t expiry;                // Expiry time (seconds)
     uint32_t min_final_cltv;       // Minimum final CLTV

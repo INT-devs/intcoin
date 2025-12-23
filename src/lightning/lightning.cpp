@@ -86,10 +86,10 @@ uint256 Invoice::GeneratePaymentHash(const uint256& preimage) {
 std::string Invoice::Encode() const {
     std::ostringstream oss;
 
-    // Prefix: "lnint" for INTcoin Lightning Network
-    oss << "lnint";
+    // Prefix: "lint" for INTcoin Lightning Network
+    oss << "lint";
 
-    // Encode amount (in satoshis, hex)
+    // Encode amount (in INTS, hex)
     oss << std::hex << std::setfill('0') << std::setw(16) << amount;
 
     // Encode payment hash (hex)
@@ -112,31 +112,31 @@ std::string Invoice::Encode() const {
 
 // BOLT #11 Invoice Decoding (simplified)
 Result<Invoice> Invoice::Decode(const std::string& bolt11) {
-    if (bolt11.substr(0, 5) != "lnint") {
+    if (bolt11.substr(0, 4) != "lint") {
         return Result<Invoice>::Error("Invalid invoice prefix");
     }
 
-    if (bolt11.length() < 5 + 16 + 64 + 8) {
+    if (bolt11.length() < 4 + 16 + 64 + 8) {
         return Result<Invoice>::Error("Invoice too short");
     }
 
     Invoice invoice;
 
     try {
-        // Decode amount (16 hex chars after "lnint")
-        std::string amount_hex = bolt11.substr(5, 16);
+        // Decode amount (16 hex chars after "lint")
+        std::string amount_hex = bolt11.substr(4, 16);
         invoice.amount = std::stoull(amount_hex, nullptr, 16);
 
         // Decode payment hash (64 hex chars)
-        std::string hash_hex = bolt11.substr(5 + 16, 64);
+        std::string hash_hex = bolt11.substr(4 + 16, 64);
         // Note: Would need proper uint256 parsing in full implementation
 
         // Decode expiry (8 hex chars)
-        std::string expiry_hex = bolt11.substr(5 + 16 + 64, 8);
+        std::string expiry_hex = bolt11.substr(4 + 16 + 64, 8);
         invoice.expiry = std::stoul(expiry_hex, nullptr, 16);
 
         // Decode description (remaining chars)
-        std::string desc_hex = bolt11.substr(5 + 16 + 64 + 8);
+        std::string desc_hex = bolt11.substr(4 + 16 + 64 + 8);
         for (size_t i = 0; i + 1 < desc_hex.length(); i += 2) {
             std::string byte_hex = desc_hex.substr(i, 2);
             char c = static_cast<char>(std::stoi(byte_hex, nullptr, 16));

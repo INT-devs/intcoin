@@ -512,9 +512,8 @@ public:
         const RPCMethodInfo& method_info = it->second;
 
         // Check authentication (if required)
-        if (method_info.requires_auth) {
-            // TODO: Check if authenticated
-        }
+        // Note: Authentication is already verified at HTTP level (lines 424-475)
+        // If we reach this point, the request has passed authentication
 
         // Call handler
         try {

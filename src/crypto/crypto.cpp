@@ -448,8 +448,8 @@ namespace {
     }
 }
 
-Result<std::string> AddressEncoder::EncodeAddress(const uint256& pubkey_hash) {
-    const std::string hrp = "int1";
+Result<std::string> AddressEncoder::EncodeAddress(const uint256& pubkey_hash, bool testnet) {
+    const std::string hrp = testnet ? "intc1" : "int1";
 
     // Convert pubkey_hash to vector
     std::vector<uint8_t> hash_bytes(pubkey_hash.begin(), pubkey_hash.end());
@@ -484,8 +484,6 @@ Result<std::string> AddressEncoder::EncodeAddress(const uint256& pubkey_hash) {
 }
 
 Result<uint256> AddressEncoder::DecodeAddress(const std::string& address) {
-    const std::string hrp = "int1";
-
     // Convert to lowercase
     std::string lower_addr;
     lower_addr.reserve(address.size());
@@ -518,10 +516,12 @@ Result<uint256> AddressEncoder::DecodeAddress(const std::string& address) {
     std::string addr_hrp = lower_addr.substr(0, sep_pos);
     std::string data_part = lower_addr.substr(sep_pos + 1);
 
-    // Verify HRP matches
-    if (addr_hrp != hrp) {
-        return Result<uint256>::Error("Invalid HRP (expected 'int1')");
+    // Verify HRP matches (support both mainnet and testnet)
+    if (addr_hrp != "int1" && addr_hrp != "intc1") {
+        return Result<uint256>::Error("Invalid HRP (expected 'int1' for mainnet or 'intc1' for testnet)");
     }
+
+    const std::string hrp = addr_hrp;
 
     // Checksum must be at least 6 characters
     if (data_part.size() < 6) {

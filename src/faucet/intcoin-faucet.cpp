@@ -41,7 +41,7 @@ void PrintUsage(const char* program_name) {
     std::cout << "  --ip-cooldown=<s>   IP cooldown in seconds (default: 3600)" << std::endl;
     std::cout << "  --addr-cooldown=<s> Address cooldown in seconds (default: 86400)" << std::endl;
     std::cout << "  --bind=<addr>       Bind address (default: 0.0.0.0)" << std::endl;
-    std::cout << "  --fee=<amount>      Transaction fee in satoshis (default: 1000)" << std::endl;
+    std::cout << "  --fee=<amount>      Transaction fee in INTS (default: 1000)" << std::endl;
     std::cout << std::endl;
 }
 

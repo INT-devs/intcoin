@@ -243,7 +243,7 @@ sudo service intcoin_faucet start
 | `--ip-cooldown=<s>` | IP cooldown in seconds | `3600` (1 hour) |
 | `--addr-cooldown=<s>` | Address cooldown in seconds | `86400` (24 hours) |
 | `--bind=<addr>` | Bind address | `0.0.0.0` |
-| `--fee=<amount>` | Transaction fee (satoshis) | `1000` |
+| `--fee=<amount>` | Transaction fee (INTS) | `1000` |
 | `--help` | Show help message | - |
 | `--version` | Show version | - |
 

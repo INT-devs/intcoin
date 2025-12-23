@@ -131,7 +131,7 @@ bool test_wallet_blockchain_integration() {
         if (balance_result.IsOk()) {
             balance = balance_result.GetValue();
         }
-        std::cout << "Wallet balance: " << balance << " satoshis" << std::endl;
+        std::cout << "Wallet balance: " << balance << " INTS" << std::endl;
 
         // Clean up
         std::filesystem::remove_all(test_dir);

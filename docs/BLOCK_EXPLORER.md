@@ -191,5 +191,4 @@ Tests located in `tests/test_explorer.cpp`:
 
 ---
 
-**Generated with**: [Claude Code](https://claude.com/claude-code)
 **License**: MIT License
