@@ -114,6 +114,26 @@ find_path(ZMQ_INCLUDE_DIR zmq.h)
 find_library(EVENT_LIB event)
 find_path(EVENT_INCLUDE_DIR event2/event.h)
 
+# libsodium (1.0.20+) - For ChaCha20-Poly1305 AEAD in BOLT #8
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(SODIUM libsodium>=1.0.18)
+endif()
+if(NOT SODIUM_FOUND)
+    find_library(SODIUM_LIB sodium
+        PATHS
+            /opt/homebrew/lib
+            /usr/local/lib
+            $ENV{HOME}/.local/lib
+    )
+    find_path(SODIUM_INCLUDE_DIR sodium.h
+        PATHS
+            /opt/homebrew/include
+            /usr/local/include
+            $ENV{HOME}/.local/include
+    )
+endif()
+
 # Qt6 (optional) - 6.8+ (latest LTS)
 if(BUILD_WALLET_QT)
     find_package(Qt6 6.8 COMPONENTS
@@ -252,6 +272,14 @@ endif()
 
 if(EVENT_LIB)
     target_link_libraries(intcoin_core ${EVENT_LIB})
+endif()
+
+if(SODIUM_FOUND)
+    link_directories(${SODIUM_LIBRARY_DIRS})
+    target_link_libraries(intcoin_core ${SODIUM_LIBRARIES})
+    target_include_directories(intcoin_core PRIVATE ${SODIUM_INCLUDE_DIRS})
+elseif(SODIUM_LIB)
+    target_link_libraries(intcoin_core ${SODIUM_LIB})
 endif()
 
 # intcoind daemon

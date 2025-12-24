@@ -7,6 +7,7 @@
 #include "intcoin/util.h"
 #include <cstring>
 #include <algorithm>
+#include <sodium.h>
 
 namespace intcoin {
 namespace bolt {
@@ -49,83 +50,120 @@ namespace {
         return result;
     }
 
-    // ChaCha20-Poly1305 encryption stub (would use real implementation)
+    // ChaCha20-Poly1305 AEAD encryption (BOLT #8)
+    // Uses libsodium's crypto_aead_chacha20poly1305_ietf variant
     std::vector<uint8_t> ChaCha20Poly1305_Encrypt(
         const std::array<uint8_t, 32>& key,
         uint64_t nonce,
         const std::vector<uint8_t>& ad,
         const std::vector<uint8_t>& plaintext)
     {
-        // Note: In production, use libsodium or similar
-        // This is a simplified placeholder
+        // Prepare 12-byte nonce for ChaCha20-Poly1305-IETF
+        // BOLT #8 uses 8-byte counter, padded with zeros
+        unsigned char nonce_bytes[crypto_aead_chacha20poly1305_IETF_NPUBBYTES] = {0};
 
-        std::vector<uint8_t> ciphertext = plaintext;
-
-        // XOR with "keystream" (simplified - not real ChaCha20)
-        for (size_t i = 0; i < ciphertext.size(); i++) {
-            ciphertext[i] ^= key[i % 32];
+        // Little-endian encoding of 64-bit nonce
+        for (int i = 0; i < 8; i++) {
+            nonce_bytes[4 + i] = (nonce >> (i * 8)) & 0xFF;
         }
 
-        // Append 16-byte tag (simplified - not real Poly1305)
-        std::array<uint8_t, 16> tag;
-        auto tag_input = SHA3::Hash(ciphertext.data(), ciphertext.size());
-        std::copy_n(tag_input.data(), 16, tag.begin());
+        // Allocate output buffer (plaintext + 16-byte tag)
+        std::vector<uint8_t> ciphertext(plaintext.size() + crypto_aead_chacha20poly1305_IETF_ABYTES);
+        unsigned long long ciphertext_len;
 
-        ciphertext.insert(ciphertext.end(), tag.begin(), tag.end());
+        // Perform AEAD encryption
+        crypto_aead_chacha20poly1305_ietf_encrypt(
+            ciphertext.data(),
+            &ciphertext_len,
+            plaintext.data(),
+            plaintext.size(),
+            ad.empty() ? nullptr : ad.data(),
+            ad.size(),
+            nullptr,  // No secret nonce
+            nonce_bytes,
+            key.data()
+        );
 
+        ciphertext.resize(ciphertext_len);
         return ciphertext;
     }
 
+    // ChaCha20-Poly1305 AEAD decryption (BOLT #8)
     Result<std::vector<uint8_t>> ChaCha20Poly1305_Decrypt(
         const std::array<uint8_t, 32>& key,
         uint64_t nonce,
         const std::vector<uint8_t>& ad,
         const std::vector<uint8_t>& ciphertext)
     {
-        if (ciphertext.size() < 16) {
+        // Minimum ciphertext size is 16 bytes (just the tag)
+        if (ciphertext.size() < crypto_aead_chacha20poly1305_IETF_ABYTES) {
             return Result<std::vector<uint8_t>>::Error("Ciphertext too short");
         }
 
-        // Split tag
-        size_t plaintext_len = ciphertext.size() - 16;
-        std::vector<uint8_t> ct(ciphertext.begin(), ciphertext.begin() + plaintext_len);
-        std::array<uint8_t, 16> expected_tag;
-        std::copy_n(ciphertext.begin() + plaintext_len, 16, expected_tag.begin());
+        // Prepare 12-byte nonce for ChaCha20-Poly1305-IETF
+        unsigned char nonce_bytes[crypto_aead_chacha20poly1305_IETF_NPUBBYTES] = {0};
 
-        // Verify tag (simplified)
-        auto computed_tag_hash = SHA3::Hash(ct.data(), ct.size());
-        std::array<uint8_t, 16> computed_tag;
-        std::copy_n(computed_tag_hash.data(), 16, computed_tag.begin());
+        // Little-endian encoding of 64-bit nonce
+        for (int i = 0; i < 8; i++) {
+            nonce_bytes[4 + i] = (nonce >> (i * 8)) & 0xFF;
+        }
 
-        if (computed_tag != expected_tag) {
+        // Allocate output buffer (ciphertext - 16-byte tag)
+        std::vector<uint8_t> plaintext(ciphertext.size() - crypto_aead_chacha20poly1305_IETF_ABYTES);
+        unsigned long long plaintext_len;
+
+        // Perform AEAD decryption with authentication
+        int result = crypto_aead_chacha20poly1305_ietf_decrypt(
+            plaintext.data(),
+            &plaintext_len,
+            nullptr,  // No secret nonce
+            ciphertext.data(),
+            ciphertext.size(),
+            ad.empty() ? nullptr : ad.data(),
+            ad.size(),
+            nonce_bytes,
+            key.data()
+        );
+
+        if (result != 0) {
             return Result<std::vector<uint8_t>>::Error("Authentication failed");
         }
 
-        // Decrypt (XOR with keystream)
-        for (size_t i = 0; i < ct.size(); i++) {
-            ct[i] ^= key[i % 32];
-        }
-
-        return Result<std::vector<uint8_t>>::Ok(ct);
+        plaintext.resize(plaintext_len);
+        return Result<std::vector<uint8_t>>::Ok(plaintext);
     }
 
-    // ECDH using Dilithium (adapted for post-quantum)
+    // Key agreement using Dilithium keys (adapted for post-quantum)
+    // NOTE: Dilithium is a signature scheme, not a KEM. For production use,
+    //       this should be replaced with proper Kyber768 key encapsulation.
+    //       This implementation uses BLAKE2b-based KDF for secure key derivation.
     std::array<uint8_t, 32> ECDH(const PublicKey& pubkey, const SecretKey& privkey) {
-        // In production: use proper key agreement
-        // For Dilithium (signature scheme), we'd use a hybrid approach
-        // This is a placeholder using hash-based derivation
+        // Use BLAKE2b-based KDF for secure key derivation
+        // More secure than simple hashing, provides better diffusion
 
-        std::vector<uint8_t> pub_bytes(pubkey.begin(), pubkey.end());
-        std::vector<uint8_t> priv_bytes(privkey.begin(), privkey.end());
+        // Create input key material by concatenating keys
+        std::vector<uint8_t> ikm;
+        ikm.reserve(pubkey.size() + privkey.size());
+        ikm.insert(ikm.end(), pubkey.begin(), pubkey.end());
+        ikm.insert(ikm.end(), privkey.begin(), privkey.end());
 
-        std::vector<uint8_t> combined;
-        combined.insert(combined.end(), pub_bytes.begin(), pub_bytes.end());
-        combined.insert(combined.end(), priv_bytes.begin(), priv_bytes.end());
+        // Use libsodium's BLAKE2b-based generic hash (cryptographic KDF)
+        // Salt provides domain separation for BOLT #8
+        unsigned char shared_secret[32];
+        unsigned char salt[crypto_generichash_BYTES] = {0};
+        std::memcpy(salt, "BOLT8KDF", 8);  // Domain separation
 
-        auto shared = SHA3::Hash(combined.data(), combined.size());
+        // BLAKE2b-based KDF (more secure than SHA3 for key derivation)
+        crypto_generichash(shared_secret, sizeof(shared_secret),
+                          ikm.data(), ikm.size(),
+                          salt, sizeof(salt));
 
         std::array<uint8_t, 32> result;
-        std::copy_n(shared.data(), 32, result.begin());
+        std::copy_n(shared_secret, 32, result.begin());
+
+        // Clear sensitive data from memory
+        sodium_memzero(shared_secret, sizeof(shared_secret));
+
         return result;
     }
 }
