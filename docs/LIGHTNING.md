@@ -58,6 +58,162 @@ intcoin-cli lightning_createinvoice \
 
 ---
 
+## Using Lightning Network in Qt Wallet
+
+INTcoin's desktop wallet provides a full-featured Lightning Network interface accessible via the graphical user interface.
+
+### Accessing Lightning Features
+
+1. Launch the Qt wallet:
+   ```bash
+   ./intcoin-qt
+   ```
+
+2. Navigate to the Lightning Network page:
+   - Click **"Lightning Network"** in the toolbar (Alt+6)
+   - Or use menu: **View → Lightning Network**
+
+### Lightning Page Overview
+
+The Lightning page features four tabs for managing all Lightning Network operations:
+
+#### 1. Channels Tab
+
+Manage payment channels with visualized channel data:
+
+**Channel Table Columns**:
+- **Channel ID**: Unique identifier (first 8 bytes shown)
+- **Peer**: Remote node public key (truncated)
+- **Status**: Active, Opening, Closing, or Closed
+- **Capacity**: Total channel capacity in INT
+- **Local Balance**: Your spendable funds
+- **Remote Balance**: Partner's spendable funds
+- **State**: Current channel state
+
+**Opening a Channel**:
+1. Click **"Open Channel"** button
+2. Enter peer's Dilithium3 public key (1952 bytes, hex-encoded)
+3. Set channel capacity (0.001 - 10 INT recommended)
+4. Click OK - channel opens with on-chain confirmation
+
+**Closing a Channel**:
+1. Select channel from table
+2. Click **"Close Channel"** button
+3. Confirm closure (cooperative close preferred)
+4. Funds return to on-chain wallet after confirmation
+
+**Real-time Updates**:
+- Channel list refreshes every 5 seconds
+- Balance displays update automatically
+- Status changes reflected immediately
+
+#### 2. Send Payment Tab
+
+Send Lightning Network payments using BOLT #11 invoices:
+
+**Payment Workflow**:
+1. Enter BOLT #11 payment request (lint1...)
+2. Click **"Decode Invoice"** to verify details:
+   - Amount in INTS
+   - Payment description
+   - Expiry time
+   - Payee public key
+   - Payment hash
+3. Review decoded information
+4. Click **"Send Payment"** to complete
+
+**Features**:
+- Invoice validation before payment
+- Real-time payment status
+- Payment hash displayed on success
+- Payment history table shows recent transactions
+
+**Amount Override**:
+- Some invoices allow custom amounts
+- Enter amount manually if invoice permits
+- Add optional memo for record-keeping
+
+#### 3. Receive Payment Tab
+
+Create Lightning Network invoices for receiving payments:
+
+**Creating an Invoice**:
+1. Enter amount in INTS (satoshis = INTS * 10^9)
+2. Add description/memo (optional, shown to payer)
+3. Set expiry time (default: 3600 seconds / 1 hour)
+4. Click **"Create Invoice"**
+
+**Invoice Display**:
+- Full BOLT #11 invoice string generated
+- Click **"Copy Invoice"** to copy to clipboard
+- QR code displayed (for mobile wallets - TODO: full implementation)
+- Share invoice with payer via any channel
+
+**Invoice History**:
+- Table shows all generated invoices
+- Track payment status (Pending, Paid, Expired)
+- View invoice details and amounts
+
+#### 4. Node Info Tab
+
+View Lightning Network node information and statistics:
+
+**Node Information**:
+- **Status**: Running or Not Running
+- **Public Key**: Your node's Dilithium3 public key (full 1952 bytes)
+- **Network Address**: Node IP address
+- **Port**: Lightning Network port (2213 mainnet, 12213 testnet)
+
+**Channel Statistics**:
+- **Total Channels**: All channels (all states)
+- **Active Channels**: Currently open and operational
+- **Pending Channels**: Opening or closing
+- **Total Capacity**: Sum of all channel capacities
+- **Local Balance**: Total funds you can send
+- **Remote Balance**: Total funds you can receive
+
+**Copy Node Info**:
+- Click **"Copy Node Info"** to copy formatted details
+- Share with peers for channel opening
+- Includes public key, address, and port
+
+### Keyboard Shortcuts
+
+- **Alt+6**: Switch to Lightning Network page
+- **F5**: Refresh channel data manually
+
+### Best Practices for Qt Wallet
+
+1. **Monitor Regularly**: Check channel balances and status frequently
+2. **Backup Channels**: Use RPC commands for channel backups
+3. **Start Small**: Test with small amounts before larger channels
+4. **Keep Updated**: Balance information auto-refreshes every 5 seconds
+5. **Verify Before Sending**: Always decode invoices before payment
+
+### Troubleshooting Qt Wallet
+
+**Lightning Not Available**:
+- Check that Lightning Network is running
+- Status shown in Node Info tab
+- Restart daemon if needed
+
+**Channel Not Opening**:
+- Verify peer public key is correct (1952 bytes Dilithium3)
+- Check on-chain balance for funding
+- Wait for blockchain confirmation (2+ blocks)
+
+**Payment Failing**:
+- Decode invoice to verify it's valid
+- Check channel has sufficient local balance
+- Ensure recipient is reachable
+
+**Balance Not Updating**:
+- Auto-refresh runs every 5 seconds
+- Click **"Refresh Channels"** for manual update
+- Check Lightning Network daemon status
+
+---
+
 ## Concepts
 
 ### Payment Channels

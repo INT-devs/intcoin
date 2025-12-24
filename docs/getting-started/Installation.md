@@ -40,36 +40,79 @@ Complete installation guide for INTcoin on Linux, FreeBSD, macOS, and Windows.
 
 ## Linux Installation
 
+INTcoin supports all major Linux distributions. Choose your distribution below for detailed installation instructions.
+
 ### Ubuntu/Debian
 
-#### Using Installation Script
+#### Quick Installation (Recommended)
+
+The automated installation script handles all dependencies and configuration:
 
 ```bash
-# Download and run the installation script
-cd /path/to/intcoin
-chmod +x install-linux.sh
-sudo ./install-linux.sh
+# Clone the repository
+git clone https://gitlab.com/intcoin/crypto.git intcoin
+cd intcoin
+
+# Run installation script (Ubuntu 20.04, 22.04, 24.04 / Debian 11, 12)
+chmod +x scripts/install-linux.sh
+sudo ./scripts/install-linux.sh
+
+# The script will:
+# - Install build tools and dependencies
+# - Build OpenSSL 3.5.4 from source
+# - Build liboqs 0.12.0 (post-quantum cryptography)
+# - Build RandomX 1.2.1 (ASIC-resistant mining)
+# - Build INTcoin Core
+# - Run test suite
+# - Install binaries to /usr/local/bin
+# - Create systemd service
+# - Configure firewall rules
+
+# Start the daemon
+sudo systemctl start intcoind
+sudo systemctl enable intcoind  # Enable autostart
+
+# Check status
+sudo systemctl status intcoind
 ```
 
 #### Manual Installation
 
-**1. Install Dependencies**
+For advanced users who want manual control over the build process:
+
+**1. Install System Dependencies**
 
 ```bash
 # Update package list
-sudo apt update
+sudo apt update && sudo apt upgrade -y
 
-# Install build tools
-sudo apt install -y build-essential cmake git pkg-config
+# Install essential build tools
+sudo apt install -y \
+    build-essential \
+    cmake \
+    git \
+    pkg-config \
+    wget \
+    curl \
+    autoconf \
+    automake \
+    libtool \
+    ninja-build
 
 # Install required libraries
 sudo apt install -y \
     libssl-dev \
     libboost-all-dev \
-    librocksdb-dev
+    librocksdb-dev \
+    libzmq3-dev \
+    libevent-dev
 
 # Install optional dependencies
-sudo apt install -y qt6-base-dev qt6-tools-dev
+sudo apt install -y \
+    qt6-base-dev \
+    qt6-tools-dev \
+    qt6-tools-dev-tools \
+    libqt6svg6-dev
 ```
 
 **2. Build and Install liboqs (Post-Quantum Crypto)**
@@ -143,28 +186,77 @@ sudo pacman -S base-devel cmake git \
 
 ## FreeBSD Installation
 
-### Using Installation Script
+INTcoin has first-class support for FreeBSD 12.x, 13.x, and 14.x.
+
+### Quick Installation (Recommended)
+
+The automated installation script provides a streamlined installation process:
 
 ```bash
-# Download and run the FreeBSD installation script
-cd /path/to/intcoin
-chmod +x install-freebsd.sh
-sudo ./install-freebsd.sh
+# Clone the repository
+git clone https://gitlab.com/intcoin/crypto.git intcoin
+cd intcoin
+
+# Run FreeBSD installation script
+chmod +x scripts/install-freebsd.sh
+sudo ./scripts/install-freebsd.sh
+
+# The script will:
+# - Install build tools via pkg
+# - Build OpenSSL 3.5.4 from source
+# - Build liboqs 0.12.0 (post-quantum cryptography)
+# - Build RandomX 1.2.1 (ASIC-resistant mining)
+# - Build INTcoin Core
+# - Run test suite
+# - Install binaries to /usr/local/bin
+# - Create rc.d service scripts
+# - Configure firewall (pf) rules
+
+# Enable and start the daemon
+sudo sysrc intcoind_enable="YES"
+sudo service intcoind start
+
+# Check status
+sudo service intcoind status
 ```
 
 ### Manual Installation
 
-**1. Install Dependencies**
+For users who prefer manual configuration:
+
+**1. Install System Dependencies**
 
 ```bash
-# Update ports tree
-sudo portsnap fetch update
+# Update package repository
+sudo pkg update
+sudo pkg upgrade -y
 
-# Install from ports
+# Install build tools
 sudo pkg install -y \
-    cmake git \
-    openssl boost-all \
-    rocksdb qt6
+    cmake \
+    git \
+    gmake \
+    pkgconf \
+    ninja \
+    wget \
+    curl \
+    autoconf \
+    automake \
+    libtool
+
+# Install required libraries
+sudo pkg install -y \
+    openssl \
+    boost-all \
+    rocksdb \
+    libzmq4 \
+    libevent
+
+# Install optional dependencies (Qt wallet)
+sudo pkg install -y \
+    qt6-base \
+    qt6-tools \
+    qt6-svg
 ```
 
 **2. Build liboqs and RandomX**
@@ -186,14 +278,74 @@ sudo gmake install
 **4. Configure as Service**
 
 ```bash
-# Copy rc.d script
-sudo cp /path/to/intcoin/scripts/freebsd-rc.d/intcoind /usr/local/etc/rc.d/
+# Create rc.d script
+sudo tee /usr/local/etc/rc.d/intcoind << 'EOF'
+#!/bin/sh
+# PROVIDE: intcoind
+# REQUIRE: DAEMON cleanvar
+# KEYWORD: shutdown
+
+. /etc/rc.subr
+
+name="intcoind"
+rcvar=intcoind_enable
+command="/usr/local/bin/intcoind"
+command_args="-daemon -pid=/var/run/intcoind.pid"
+pidfile="/var/run/intcoind.pid"
+required_files="/usr/local/etc/intcoin/intcoin.conf"
+
+load_rc_config $name
+: ${intcoind_enable:=NO}
+
+run_rc_command "$1"
+EOF
+
+# Make executable
+sudo chmod +x /usr/local/etc/rc.d/intcoind
+
+# Create configuration directory
+sudo mkdir -p /usr/local/etc/intcoin
+sudo mkdir -p /var/db/intcoin
+sudo chown -R $(whoami):$(whoami) /var/db/intcoin
+
+# Create default configuration
+sudo tee /usr/local/etc/intcoin/intcoin.conf << 'EOF'
+# INTcoin Configuration File
+datadir=/var/db/intcoin
+daemon=1
+server=1
+rpcuser=intcoinrpc
+rpcpassword=changeme_to_secure_password
+rpcallowip=127.0.0.1
+maxconnections=125
+EOF
 
 # Enable service
 sudo sysrc intcoind_enable="YES"
 
 # Start service
 sudo service intcoind start
+
+# Check status
+sudo service intcoind status
+tail -f /var/db/intcoin/debug.log
+```
+
+**5. Configure Firewall (pf)**
+
+```bash
+# Edit /etc/pf.conf and add:
+sudo tee -a /etc/pf.conf << 'EOF'
+
+# INTcoin P2P port
+pass in on $ext_if proto tcp from any to any port 2210
+
+# INTcoin RPC port (only localhost)
+pass in on lo0 proto tcp from any to any port 2211
+EOF
+
+# Reload firewall
+sudo pfctl -f /etc/pf.conf
 ```
 
 ---

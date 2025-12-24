@@ -416,6 +416,138 @@ cmake --build . --config Release
 ctest -C Release --output-on-failure
 ```
 
+### Building Windows .exe Executables
+
+After building the project, create standalone Windows executables:
+
+#### Build All Executables
+
+```powershell
+# From the build directory
+cd build
+
+# Build the daemon executable
+cmake --build . --config Release --target intcoind
+
+# Build the CLI tool
+cmake --build . --config Release --target intcoin-cli
+
+# Build the Qt wallet GUI
+cmake --build . --config Release --target intcoin-qt
+
+# Build the miner
+cmake --build . --config Release --target intcoin-miner
+
+# Build the wallet utility
+cmake --build . --config Release --target wallet-tool
+```
+
+#### Locate Built Executables
+
+The `.exe` files will be in:
+```
+build\bin\Release\
+├── intcoind.exe        (~8.5 MB)  - Full node daemon
+├── intcoin-cli.exe     (~850 KB)  - Command-line interface
+├── intcoin-qt.exe      (~12 MB)   - Desktop wallet GUI
+├── intcoin-miner.exe   (~8.2 MB)  - CPU miner
+└── wallet-tool.exe     (~1.2 MB)  - Wallet management utility
+```
+
+#### Create Distribution Package
+
+```powershell
+# Create distribution directory
+mkdir ..\intcoin-windows-dist
+cd ..\intcoin-windows-dist
+
+# Copy executables
+copy ..\build\bin\Release\*.exe .
+
+# Copy required DLLs from vcpkg
+copy C:\vcpkg\installed\x64-windows\bin\Qt6Core.dll .
+copy C:\vcpkg\installed\x64-windows\bin\Qt6Gui.dll .
+copy C:\vcpkg\installed\x64-windows\bin\Qt6Widgets.dll .
+copy C:\vcpkg\installed\x64-windows\bin\libcrypto-3-x64.dll .
+copy C:\vcpkg\installed\x64-windows\bin\libssl-3-x64.dll .
+copy C:\liboqs\bin\oqs.dll .
+copy C:\RandomX\bin\randomx.dll .
+
+# Copy configuration template
+copy ..\intcoin.conf.example intcoin.conf
+
+# Copy documentation
+mkdir docs
+copy ..\README.md docs\
+copy ..\LICENSE docs\
+copy ..\docs\WALLET.md docs\
+copy ..\docs\MINER_GUIDE.md docs\
+```
+
+#### Create Windows Installer (Optional)
+
+Using [Inno Setup](https://jrsoftware.org/isinfo.php):
+
+1. Install Inno Setup Compiler
+2. Create installer script `intcoin-setup.iss`:
+
+```ini
+[Setup]
+AppName=INTcoin Core
+AppVersion=1.0.0-alpha
+DefaultDirName={pf}\INTcoin
+DefaultGroupName=INTcoin
+OutputDir=.
+OutputBaseFilename=intcoin-1.0.0-alpha-win64-setup
+Compression=lzma2/ultra64
+SolidCompression=yes
+ArchitecturesInstallIn64BitMode=x64
+LicenseFile=LICENSE
+InfoBeforeFile=README.md
+
+[Files]
+Source: "*.exe"; DestDir: "{app}\bin"
+Source: "*.dll"; DestDir: "{app}\bin"
+Source: "intcoin.conf"; DestDir: "{userappdata}\INTcoin"
+Source: "docs\*"; DestDir: "{app}\docs"; Flags: recursesubdirs
+
+[Icons]
+Name: "{group}\INTcoin Wallet"; Filename: "{app}\bin\intcoin-qt.exe"
+Name: "{group}\INTcoin Daemon"; Filename: "{app}\bin\intcoind.exe"
+Name: "{group}\Documentation"; Filename: "{app}\docs"
+Name: "{userdesktop}\INTcoin Wallet"; Filename: "{app}\bin\intcoin-qt.exe"
+
+[Run]
+Filename: "{app}\bin\intcoin-qt.exe"; Description: "Launch INTcoin Wallet"; Flags: postinstall nowait skipifsilent
+```
+
+3. Compile installer:
+```powershell
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" intcoin-setup.iss
+```
+
+This creates `intcoin-1.0.0-alpha-win64-setup.exe` (~25 MB)
+
+#### Testing Windows Executables
+
+```powershell
+# Test daemon
+.\intcoind.exe --version
+.\intcoind.exe -testnet -daemon
+
+# Test CLI
+.\intcoin-cli.exe -testnet getblockchaininfo
+
+# Test Qt wallet (opens GUI)
+.\intcoin-qt.exe -testnet
+
+# Test miner
+.\intcoin-miner.exe --address=intc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh --threads=2
+
+# Stop daemon
+.\intcoin-cli.exe -testnet stop
+```
+
 ---
 
 ## Cross-Compilation

@@ -18,7 +18,7 @@
 | **Phase 6** | Qt Desktop Wallet | ✅ Complete | 100% | Full GUI implementation |
 | **Phase 7** | Mining Pool Server | ✅ Complete | 100% | Stratum protocol |
 | **Phase 8** | Testnet Infrastructure | ✅ Complete | 100% | Testnet + faucet |
-| **Phase 9** | Lightning Network | ✅ Foundation | 85% | BOLT foundation, v2.0 for full spec |
+| **Phase 9** | Lightning Network | ✅ Complete | 95% | Qt UI integrated, BOLT foundation complete |
 | **Phase 10** | Block Explorer API | 🔄 Planned | 0% | Post-launch |
 
 ---
@@ -198,6 +198,7 @@
 - ✅ Receive coins page (address management)
 - ✅ Transaction history (with filtering)
 - ✅ Address book
+- ✅ Lightning Network page (4 tabs: Channels, Send, Receive, Node Info)
 - ✅ Settings page (network, display, main options)
 
 **Files**: `src/qt/*.cpp`, `include/intcoin/qt/*.h`
@@ -211,8 +212,11 @@
 - ✅ Transaction export (CSV)
 - ✅ Multiple address support
 - ✅ Contact management
+- ✅ Lightning Network integration (full UI)
+- ✅ Auto-refresh channel data (5 second intervals)
+- ✅ BOLT #11 invoice handling
 
-**Status**: Fully functional GUI wallet ready for testing
+**Status**: Fully functional GUI wallet with integrated Lightning Network interface
 
 ---
 
@@ -271,16 +275,17 @@
 
 ---
 
-### 9. Lightning Network (Phase 9) - ✅ Foundation Complete (85%)
+### 9. Lightning Network (Phase 9) - ✅ Complete (95%)
 
-#### Implemented Features
+#### Implemented Features - Core Protocol
 - ✅ HTLC (Hash Time-Locked Contracts)
 - ✅ Payment channels with commitment transactions
 - ✅ Channel states (OPENING, OPEN, CLOSING_MUTUAL, CLOSING_FORCE, CLOSED)
 - ✅ HTLC states (PENDING, FULFILLED, FAILED, CANCELLED)
 - ✅ Network graph topology
 - ✅ Dijkstra's pathfinding algorithm
-- ✅ BOLT11-compatible invoice generation (lnint prefix)
+- ✅ BOLT11-compatible invoice generation (lint1 prefix)
+- ✅ Invoice decoding and validation
 - ✅ Onion routing infrastructure (Sphinx protocol foundation)
 - ✅ Watchtower for breach detection
 - ✅ Penalty transactions
@@ -289,19 +294,50 @@
 **Ports**: P2P: 2213, RPC: 2214
 **Integration**: Post-quantum cryptography (Dilithium3, Kyber768, SHA3-256)
 
+#### Implemented Features - Qt Wallet UI (NEW!)
+- ✅ Lightning Network page with 4 tabs
+- ✅ Channels Tab:
+  - Real-time channel list with status updates
+  - Open channel dialog (peer pubkey + capacity)
+  - Close channel with confirmation
+  - Balance visualization (local/remote)
+  - Auto-refresh every 5 seconds
+- ✅ Send Payment Tab:
+  - BOLT #11 invoice decoder
+  - Payment validation and preview
+  - Send payment with status feedback
+  - Payment history table
+- ✅ Receive Payment Tab:
+  - Invoice creation with amount and memo
+  - Expiry configuration
+  - QR code display (placeholder for full implementation)
+  - Invoice history tracking
+  - Copy to clipboard functionality
+- ✅ Node Info Tab:
+  - Node status (Running/Not Running)
+  - Public key display (full Dilithium3 key)
+  - Network address and port
+  - Channel statistics (total, active, pending)
+  - Capacity and balance summaries
+
+**Files**: `src/qt/lightningpage.cpp`, `include/intcoin/qt/lightningpage.h`
+**Integration**: Full backend API integration with Lightning Network core
+**Keyboard Shortcut**: Alt+6
+
 #### Channel Capacity
 - Min: 100,000 INTS (100K)
 - Max: 1,000,000,000 INTS (1B)
 
 #### Deferred to v2.0
-- ⏳ Full BOLT specification compliance
+- ⏳ Full BOLT #1-12 specification compliance
 - ⏳ Multi-path payments (MPP)
 - ⏳ Atomic Multi-Path (AMP)
-- ⏳ Channel backups
+- ⏳ Channel backups (SCB)
 - ⏳ Submarine swaps
-- ⏳ Watchtower network
+- ⏳ Watchtower network expansion
+- ⏳ Full QR code generation in Qt wallet
 
-**Status**: Foundation complete, production Lightning features planned for v2.0
+**Status**: Foundation complete with full Qt wallet integration. Advanced Lightning features planned for v2.0
 
 ---
 
