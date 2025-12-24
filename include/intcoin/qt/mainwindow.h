@@ -35,6 +35,7 @@ class ReceiveCoinsPage;
 class TransactionsPage;
 class AddressBookPage;
 class SettingsPage;
+class LightningPage;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -49,6 +50,7 @@ private slots:
     void showReceiveCoinsPage();
     void showTransactionsPage();
     void showAddressBookPage();
+    void showLightningPage();
     void showSettingsPage();
     void aboutINTcoin();
     void updateStatus();
@@ -80,6 +82,7 @@ private:
     ReceiveCoinsPage* receiveCoinsPage_;
     TransactionsPage* transactionsPage_;
     AddressBookPage* addressBookPage_;
+    LightningPage* lightningPage_;
     SettingsPage* settingsPage_;
 
     // Status bar
@@ -94,6 +97,7 @@ private:
     QAction* receiveCoinsAction_;
     QAction* transactionsAction_;
     QAction* addressBookAction_;
+    QAction* lightningAction_;
     QAction* settingsAction_;
     QAction* exitAction_;
     QAction* aboutAction_;

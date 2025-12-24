@@ -304,6 +304,7 @@ if(BUILD_WALLET_QT)
         src/qt/receivecoinspage.cpp
         src/qt/transactionspage.cpp
         src/qt/addressbookpage.cpp
+        src/qt/lightningpage.cpp
         src/qt/settingspage.cpp
         src/qt/mnemonicDialog.cpp
         include/intcoin/qt/mainwindow.h
@@ -312,6 +313,7 @@ if(BUILD_WALLET_QT)
         include/intcoin/qt/receivecoinspage.h
         include/intcoin/qt/transactionspage.h
         include/intcoin/qt/addressbookpage.h
+        include/intcoin/qt/lightningpage.h
         include/intcoin/qt/settingspage.h
         include/intcoin/qt/mnemonicDialog.h
     )

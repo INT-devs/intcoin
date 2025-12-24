@@ -7,6 +7,7 @@
 #include "intcoin/qt/receivecoinspage.h"
 #include "intcoin/qt/transactionspage.h"
 #include "intcoin/qt/addressbookpage.h"
+#include "intcoin/qt/lightningpage.h"
 #include "intcoin/qt/settingspage.h"
 #include "intcoin/wallet.h"
 #include "intcoin/blockchain.h"
@@ -115,8 +116,13 @@ void MainWindow::createActions() {
     addressBookAction_->setStatusTip(tr("Edit the address book"));
     connect(addressBookAction_, &QAction::triggered, this, &MainWindow::showAddressBookPage);
 
+    lightningAction_ = new QAction(tr("&Lightning Network"), this);
+    lightningAction_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_6));
+    lightningAction_->setStatusTip(tr("Manage Lightning Network channels and payments"));
+    connect(lightningAction_, &QAction::triggered, this, &MainWindow::showLightningPage);
+
     settingsAction_ = new QAction(tr("Se&ttings"), this);
-    settingsAction_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_6));
+    settingsAction_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_7));
     settingsAction_->setStatusTip(tr("Configure wallet settings"));
     connect(settingsAction_, &QAction::triggered, this, &MainWindow::showSettingsPage);
 
@@ -150,6 +156,7 @@ void MainWindow::createMenus() {
     viewMenu_->addAction(receiveCoinsAction_);
     viewMenu_->addAction(transactionsAction_);
     viewMenu_->addAction(addressBookAction_);
+    viewMenu_->addAction(lightningAction_);
     viewMenu_->addSeparator();
     viewMenu_->addAction(settingsAction_);
 
@@ -166,6 +173,7 @@ void MainWindow::createToolBar() {
     toolbar->addAction(receiveCoinsAction_);
     toolbar->addAction(transactionsAction_);
     toolbar->addAction(addressBookAction_);
+    toolbar->addAction(lightningAction_);
 }
 
 void MainWindow::createStatusBar() {
@@ -193,6 +201,7 @@ void MainWindow::createPages() {
     receiveCoinsPage_ = new ReceiveCoinsPage(wallet_, centralStack_);
     transactionsPage_ = new TransactionsPage(wallet_, centralStack_);
     addressBookPage_ = new AddressBookPage(wallet_, centralStack_);
+    lightningPage_ = new LightningPage(wallet_, blockchain_, p2p_, centralStack_);
     settingsPage_ = new SettingsPage(wallet_, centralStack_);
 
     centralStack_->addWidget(overviewPage_);
@@ -200,6 +209,7 @@ void MainWindow::createPages() {
     centralStack_->addWidget(receiveCoinsPage_);
     centralStack_->addWidget(transactionsPage_);
     centralStack_->addWidget(addressBookPage_);
+    centralStack_->addWidget(lightningPage_);
     centralStack_->addWidget(settingsPage_);
 }
 
@@ -226,6 +236,11 @@ void MainWindow::showTransactionsPage() {
 void MainWindow::showAddressBookPage() {
     centralStack_->setCurrentWidget(addressBookPage_);
     addressBookPage_->updateAddressList();
+}
+
+void MainWindow::showLightningPage() {
+    centralStack_->setCurrentWidget(lightningPage_);
+    lightningPage_->refreshData();
 }
 
 void MainWindow::showSettingsPage() {
