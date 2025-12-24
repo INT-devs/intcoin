@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INTcoin Mining Pool Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>⛏️ INTcoin Mining Pool</h1>
+                <p class="tagline">Post-Quantum Mining | RandomX Algorithm</p>
+            </div>
+            <div class="header-stats">
+                <div class="stat-card">
+                    <div class="stat-label">Pool Hashrate</div>
+                    <div class="stat-value" id="pool-hashrate">0 H/s</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Network Difficulty</div>
+                    <div class="stat-value" id="network-diff">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Miners</div>
+                    <div class="stat-value" id="active-miners">0</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Pool Statistics -->
+        <section class="section">
+            <h2>Pool Statistics</h2>
+            <div class="stats-grid">
+                <div class="card">
+                    <h3>Total Blocks Found</h3>
+                    <p class="big-number" id="blocks-found">0</p>
+                </div>
+                <div class="card">
+                    <h3>Total Shares</h3>
+                    <p class="big-number" id="total-shares">0</p>
+                </div>
+                <div class="card">
+                    <h3>Valid Shares (24h)</h3>
+                    <p class="big-number" id="valid-shares-24h">0</p>
+                </div>
+                <div class="card">
+                    <h3>Pool Fee</h3>
+                    <p class="big-number">1%</p>
+                </div>
+                <div class="card">
+                    <h3>Min Payout</h3>
+                    <p class="big-number">0.1 INT</p>
+                </div>
+                <div class="card">
+                    <h3>Payment Method</h3>
+                    <p class="big-number">PPLNS</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Your Worker -->
+        <section class="section">
+            <h2>Your Worker Stats</h2>
+            <div class="worker-search">
+                <input type="text" id="worker-address" placeholder="Enter your INT address" />
+                <button onclick="loadWorkerStats()">Search</button>
+            </div>
+            <div id="worker-stats" class="hidden">
+                <div class="stats-grid">
+                    <div class="card">
+                        <h3>Your Hashrate</h3>
+                        <p class="big-number" id="worker-hashrate">0 H/s</p>
+                    </div>
+                    <div class="card">
+                        <h3>Valid Shares</h3>
+                        <p class="big-number" id="worker-shares">0</p>
+                    </div>
+                    <div class="card">
+                        <h3>Pending Balance</h3>
+                        <p class="big-number" id="worker-balance">0 INT</p>
+                    </div>
+                    <div class="card">
+                        <h3>Total Paid</h3>
+                        <p class="big-number" id="worker-paid">0 INT</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Blocks -->
+        <section class="section">
+            <h2>Recently Found Blocks</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Height</th>
+                            <th>Hash</th>
+                            <th>Timestamp</th>
+                            <th>Finder</th>
+                            <th>Reward</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="blocks-table">
+                        <tr>
+                            <td colspan="6" class="no-data">Loading blocks...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Recent Payments -->
+        <section class="section">
+            <h2>Recent Payments</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Address</th>
+                            <th>Amount</th>
+                            <th>Transaction</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payments-table">
+                        <tr>
+                            <td colspan="4" class="no-data">Loading payments...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Top Miners -->
+        <section class="section">
+            <h2>Top Miners (24h)</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Address</th>
+                            <th>Hashrate</th>
+                            <th>Valid Shares</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-miners-table">
+                        <tr>
+                            <td colspan="4" class="no-data">Loading miners...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Connection Info -->
+        <section class="section">
+            <h2>How to Connect</h2>
+            <div class="connection-info">
+                <div class="card">
+                    <h3>Pool Address</h3>
+                    <code>stratum+tcp://pool.international-coin.org:3333</code>
+                </div>
+                <div class="card">
+                    <h3>Example Command</h3>
+                    <code>intcoin-miner --pool pool.international-coin.org:3333 --user intc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh --threads 4</code>
+                </div>
+                <div class="card">
+                    <h3>Supported Software</h3>
+                    <p>INTcoin Miner, XMRig (RandomX mode)</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>&copy; 2025 INTcoin Mining Pool | Powered by RandomX | Post-Quantum Secure</p>
+            <p>Last Update: <span id="last-update">Never</span></p>
+        </footer>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
