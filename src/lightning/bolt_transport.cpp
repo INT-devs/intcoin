@@ -20,33 +20,69 @@ namespace {
     // BOLT #8 protocol name
     const char* PROTOCOL_NAME = "Noise_XK_secp256k1_ChaChaPoly_SHA256";
 
-    // Key derivation
+    // HKDF-Extract: Extract pseudorandom key from input keying material
+    // Uses HMAC-SHA256 (via libsodium's crypto_auth_hmacsha256)
+    std::array<uint8_t, 32> HKDF_Extract(
+        const std::vector<uint8_t>& salt,
+        const std::vector<uint8_t>& ikm)
+    {
+        std::array<uint8_t, 32> prk;
+
+        // Use zero salt if empty
+        std::vector<uint8_t> salt_data = salt.empty() ?
+            std::vector<uint8_t>(32, 0) : salt;
+
+        // HMAC-SHA256(salt, ikm) using libsodium
+        crypto_auth_hmacsha256(
+            prk.data(),
+            ikm.data(), ikm.size(),
+            salt_data.data()
+        );
+
+        return prk;
+    }
+
+    // HKDF-Expand: Expand pseudorandom key to desired length
+    // Uses HMAC-SHA256 for proper key expansion
     [[maybe_unused]] std::array<uint8_t, 32> HKDF_Expand(
         const std::array<uint8_t, 32>& prk,
         const std::vector<uint8_t>& info,
         size_t length)
     {
-        // HKDF-Expand using SHA3-256 (adapting for INTcoin)
+        // HKDF-Expand as per RFC 5869
+        // T(0) = empty string
+        // T(1) = HMAC-Hash(PRK, T(0) | info | 0x01)
+        // T(2) = HMAC-Hash(PRK, T(1) | info | 0x02)
+        // ...
+
         std::vector<uint8_t> okm;
-        std::vector<uint8_t> t;
+        std::vector<uint8_t> t_prev;
         uint8_t counter = 1;
 
         while (okm.size() < length) {
-            std::vector<uint8_t> data;
-            data.insert(data.end(), t.begin(), t.end());
-            data.insert(data.end(), info.begin(), info.end());
-            data.push_back(counter);
+            // Build input: T(i-1) | info | counter
+            std::vector<uint8_t> hmac_input;
+            hmac_input.insert(hmac_input.end(), t_prev.begin(), t_prev.end());
+            hmac_input.insert(hmac_input.end(), info.begin(), info.end());
+            hmac_input.push_back(counter);
 
-            // Hash with PRK as key (using HMAC-like construction)
-            auto hash = SHA3::Hash(data.data(), data.size());
+            // Compute T(i) = HMAC-SHA256(PRK, T(i-1) | info | counter)
+            unsigned char t_current[crypto_auth_hmacsha256_BYTES];
+            crypto_auth_hmacsha256(
+                t_current,
+                hmac_input.data(), hmac_input.size(),
+                prk.data()
+            );
 
-            t.assign(hash.data(), hash.data() + 32);
-            okm.insert(okm.end(), t.begin(), t.end());
+            // Append T(i) to output
+            t_prev.assign(t_current, t_current + crypto_auth_hmacsha256_BYTES);
+            okm.insert(okm.end(), t_prev.begin(), t_prev.end());
             counter++;
         }
 
+        // Return requested length
         std::array<uint8_t, 32> result;
-        std::copy_n(okm.begin(), 32, result.begin());
+        std::copy_n(okm.begin(), std::min(length, okm.size()), result.begin());
         return result;
     }
 
@@ -252,16 +288,8 @@ std::array<uint8_t, 32> NoiseTransport::HKDF(
     const std::vector<uint8_t>& salt,
     const std::vector<uint8_t>& ikm)
 {
-    // HKDF-Extract
-    std::vector<uint8_t> combined;
-    combined.insert(combined.end(), salt.begin(), salt.end());
-    combined.insert(combined.end(), ikm.begin(), ikm.end());
-
-    auto prk_hash = SHA3::Hash(combined.data(), combined.size());
-    std::array<uint8_t, 32> prk;
-    std::copy_n(prk_hash.data(), 32, prk.begin());
-
-    return prk;
+    // Use proper HKDF-Extract with HMAC-SHA256
+    return HKDF_Extract(salt, ikm);
 }
 
 Result<std::vector<uint8_t>> NoiseTransport::EncryptWithAD(

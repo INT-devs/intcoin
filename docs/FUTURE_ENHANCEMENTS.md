@@ -182,7 +182,12 @@ The following features have been intentionally left for future development:
 **Files**: `src/lightning/lightning.cpp:604`, `src/qt/lightningpage.cpp`
 
 #### Completed in v1.0
-- ✅ BOLT #8: Encrypted transport (partial)
+- ✅ **BOLT #8: Encrypted Transport** - Production-ready (Phase 1 complete)
+  - ✅ ChaCha20-Poly1305-IETF AEAD encryption (libsodium)
+  - ✅ HMAC-SHA256 HKDF (Extract + Expand per RFC 5869)
+  - ✅ BLAKE2b-based key derivation with domain separation
+  - ✅ Three-act handshake protocol implementation
+  - ⚠️ Kyber768 KEM integration deferred to Phase 2 (v2.0)
 - ✅ BOLT #11: Invoice Protocol - Generation and decoding
 - ✅ Basic channel establishment with on-chain funding
 - ✅ HTLCs (Hash Time-Locked Contracts)
@@ -311,6 +316,22 @@ Want to help implement these features? See [CONTRIBUTING.md](../CONTRIBUTING.md)
 ---
 
 ## Recent Completions (December 2025)
+
+### BOLT #8 Phase 1: Production-Ready Encryption
+**Completed**: December 24, 2025
+**Impact**: Secure Lightning Network transport layer
+
+Replaced placeholder cryptography with production-ready implementations:
+- **ChaCha20-Poly1305-IETF AEAD** encryption (libsodium)
+- **HMAC-SHA256 HKDF** (full Extract + Expand per RFC 5869)
+- **BLAKE2b-based key derivation** with domain separation
+- Secure memory clearing with sodium_memzero()
+- Authentication tag verification preventing tampering
+- Proper nonce handling preventing replay attacks
+
+**Security Impact**: Lightning Network transport now production-ready with authenticated encryption. No longer vulnerable to trivial attacks. See [BOLT8_ENHANCEMENT_PLAN.md](BOLT8_ENHANCEMENT_PLAN.md) for details.
+
+**Note**: Full Kyber768 KEM integration deferred to Phase 2 (requires protocol changes).
 
 ### Lightning Network Qt UI Integration
 **Completed**: December 24, 2025

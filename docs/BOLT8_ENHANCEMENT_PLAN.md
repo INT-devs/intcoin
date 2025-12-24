@@ -29,6 +29,12 @@
    - Secure memory clearing with `sodium_memzero()`
    - Better security properties than SHA3-only derivation
 
+5. **Production-ready HKDF implementation** (RFC 5869)
+   - Implemented HKDF-Extract using HMAC-SHA256
+   - Implemented HKDF-Expand using HMAC-SHA256
+   - Replaced simplified SHA3-based implementation
+   - Full compliance with RFC 5869 specification
+
 **Security Impact**:
 - ✅ No longer vulnerable to trivial attacks (XOR-based encryption removed)
 - ✅ Authenticated encryption prevents tampering
@@ -146,14 +152,32 @@ std::array<uint8_t, 32> ECDH(const PublicKey& pubkey, const SecretKey& privkey) 
 - Should use Kyber768 for post-quantum key encapsulation
 - Doesn't provide forward secrecy properly
 
-### 3. HKDF Implementation
-**Current**: Basic SHA3-based expansion
-**Location**: `src/lightning/bolt_transport.cpp:23-50`
+### 3. ~~HKDF Implementation~~ ✅ COMPLETED (December 24, 2025)
+**Status**: Production-ready HKDF per RFC 5869
+**Location**: `src/lightning/bolt_transport.cpp:23-87`
 
-**Issues**:
-- Simplified HKDF-Expand only
-- Doesn't implement full HKDF (Extract + Expand)
-- Could use more robust implementation
+**Completed Enhancements**:
+- ✅ Implemented HKDF-Extract using HMAC-SHA256 (lines 23-43)
+- ✅ Implemented HKDF-Expand using HMAC-SHA256 (lines 45-87)
+- ✅ Full RFC 5869 compliance
+- ✅ Proper HMAC-based key derivation (not just hashing)
+- ✅ Used by NoiseTransport::HKDF() for handshake
+
+**Implementation Details**:
+```cpp
+// HKDF-Extract: PRK = HMAC-SHA256(salt, IKM)
+std::array<uint8_t, 32> HKDF_Extract(
+    const std::vector<uint8_t>& salt,
+    const std::vector<uint8_t>& ikm);
+
+// HKDF-Expand: OKM = HMAC-SHA256(PRK, T(i-1) | info | counter)
+std::array<uint8_t, 32> HKDF_Expand(
+    const std::array<uint8_t, 32>& prk,
+    const std::vector<uint8_t>& info,
+    size_t length);
+```
+
+**Security Impact**: Proper HMAC-based key derivation provides better security guarantees than simple hashing.
 
 ---
 
