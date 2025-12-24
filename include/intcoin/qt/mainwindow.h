@@ -15,6 +15,7 @@
 namespace intcoin {
     class Blockchain;
     class P2PNode;
+    class LightningNetwork;
     namespace wallet {
         class Wallet;
     }
@@ -41,7 +42,7 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(wallet::Wallet* wallet, Blockchain* blockchain, P2PNode* p2p, QWidget *parent = nullptr);
+    explicit MainWindow(wallet::Wallet* wallet, Blockchain* blockchain, P2PNode* p2p, LightningNetwork* lightning = nullptr, QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:
@@ -72,6 +73,7 @@ private:
     wallet::Wallet* wallet_;
     Blockchain* blockchain_;
     P2PNode* p2p_;
+    LightningNetwork* lightning_;
 
     // UI Components
     QStackedWidget* centralStack_;

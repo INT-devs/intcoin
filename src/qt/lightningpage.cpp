@@ -6,6 +6,7 @@
 #include "intcoin/blockchain.h"
 #include "intcoin/network.h"
 #include "intcoin/lightning.h"
+#include "intcoin/util.h"
 
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -26,12 +27,13 @@ namespace qt {
 LightningPage::LightningPage(wallet::Wallet* wallet,
                              Blockchain* blockchain,
                              P2PNode* p2p,
+                             LightningNetwork* lightning,
                              QWidget *parent)
     : QWidget(parent)
     , wallet_(wallet)
     , blockchain_(blockchain)
     , p2p_(p2p)
-    , lightningNode_(nullptr)
+    , lightning_(lightning)
 {
     setupUI();
     connectSignals();
@@ -360,11 +362,16 @@ void LightningPage::connectSignals() {
 }
 
 void LightningPage::openChannel() {
-    // TODO: Implement open channel dialog
+    if (!lightning_ || !lightning_->IsRunning()) {
+        QMessageBox::warning(this, tr("Lightning Not Running"),
+            tr("Lightning Network is not running. Please start it first."));
+        return;
+    }
+
     bool ok;
     QString peerAddress = QInputDialog::getText(this,
         tr("Open Channel"),
-        tr("Enter peer node public key:"),
+        tr("Enter peer node public key (hex):"),
         QLineEdit::Normal,
         "",
         &ok);
@@ -372,6 +379,17 @@ void LightningPage::openChannel() {
     if (!ok || peerAddress.isEmpty()) {
         return;
     }
+
+    // Parse public key
+    auto peerKeyBytes = HexToBytes(peerAddress.toStdString());
+    if (peerKeyBytes.IsError() || peerKeyBytes.value->size() != 1952) {
+        QMessageBox::warning(this, tr("Invalid Public Key"),
+            tr("Invalid public key format. Expected 1952 bytes (Dilithium3)."));
+        return;
+    }
+
+    PublicKey peerKey;
+    std::copy(peerKeyBytes.value->begin(), peerKeyBytes.value->end(), peerKey.begin());
 
     int64_t capacity = QInputDialog::getInt(this,
         tr("Open Channel"),
@@ -386,10 +404,21 @@ void LightningPage::openChannel() {
         return;
     }
 
-    // TODO: Call Lightning Network API to open channel
+    // Call Lightning Network API to open channel
+    auto result = lightning_->OpenChannel(peerKey, capacity);
+    if (result.IsError()) {
+        QMessageBox::critical(this, tr("Channel Opening Failed"),
+            tr("Failed to open channel: %1").arg(QString::fromStdString(result.error)));
+        return;
+    }
+
     QMessageBox::information(this, tr("Channel Opening"),
-        tr("Opening channel with capacity %1 INTS...\nThis may take a few minutes.")
-        .arg(capacity));
+        tr("Opening channel with capacity %1 INTS...\n"
+           "Channel ID: %2\n"
+           "This may take a few minutes to confirm on-chain.")
+        .arg(capacity)
+        .arg(QString::fromStdString(BytesToHex(std::vector<uint8_t>(
+            result.value->begin(), result.value->end())))));
 
     updateChannelList();
 }
@@ -401,13 +430,37 @@ void LightningPage::closeChannel() {
         return;
     }
 
+    if (!lightning_ || !lightning_->IsRunning()) {
+        QMessageBox::warning(this, tr("Lightning Not Running"),
+            tr("Lightning Network is not running."));
+        return;
+    }
+
     QMessageBox::StandardButton reply = QMessageBox::question(this,
         tr("Close Channel"),
         tr("Are you sure you want to close this channel?\nThis will require on-chain confirmation."),
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes) {
-        // TODO: Call Lightning Network API to close channel
+        // Parse channel ID
+        auto channelIdBytes = HexToBytes(selectedChannelId_.toStdString());
+        if (channelIdBytes.IsError() || channelIdBytes.value->size() != 32) {
+            QMessageBox::critical(this, tr("Error"),
+                tr("Invalid channel ID format."));
+            return;
+        }
+
+        uint256 channelId;
+        std::copy(channelIdBytes.value->begin(), channelIdBytes.value->end(), channelId.begin());
+
+        // Call Lightning Network API to close channel
+        auto result = lightning_->CloseChannel(channelId, false);
+        if (result.IsError()) {
+            QMessageBox::critical(this, tr("Channel Closure Failed"),
+                tr("Failed to close channel: %1").arg(QString::fromStdString(result.error)));
+            return;
+        }
+
         QMessageBox::information(this, tr("Closing Channel"),
             tr("Channel closure initiated. This may take several blocks to confirm."));
 
@@ -424,11 +477,24 @@ void LightningPage::sendPayment() {
         return;
     }
 
-    // TODO: Validate and decode payment request
-    // TODO: Call Lightning Network API to send payment
+    if (!lightning_ || !lightning_->IsRunning()) {
+        QMessageBox::warning(this, tr("Lightning Not Running"),
+            tr("Lightning Network is not running."));
+        return;
+    }
+
+    // Call Lightning Network API to send payment
+    auto result = lightning_->SendPayment(paymentRequest.toStdString());
+    if (result.IsError()) {
+        QMessageBox::critical(this, tr("Payment Failed"),
+            tr("Failed to send payment: %1").arg(QString::fromStdString(result.error)));
+        return;
+    }
 
     QMessageBox::information(this, tr("Payment Sent"),
-        tr("Lightning payment sent successfully!"));
+        tr("Lightning payment sent successfully!\nPayment Hash: %1")
+        .arg(QString::fromStdString(BytesToHex(std::vector<uint8_t>(
+            result.value->begin(), result.value->end())))));
 
     paymentRequestEdit_->clear();
     amountEdit_->clear();
@@ -440,24 +506,35 @@ void LightningPage::createInvoice() {
     QString memo = invoiceMemoEdit_->text();
     [[maybe_unused]] uint32_t expiry = invoiceExpirySpinBox_->value();
 
-    // TODO: Call Lightning Network API to create invoice
-    // For now, generate a placeholder invoice
-    QString invoice = QString("lnbc%1n1...")
-        .arg(amount / 100000000.0, 0, 'f', 8);
+    if (!lightning_ || !lightning_->IsRunning()) {
+        QMessageBox::warning(this, tr("Lightning Not Running"),
+            tr("Lightning Network is not running."));
+        return;
+    }
 
+    // Call Lightning Network API to create invoice
+    auto result = lightning_->CreateInvoice(amount, memo.toStdString());
+    if (result.IsError()) {
+        QMessageBox::critical(this, tr("Invoice Creation Failed"),
+            tr("Failed to create invoice: %1").arg(QString::fromStdString(result.error)));
+        return;
+    }
+
+    QString invoice = QString::fromStdString(result.value->Encode());
     invoiceDisplay_->setText(invoice);
     copyInvoiceBtn_->setEnabled(true);
 
-    // TODO: Generate QR code
+    // TODO: Generate QR code (requires QR code library)
     QPixmap qrCode(200, 200);
     qrCode.fill(Qt::white);
     QPainter painter(&qrCode);
     painter.setPen(Qt::black);
-    painter.drawText(qrCode.rect(), Qt::AlignCenter, "QR\nCode");
+    painter.drawText(qrCode.rect(), Qt::AlignCenter, "QR\nCode\n(TODO)");
     qrCodeLabel_->setPixmap(qrCode);
 
     QMessageBox::information(this, tr("Invoice Created"),
-        tr("Lightning invoice generated successfully!"));
+        tr("Lightning invoice generated successfully!\nAmount: %1 INTS")
+        .arg(amount));
 }
 
 void LightningPage::payInvoice() {
@@ -468,14 +545,30 @@ void LightningPage::payInvoice() {
         return;
     }
 
-    // TODO: Decode invoice using BOLT #11 decoder
+    // Decode invoice using BOLT #11 decoder
+    auto result = Invoice::Decode(paymentRequest.toStdString());
+    if (result.IsError()) {
+        decodedInfoLabel_->setText(tr("<b>Error:</b> %1")
+            .arg(QString::fromStdString(result.error)));
+        return;
+    }
+
+    auto& invoice = *result.value;
     QString decodedInfo = tr(
         "<b>Invoice Details:</b><br>"
-        "Amount: 0.001 INT<br>"
-        "Description: Example payment<br>"
-        "Expiry: 1 hour<br>"
-        "Destination: 03abc123...<br>"
-    );
+        "Amount: %1 INTS<br>"
+        "Description: %2<br>"
+        "Expiry: %3 seconds<br>"
+        "Payee: %4<br>"
+        "Payment Hash: %5"
+    )
+        .arg(invoice.amount)
+        .arg(QString::fromStdString(invoice.description))
+        .arg(invoice.expiry)
+        .arg(QString::fromStdString(BytesToHex(std::vector<uint8_t>(
+            invoice.payee.begin(), invoice.payee.begin() + 16))) + "...")
+        .arg(QString::fromStdString(BytesToHex(std::vector<uint8_t>(
+            invoice.payment_hash.begin(), invoice.payment_hash.begin() + 16))) + "...");
 
     decodedInfoLabel_->setText(decodedInfo);
 }
@@ -494,44 +587,96 @@ void LightningPage::onChannelSelected() {
 void LightningPage::updateChannelList() {
     channelTable_->setRowCount(0);
 
-    // TODO: Get channels from Lightning Network API
-    // For now, show placeholder data
-    /*
-    int row = channelTable_->rowCount();
-    channelTable_->insertRow(row);
-    channelTable_->setItem(row, 0, new QTableWidgetItem("ch_001"));
-    channelTable_->setItem(row, 1, new QTableWidgetItem("03abc123..."));
-    channelTable_->setItem(row, 2, new QTableWidgetItem("Active"));
-    channelTable_->setItem(row, 3, new QTableWidgetItem("1.00000000"));
-    channelTable_->setItem(row, 4, new QTableWidgetItem("0.50000000"));
-    channelTable_->setItem(row, 5, new QTableWidgetItem("0.50000000"));
-    channelTable_->setItem(row, 6, new QTableWidgetItem("OPEN"));
-    */
+    if (!lightning_ || !lightning_->IsRunning()) {
+        return;
+    }
+
+    // Get channels from Lightning Network API
+    auto channels = lightning_->ListChannels();
+
+    for (const auto& channel : channels) {
+        int row = channelTable_->rowCount();
+        channelTable_->insertRow(row);
+
+        // Channel ID
+        QString channelId = QString::fromStdString(BytesToHex(std::vector<uint8_t>(
+            channel.channel_id.begin(), channel.channel_id.begin() + 8))) + "...";
+        channelTable_->setItem(row, 0, new QTableWidgetItem(channelId));
+
+        // Peer
+        QString peer = QString::fromStdString(BytesToHex(std::vector<uint8_t>(
+            channel.remote_node_id.begin(), channel.remote_node_id.begin() + 8))) + "...";
+        channelTable_->setItem(row, 1, new QTableWidgetItem(peer));
+
+        // Status
+        QString status = channel.state == ChannelState::OPEN ? "Active" :
+                        channel.state == ChannelState::OPENING ? "Opening" :
+                        channel.state == ChannelState::CLOSING_MUTUAL ? "Closing" :
+                        channel.state == ChannelState::CLOSED ? "Closed" : "Unknown";
+        channelTable_->setItem(row, 2, new QTableWidgetItem(status));
+
+        // Capacity
+        channelTable_->setItem(row, 3, new QTableWidgetItem(
+            QString::number(channel.capacity / 1000000000.0, 'f', 8)));
+
+        // Local Balance
+        channelTable_->setItem(row, 4, new QTableWidgetItem(
+            QString::number(channel.local_balance / 1000000000.0, 'f', 8)));
+
+        // Remote Balance
+        channelTable_->setItem(row, 5, new QTableWidgetItem(
+            QString::number(channel.remote_balance / 1000000000.0, 'f', 8)));
+
+        // State
+        QString stateStr = status;  // Use same as status for now
+        channelTable_->setItem(row, 6, new QTableWidgetItem(stateStr));
+    }
 }
 
 void LightningPage::updateBalance() {
-    // TODO: Get balance from Lightning Network API
-    uint64_t totalCapacity = 0;
-    uint64_t localBalance = 0;
-    uint64_t remoteBalance = 0;
+    if (!lightning_ || !lightning_->IsRunning()) {
+        totalCapacityLabel_->setText(tr("Total Capacity: 0 INT"));
+        localBalanceLabel_->setText(tr("Local Balance: 0 INT"));
+        remoteBalanceLabel_->setText(tr("Remote Balance: 0 INT"));
+        return;
+    }
+
+    // Get balance from Lightning Network API
+    auto stats = lightning_->GetStats();
 
     totalCapacityLabel_->setText(tr("Total Capacity: %1 INT")
-        .arg(totalCapacity / 1000000000.0, 0, 'f', 8));
+        .arg(stats.total_capacity / 1000000000.0, 0, 'f', 8));
     localBalanceLabel_->setText(tr("Local Balance: %1 INT")
-        .arg(localBalance / 1000000000.0, 0, 'f', 8));
+        .arg(stats.local_balance / 1000000000.0, 0, 'f', 8));
     remoteBalanceLabel_->setText(tr("Remote Balance: %1 INT")
-        .arg(remoteBalance / 1000000000.0, 0, 'f', 8));
+        .arg(stats.remote_balance / 1000000000.0, 0, 'f', 8));
 }
 
 void LightningPage::updateNodeInfo() {
-    // TODO: Get node info from Lightning Network API
-    nodeIdLabel_->setText(tr("Not connected"));
-    nodePubKeyLabel_->setText(tr("N/A"));
-    nodeAddressLabel_->setText(tr("N/A"));
+    if (!lightning_ || !lightning_->IsRunning()) {
+        nodeIdLabel_->setText(tr("Not running"));
+        nodePubKeyLabel_->setText(tr("N/A"));
+        nodeAddressLabel_->setText(tr("N/A"));
+        totalChannelsLabel_->setText(tr("0"));
+        activeChannelsLabel_->setText(tr("0"));
+        pendingChannelsLabel_->setText(tr("0"));
+        return;
+    }
 
-    totalChannelsLabel_->setText(tr("0"));
-    activeChannelsLabel_->setText(tr("0"));
-    pendingChannelsLabel_->setText(tr("0"));
+    // Get node info from Lightning Network API
+    auto nodeId = lightning_->GetNodeId();
+    auto stats = lightning_->GetStats();
+
+    nodeIdLabel_->setText(tr("Running"));
+    nodePubKeyLabel_->setText(QString::fromStdString(BytesToHex(std::vector<uint8_t>(
+        nodeId.begin(), nodeId.end()))));
+    nodeAddressLabel_->setText(tr("127.0.0.1")); // TODO: Get actual address
+    nodePortLabel_->setText(tr("2213"));
+
+    totalChannelsLabel_->setText(QString::number(stats.num_channels));
+    activeChannelsLabel_->setText(QString::number(stats.num_active_channels));
+    pendingChannelsLabel_->setText(QString::number(
+        stats.num_channels - stats.num_active_channels));
 }
 
 void LightningPage::refreshData() {

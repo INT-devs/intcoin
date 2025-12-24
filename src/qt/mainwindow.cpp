@@ -24,11 +24,12 @@
 namespace intcoin {
 namespace qt {
 
-MainWindow::MainWindow(wallet::Wallet* wallet, Blockchain* blockchain, P2PNode* p2p, QWidget *parent)
+MainWindow::MainWindow(wallet::Wallet* wallet, Blockchain* blockchain, P2PNode* p2p, LightningNetwork* lightning, QWidget *parent)
     : QMainWindow(parent)
     , wallet_(wallet)
     , blockchain_(blockchain)
     , p2p_(p2p)
+    , lightning_(lightning)
     , walletEncrypted_(false)
     , walletLocked_(false)
 {
@@ -201,7 +202,7 @@ void MainWindow::createPages() {
     receiveCoinsPage_ = new ReceiveCoinsPage(wallet_, centralStack_);
     transactionsPage_ = new TransactionsPage(wallet_, centralStack_);
     addressBookPage_ = new AddressBookPage(wallet_, centralStack_);
-    lightningPage_ = new LightningPage(wallet_, blockchain_, p2p_, centralStack_);
+    lightningPage_ = new LightningPage(wallet_, blockchain_, p2p_, lightning_, centralStack_);
     settingsPage_ = new SettingsPage(wallet_, centralStack_);
 
     centralStack_->addWidget(overviewPage_);

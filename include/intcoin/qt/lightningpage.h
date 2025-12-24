@@ -22,12 +22,9 @@
 namespace intcoin {
     class Blockchain;
     class P2PNode;
+    class LightningNetwork;
     namespace wallet {
         class Wallet;
-    }
-    namespace lightning {
-        class LightningNode;
-        struct Channel;
     }
 }
 
@@ -41,6 +38,7 @@ public:
     explicit LightningPage(wallet::Wallet* wallet,
                           Blockchain* blockchain,
                           P2PNode* p2p,
+                          LightningNetwork* lightning,
                           QWidget *parent = nullptr);
     ~LightningPage();
 
@@ -70,7 +68,7 @@ private:
     wallet::Wallet* wallet_;
     Blockchain* blockchain_;
     P2PNode* p2p_;
-    lightning::LightningNode* lightningNode_;
+    LightningNetwork* lightning_;
 
     // UI Components
     QTabWidget* tabWidget_;
