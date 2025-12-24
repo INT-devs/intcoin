@@ -138,7 +138,7 @@ Send Lightning Network payments using BOLT #11 invoices:
 Create Lightning Network invoices for receiving payments:
 
 **Creating an Invoice**:
-1. Enter amount in INTS (satoshis = INTS * 10^9)
+1. Enter amount in INTS (1 INT = 1,000,000,000 INTS)
 2. Add description/memo (optional, shown to payer)
 3. Set expiry time (default: 3600 seconds / 1 hour)
 4. Click **"Create Invoice"**

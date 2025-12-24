@@ -616,7 +616,7 @@ Share with peers who want to open channels to your node.
 **Units**:
 - **INT**: Display in INT (whole coins)
 - **mINT**: Display in milli-INT (0.001 INT)
-- **INTS**: Display in INTS (satoshis, 0.000000001 INT)
+- **INTS**: Display in INTS (0.000000001 INT = 1 INTS)
 
 **Theme**:
 - **Light**: Light theme (default)
@@ -936,7 +936,7 @@ intcoin-cli lightning_createinvoice 100000 "Payment"
 **Private Key**: Secret key controlling funds
 **Public Key**: Public key for receiving funds (derived from private key)
 **QR Code**: Scannable code for easy address sharing
-**Satoshi**: Smallest unit (0.000000001 INT = 1 INTS)
+**INTS**: Smallest unit (0.000000001 INT = 1 INTS)
 **Testnet**: Test network (fake money for testing)
 **Transaction**: Transfer of coins between addresses
 **UTXO**: Unspent Transaction Output
