@@ -683,12 +683,12 @@ std::string ExtendedKey::SerializeBase58() const {
         // Private key: 0x00 + 32 bytes
         data.push_back(0x00);
         for (size_t i = 0; i < 32; i++) {
-            data.push_back(private_key->data[i]);
+            data.push_back((*private_key)[i]);
         }
     } else {
         // Public key: compressed format (33 bytes)
         for (size_t i = 0; i < 33; i++) {
-            data.push_back(public_key->data[i]);
+            data.push_back((*public_key)[i]);
         }
     }
 
@@ -752,7 +752,7 @@ Result<ExtendedKey> ExtendedKey::DeserializeBase58(const std::string& str) {
         }
         SecretKey priv_key;
         for (size_t i = 0; i < 32; i++) {
-            priv_key.data[i] = data[46 + i];
+            priv_key[i] = data[46 + i];
         }
         key.private_key = priv_key;
         key.public_key = std::nullopt;
@@ -760,7 +760,7 @@ Result<ExtendedKey> ExtendedKey::DeserializeBase58(const std::string& str) {
         // Public key
         PublicKey pub_key;
         for (size_t i = 0; i < 33; i++) {
-            pub_key.data[i] = data[45 + i];
+            pub_key[i] = data[45 + i];
         }
         key.public_key = pub_key;
         key.private_key = std::nullopt;
@@ -887,7 +887,7 @@ Result<void> Mnemonic::Validate(const std::vector<std::string>& words) {
     }
 
     // Extract expected checksum from hash (first checksum_bits of hash)
-    uint8_t expected_checksum = hash.data[0] >> (8 - checksum_bits);
+    uint8_t expected_checksum = hash[0] >> (8 - checksum_bits);
 
     // Compare checksums
     if (actual_checksum != expected_checksum) {

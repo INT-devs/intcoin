@@ -410,7 +410,7 @@ std::string Base58CheckEncode(const std::vector<uint8_t>& data) {
     // Take first 4 bytes of hash as checksum
     std::vector<uint8_t> with_checksum = data;
     for (size_t i = 0; i < 4; i++) {
-        with_checksum.push_back(hash.data[i]);
+        with_checksum.push_back(hash[i]);
     }
 
     // Base58 encode the data + checksum
@@ -440,7 +440,7 @@ Result<std::vector<uint8_t>> Base58CheckDecode(const std::string& encoded) {
 
     // Verify checksum
     for (size_t i = 0; i < 4; i++) {
-        if (hash.data[i] != checksum[i]) {
+        if (hash[i] != checksum[i]) {
             return Result<std::vector<uint8_t>>::Error("Invalid checksum");
         }
     }
@@ -837,6 +837,18 @@ uint64_t GetRandomUint64() {
 
 uint256 GetRandomUint256() {
     return RandomGenerator::GetRandomUint256();
+}
+
+// ============================================================================
+// Hashing Utilities
+// ============================================================================
+
+uint256 SHA3_256(const std::vector<uint8_t>& data) {
+    return SHA3::Hash(data);
+}
+
+uint256 DoubleSHA3_256(const std::vector<uint8_t>& data) {
+    return SHA3::DoubleHash(data);
 }
 
 } // namespace intcoin

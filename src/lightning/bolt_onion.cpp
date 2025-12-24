@@ -201,9 +201,9 @@ std::vector<SharedSecret> SphinxPacketBuilder::DeriveSharedSecrets(
     
     for (const auto& pubkey : pubkeys) {
         SharedSecret secret;
-        
+
         // Derive shared secret using ECDH
-        auto pub_bytes = pubkey.Serialize();
+        std::vector<uint8_t> pub_bytes(pubkey.begin(), pubkey.end());
         std::vector<uint8_t> combined;
         combined.insert(combined.end(), session_key.data(), session_key.data() + 32);
         combined.insert(combined.end(), pub_bytes.begin(), pub_bytes.end());
@@ -295,10 +295,15 @@ Result<SphinxPacket> SphinxPacketBuilder::CreatePacket(
     auto shared_secrets = DeriveSharedSecrets(route_pubkeys, session_key);
     
     SphinxPacket packet;
-    
+
     // Set ephemeral key (derived from session key)
-    auto ephemeral_pubkey = KeyPair::Generate().GetPublicKey();
-    auto ephemeral_bytes = ephemeral_pubkey.Serialize();
+    auto keypair_result = DilithiumCrypto::GenerateKeyPair();
+    if (keypair_result.IsError()) {
+        return Result<SphinxPacket>::Error("Failed to generate keypair");
+    }
+    auto keypair = keypair_result.GetValue();
+    PublicKey ephemeral_pubkey = keypair.public_key;
+    std::vector<uint8_t> ephemeral_bytes(ephemeral_pubkey.begin(), ephemeral_pubkey.end());
     std::copy_n(ephemeral_bytes.begin(), 33, packet.ephemeral_key.begin());
     
     // Build routing info
@@ -348,7 +353,7 @@ SharedSecret SphinxPacketProcessor::DeriveSharedSecret(
     
     // ECDH
     std::vector<uint8_t> combined;
-    auto priv_bytes = privkey.Serialize();
+    std::vector<uint8_t> priv_bytes(privkey.begin(), privkey.end());
     combined.insert(combined.end(), priv_bytes.begin(), priv_bytes.end());
     combined.insert(combined.end(), ephemeral_key.begin(), ephemeral_key.end());
     
@@ -438,7 +443,7 @@ Result<SphinxPacketProcessor::ProcessResult> SphinxPacketProcessor::ProcessPacke
     if (payload_result.IsError()) {
         return Result<ProcessResult>::Error(payload_result.error);
     }
-    result.payload = payload_result.Unwrap();
+    result.payload = payload_result.GetValue();
     
     // Check if final hop (all zeros in remaining routing info)
     bool is_final = std::all_of(

@@ -458,22 +458,109 @@ uint256 CalculateMerkleRoot(const std::vector<uint256>& tx_hashes) {
 }
 
 std::vector<uint256> BuildMerkleTree(const std::vector<uint256>& tx_hashes) {
-    // TODO: Implement full merkle tree building
-    std::vector<uint256> tree;
+    if (tx_hashes.empty()) {
+        return {};
+    }
+
+    // Build complete merkle tree
+    std::vector<uint256> tree = tx_hashes;
+    size_t level_offset = 0;
+    size_t level_size = tx_hashes.size();
+
+    // Build tree bottom-up
+    while (level_size > 1) {
+        size_t next_level_size = (level_size + 1) / 2;
+
+        for (size_t i = 0; i < next_level_size; i++) {
+            size_t left_idx = level_offset + i * 2;
+            size_t right_idx = std::min(left_idx + 1, level_offset + level_size - 1);
+
+            std::vector<uint8_t> combined;
+            SerializeUint256(combined, tree[left_idx]);
+            SerializeUint256(combined, tree[right_idx]);
+
+            tree.push_back(SHA3::Hash(combined));
+        }
+
+        level_offset += level_size;
+        level_size = next_level_size;
+    }
+
     return tree;
 }
 
 std::vector<uint256> GetMerkleBranch(const std::vector<uint256>& tx_hashes,
                                     size_t index) {
-    // TODO: Implement merkle branch generation
+    if (index >= tx_hashes.size()) {
+        return {};
+    }
+
+    // Build complete merkle tree
+    auto tree = BuildMerkleTree(tx_hashes);
+    if (tree.empty()) {
+        return {};
+    }
+
+    // Extract branch from tree
     std::vector<uint256> branch;
+    size_t level_offset = 0;
+    size_t level_size = tx_hashes.size();
+    size_t current_index = index;
+
+    while (level_size > 1) {
+        // Get sibling index
+        size_t sibling_index = (current_index % 2 == 0) ? current_index + 1 : current_index - 1;
+
+        // Add sibling to branch if it exists
+        if (sibling_index < level_size) {
+            branch.push_back(tree[level_offset + sibling_index]);
+        } else {
+            // If no sibling (odd number of nodes), duplicate current node
+            branch.push_back(tree[level_offset + current_index]);
+        }
+
+        // Move to next level
+        level_offset += level_size;
+        level_size = (level_size + 1) / 2;
+        current_index /= 2;
+    }
+
     return branch;
 }
 
 bool VerifyMerkleProof(const uint256& tx_hash, const uint256& merkle_root,
                        const std::vector<uint256>& branch, size_t index) {
-    // TODO: Implement merkle proof verification
-    return false;
+    if (branch.empty()) {
+        // No branch means single transaction - hash should equal root
+        return tx_hash == merkle_root;
+    }
+
+    // Start with transaction hash
+    uint256 current_hash = tx_hash;
+    size_t current_index = index;
+
+    // Walk up the tree using the branch
+    for (const auto& sibling : branch) {
+        std::vector<uint8_t> combined;
+
+        // Determine order based on index
+        if (current_index % 2 == 0) {
+            // Current is left, sibling is right
+            SerializeUint256(combined, current_hash);
+            SerializeUint256(combined, sibling);
+        } else {
+            // Current is right, sibling is left
+            SerializeUint256(combined, sibling);
+            SerializeUint256(combined, current_hash);
+        }
+
+        // Hash to get parent
+        current_hash = SHA3::Hash(combined);
+        current_index /= 2;
+    }
+
+    // Final hash should equal merkle root
+    return current_hash == merkle_root;
 }
 
 } // namespace intcoin

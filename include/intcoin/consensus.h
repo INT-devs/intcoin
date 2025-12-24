@@ -26,6 +26,9 @@ constexpr uint64_t TARGET_BLOCK_TIME = 120; // seconds
 /// Maximum future block time (2 hours)
 constexpr uint64_t MAX_FUTURE_BLOCK_TIME = 2 * 60 * 60; // 2 hours in seconds
 
+/// Median time past span (BIP 113)
+constexpr uint64_t MEDIAN_TIME_SPAN = 11; // blocks
+
 /// Halving interval (~4 years at 2 min blocks)
 constexpr uint64_t HALVING_INTERVAL = 1051200; // blocks
 

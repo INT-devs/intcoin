@@ -6,6 +6,7 @@
 #include "intcoin/rpc.h"
 #include "intcoin/util.h"
 #include "intcoin/crypto.h"
+#include "intcoin/sanitize.h"
 #include <sstream>
 #include <iomanip>
 #include <thread>

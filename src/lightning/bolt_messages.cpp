@@ -80,6 +80,34 @@ namespace {
         std::memcpy(result.data(), bytes.data(), 32);
         return result;
     }
+
+    // Dilithium3 Signature helpers (3309 bytes)
+    void WriteSignature(std::vector<uint8_t>& data, const Signature& sig) {
+        data.insert(data.end(), sig.begin(), sig.end());
+    }
+
+    Signature ReadSignature(const std::vector<uint8_t>& data, size_t& offset) {
+        Signature sig;
+        auto sig_bytes = ReadBytes(data, offset, 3309);
+        if (sig_bytes.size() == 3309) {
+            std::copy(sig_bytes.begin(), sig_bytes.end(), sig.begin());
+        }
+        return sig;
+    }
+
+    // Dilithium3 PublicKey helpers (1952 bytes)
+    void WritePublicKey(std::vector<uint8_t>& data, const PublicKey& key) {
+        data.insert(data.end(), key.begin(), key.end());
+    }
+
+    PublicKey ReadPublicKey(const std::vector<uint8_t>& data, size_t& offset) {
+        PublicKey key;
+        auto key_bytes = ReadBytes(data, offset, 1952);
+        if (key_bytes.size() == 1952) {
+            std::copy(key_bytes.begin(), key_bytes.end(), key.begin());
+        }
+        return key;
+    }
 }
 
 // ============================================================================
@@ -210,7 +238,7 @@ Result<InitMessage> InitMessage::Deserialize(const std::vector<uint8_t>& data) {
     while (offset < data.size()) {
         auto tlv_result = TLVRecord::Deserialize(data, offset);
         if (tlv_result.IsError()) break;
-        auto tlv = tlv_result.Unwrap();
+        auto tlv = tlv_result.GetValue();
         msg.tlv_records[tlv.type] = tlv.value;
     }
 
@@ -303,11 +331,11 @@ std::vector<uint8_t> OpenChannelMessage::Serialize() const {
     WriteU16(data, to_self_delay);
     WriteU16(data, max_accepted_htlcs);
 
-    // Public keys (33 bytes each for compressed format)
+    // Public keys (1952 bytes each for Dilithium3)
     auto keys = {funding_pubkey, revocation_basepoint, payment_basepoint,
                  delayed_payment_basepoint, htlc_basepoint, first_per_commitment_point};
     for (const auto& key : keys) {
-        WriteBytes(data, key.Serialize());
+        WriteBytes(data, std::vector<uint8_t>(key.begin(), key.end()));
     }
 
     data.push_back(channel_flags);
@@ -342,11 +370,12 @@ Result<OpenChannelMessage> OpenChannelMessage::Deserialize(const std::vector<uin
     msg.to_self_delay = ReadU16(data, offset);
     msg.max_accepted_htlcs = ReadU16(data, offset);
 
-    // Parse public keys (33 bytes each)
+    // Parse public keys (1952 bytes each for Dilithium3)
     auto parse_key = [&](PublicKey& key) {
-        auto key_bytes = ReadBytes(data, offset, 33);
-        auto result = PublicKey::Deserialize(key_bytes);
-        if (result.IsOk()) key = result.Unwrap();
+        auto key_bytes = ReadBytes(data, offset, 1952);
+        if (key_bytes.size() == 1952) {
+            std::copy(key_bytes.begin(), key_bytes.end(), key.begin());
+        }
     };
 
     parse_key(msg.funding_pubkey);
@@ -362,7 +391,7 @@ Result<OpenChannelMessage> OpenChannelMessage::Deserialize(const std::vector<uin
     while (offset < data.size()) {
         auto tlv_result = TLVRecord::Deserialize(data, offset);
         if (tlv_result.IsError()) break;
-        auto tlv = tlv_result.Unwrap();
+        auto tlv = tlv_result.GetValue();
         msg.tlv_records[tlv.type] = tlv.value;
     }
 
@@ -426,10 +455,10 @@ Result<UpdateFulfillHTLCMessage> UpdateFulfillHTLCMessage::Deserialize(const std
 std::vector<uint8_t> CommitmentSignedMessage::Serialize() const {
     std::vector<uint8_t> data;
     WriteUint256(data, channel_id);
-    WriteBytes(data, signature.Serialize());
+    WriteSignature(data, signature);
     WriteU16(data, static_cast<uint16_t>(htlc_signatures.size()));
     for (const auto& sig : htlc_signatures) {
-        WriteBytes(data, sig.Serialize());
+        WriteSignature(data, sig);
     }
     return data;
 }
@@ -443,19 +472,11 @@ Result<CommitmentSignedMessage> CommitmentSignedMessage::Deserialize(const std::
     size_t offset = 0;
 
     msg.channel_id = ReadUint256(data, offset);
-    auto sig_bytes = ReadBytes(data, offset, 64);
-    auto sig_result = Signature::Deserialize(sig_bytes);
-    if (sig_result.IsOk()) {
-        msg.signature = sig_result.Unwrap();
-    }
+    msg.signature = ReadSignature(data, offset);
 
     uint16_t num_sigs = ReadU16(data, offset);
     for (uint16_t i = 0; i < num_sigs; i++) {
-        auto htlc_sig_bytes = ReadBytes(data, offset, 64);
-        auto htlc_sig_result = Signature::Deserialize(htlc_sig_bytes);
-        if (htlc_sig_result.IsOk()) {
-            msg.htlc_signatures.push_back(htlc_sig_result.Unwrap());
-        }
+        msg.htlc_signatures.push_back(ReadSignature(data, offset));
     }
 
     return Result<CommitmentSignedMessage>::Ok(msg);
@@ -465,7 +486,7 @@ std::vector<uint8_t> RevokeAndAckMessage::Serialize() const {
     std::vector<uint8_t> data;
     WriteUint256(data, channel_id);
     WriteUint256(data, per_commitment_secret);
-    WriteBytes(data, next_per_commitment_point.Serialize());
+    WritePublicKey(data, next_per_commitment_point);
     return data;
 }
 
@@ -479,11 +500,7 @@ Result<RevokeAndAckMessage> RevokeAndAckMessage::Deserialize(const std::vector<u
 
     msg.channel_id = ReadUint256(data, offset);
     msg.per_commitment_secret = ReadUint256(data, offset);
-    auto key_bytes = ReadBytes(data, offset, 33);
-    auto key_result = PublicKey::Deserialize(key_bytes);
-    if (key_result.IsOk()) {
-        msg.next_per_commitment_point = key_result.Unwrap();
-    }
+    msg.next_per_commitment_point = ReadPublicKey(data, offset);
 
     return Result<RevokeAndAckMessage>::Ok(msg);
 }
@@ -494,18 +511,18 @@ Result<RevokeAndAckMessage> RevokeAndAckMessage::Deserialize(const std::vector<u
 
 std::vector<uint8_t> ChannelAnnouncementMessage::Serialize() const {
     std::vector<uint8_t> data;
-    WriteBytes(data, node_signature_1.Serialize());
-    WriteBytes(data, node_signature_2.Serialize());
-    WriteBytes(data, bitcoin_signature_1.Serialize());
-    WriteBytes(data, bitcoin_signature_2.Serialize());
+    WriteSignature(data, node_signature_1);
+    WriteSignature(data, node_signature_2);
+    WriteSignature(data, bitcoin_signature_1);
+    WriteSignature(data, bitcoin_signature_2);
     WriteU16(data, static_cast<uint16_t>(features.size()));
     WriteBytes(data, features);
     WriteUint256(data, chain_hash);
     WriteU64(data, short_channel_id);
-    WriteBytes(data, node_id_1.Serialize());
-    WriteBytes(data, node_id_2.Serialize());
-    WriteBytes(data, bitcoin_key_1.Serialize());
-    WriteBytes(data, bitcoin_key_2.Serialize());
+    WritePublicKey(data, node_id_1);
+    WritePublicKey(data, node_id_2);
+    WritePublicKey(data, bitcoin_key_1);
+    WritePublicKey(data, bitcoin_key_2);
     return data;
 }
 
@@ -517,22 +534,10 @@ Result<ChannelAnnouncementMessage> ChannelAnnouncementMessage::Deserialize(const
     ChannelAnnouncementMessage msg;
     size_t offset = 0;
 
-    auto read_sig = [&]() {
-        auto sig_bytes = ReadBytes(data, offset, 64);
-        auto result = Signature::Deserialize(sig_bytes);
-        return result.IsOk() ? result.Unwrap() : Signature();
-    };
-
-    auto read_pubkey = [&]() {
-        auto key_bytes = ReadBytes(data, offset, 33);
-        auto result = PublicKey::Deserialize(key_bytes);
-        return result.IsOk() ? result.Unwrap() : PublicKey();
-    };
-
-    msg.node_signature_1 = read_sig();
-    msg.node_signature_2 = read_sig();
-    msg.bitcoin_signature_1 = read_sig();
-    msg.bitcoin_signature_2 = read_sig();
+    msg.node_signature_1 = ReadSignature(data, offset);
+    msg.node_signature_2 = ReadSignature(data, offset);
+    msg.bitcoin_signature_1 = ReadSignature(data, offset);
+    msg.bitcoin_signature_2 = ReadSignature(data, offset);
 
     uint16_t feature_len = ReadU16(data, offset);
     msg.features = ReadBytes(data, offset, feature_len);
@@ -540,21 +545,21 @@ Result<ChannelAnnouncementMessage> ChannelAnnouncementMessage::Deserialize(const
     msg.chain_hash = ReadUint256(data, offset);
     msg.short_channel_id = ReadU64(data, offset);
 
-    msg.node_id_1 = read_pubkey();
-    msg.node_id_2 = read_pubkey();
-    msg.bitcoin_key_1 = read_pubkey();
-    msg.bitcoin_key_2 = read_pubkey();
+    msg.node_id_1 = ReadPublicKey(data, offset);
+    msg.node_id_2 = ReadPublicKey(data, offset);
+    msg.bitcoin_key_1 = ReadPublicKey(data, offset);
+    msg.bitcoin_key_2 = ReadPublicKey(data, offset);
 
     return Result<ChannelAnnouncementMessage>::Ok(msg);
 }
 
 std::vector<uint8_t> NodeAnnouncementMessage::Serialize() const {
     std::vector<uint8_t> data;
-    WriteBytes(data, signature.Serialize());
+    WriteSignature(data, signature);
     WriteU16(data, static_cast<uint16_t>(features.size()));
     WriteBytes(data, features);
     WriteU32(data, timestamp);
-    WriteBytes(data, node_id.Serialize());
+    WritePublicKey(data, node_id);
     data.insert(data.end(), rgb_color, rgb_color + 3);
 
     // Alias (32 bytes, padded with zeros)
@@ -580,22 +585,14 @@ Result<NodeAnnouncementMessage> NodeAnnouncementMessage::Deserialize(const std::
     NodeAnnouncementMessage msg;
     size_t offset = 0;
 
-    auto sig_bytes = ReadBytes(data, offset, 64);
-    auto sig_result = Signature::Deserialize(sig_bytes);
-    if (sig_result.IsOk()) {
-        msg.signature = sig_result.Unwrap();
-    }
+    msg.signature = ReadSignature(data, offset);
 
     uint16_t feature_len = ReadU16(data, offset);
     msg.features = ReadBytes(data, offset, feature_len);
 
     msg.timestamp = ReadU32(data, offset);
 
-    auto node_id_bytes = ReadBytes(data, offset, 33);
-    auto node_id_result = PublicKey::Deserialize(node_id_bytes);
-    if (node_id_result.IsOk()) {
-        msg.node_id = node_id_result.Unwrap();
-    }
+    msg.node_id = ReadPublicKey(data, offset);
 
     std::memcpy(msg.rgb_color, &data[offset], 3);
     offset += 3;
@@ -708,7 +705,7 @@ std::vector<uint8_t> AcceptChannelMessage::Serialize() const {
     auto keys = {funding_pubkey, revocation_basepoint, payment_basepoint,
                  delayed_payment_basepoint, htlc_basepoint, first_per_commitment_point};
     for (const auto& key : keys) {
-        WriteBytes(data, key.Serialize());
+        WritePublicKey(data, key);
     }
 
     for (const auto& [type, value] : tlv_records) {
@@ -736,23 +733,17 @@ Result<AcceptChannelMessage> AcceptChannelMessage::Deserialize(const std::vector
     msg.to_self_delay = ReadU16(data, offset);
     msg.max_accepted_htlcs = ReadU16(data, offset);
 
-    auto parse_key = [&](PublicKey& key) {
-        auto key_bytes = ReadBytes(data, offset, 33);
-        auto result = PublicKey::Deserialize(key_bytes);
-        if (result.IsOk()) key = result.Unwrap();
-    };
-
-    parse_key(msg.funding_pubkey);
-    parse_key(msg.revocation_basepoint);
-    parse_key(msg.payment_basepoint);
-    parse_key(msg.delayed_payment_basepoint);
-    parse_key(msg.htlc_basepoint);
-    parse_key(msg.first_per_commitment_point);
+    msg.funding_pubkey = ReadPublicKey(data, offset);
+    msg.revocation_basepoint = ReadPublicKey(data, offset);
+    msg.payment_basepoint = ReadPublicKey(data, offset);
+    msg.delayed_payment_basepoint = ReadPublicKey(data, offset);
+    msg.htlc_basepoint = ReadPublicKey(data, offset);
+    msg.first_per_commitment_point = ReadPublicKey(data, offset);
 
     while (offset < data.size()) {
         auto tlv_result = TLVRecord::Deserialize(data, offset);
         if (tlv_result.IsError()) break;
-        auto tlv = tlv_result.Unwrap();
+        auto tlv = tlv_result.GetValue();
         msg.tlv_records[tlv.type] = tlv.value;
     }
 
@@ -764,7 +755,7 @@ std::vector<uint8_t> FundingCreatedMessage::Serialize() const {
     WriteUint256(data, temporary_channel_id);
     WriteUint256(data, funding_txid);
     WriteU16(data, funding_output_index);
-    WriteBytes(data, signature.Serialize());
+    WriteSignature(data, signature);
     return data;
 }
 
@@ -779,12 +770,7 @@ Result<FundingCreatedMessage> FundingCreatedMessage::Deserialize(const std::vect
     msg.temporary_channel_id = ReadUint256(data, offset);
     msg.funding_txid = ReadUint256(data, offset);
     msg.funding_output_index = ReadU16(data, offset);
-
-    auto sig_bytes = ReadBytes(data, offset, 64);
-    auto sig_result = Signature::Deserialize(sig_bytes);
-    if (sig_result.IsOk()) {
-        msg.signature = sig_result.Unwrap();
-    }
+    msg.signature = ReadSignature(data, offset);
 
     return Result<FundingCreatedMessage>::Ok(msg);
 }
@@ -792,7 +778,7 @@ Result<FundingCreatedMessage> FundingCreatedMessage::Deserialize(const std::vect
 std::vector<uint8_t> FundingSignedMessage::Serialize() const {
     std::vector<uint8_t> data;
     WriteUint256(data, channel_id);
-    WriteBytes(data, signature.Serialize());
+    WriteSignature(data, signature);
     return data;
 }
 
@@ -805,12 +791,7 @@ Result<FundingSignedMessage> FundingSignedMessage::Deserialize(const std::vector
     size_t offset = 0;
 
     msg.channel_id = ReadUint256(data, offset);
-
-    auto sig_bytes = ReadBytes(data, offset, 64);
-    auto sig_result = Signature::Deserialize(sig_bytes);
-    if (sig_result.IsOk()) {
-        msg.signature = sig_result.Unwrap();
-    }
+    msg.signature = ReadSignature(data, offset);
 
     return Result<FundingSignedMessage>::Ok(msg);
 }
@@ -818,7 +799,7 @@ Result<FundingSignedMessage> FundingSignedMessage::Deserialize(const std::vector
 std::vector<uint8_t> FundingLockedMessage::Serialize() const {
     std::vector<uint8_t> data;
     WriteUint256(data, channel_id);
-    WriteBytes(data, next_per_commitment_point.Serialize());
+    WritePublicKey(data, next_per_commitment_point);
 
     for (const auto& [type, value] : tlv_records) {
         TLVRecord record{type, value};
@@ -837,17 +818,12 @@ Result<FundingLockedMessage> FundingLockedMessage::Deserialize(const std::vector
     size_t offset = 0;
 
     msg.channel_id = ReadUint256(data, offset);
-
-    auto key_bytes = ReadBytes(data, offset, 33);
-    auto key_result = PublicKey::Deserialize(key_bytes);
-    if (key_result.IsOk()) {
-        msg.next_per_commitment_point = key_result.Unwrap();
-    }
+    msg.next_per_commitment_point = ReadPublicKey(data, offset);
 
     while (offset < data.size()) {
         auto tlv_result = TLVRecord::Deserialize(data, offset);
         if (tlv_result.IsError()) break;
-        auto tlv = tlv_result.Unwrap();
+        auto tlv = tlv_result.GetValue();
         msg.tlv_records[tlv.type] = tlv.value;
     }
 
@@ -881,7 +857,7 @@ std::vector<uint8_t> ClosingSignedMessage::Serialize() const {
     std::vector<uint8_t> data;
     WriteUint256(data, channel_id);
     WriteU64(data, fee_satoshis);
-    WriteBytes(data, signature.Serialize());
+    WriteSignature(data, signature);
 
     for (const auto& [type, value] : tlv_records) {
         TLVRecord record{type, value};
@@ -901,17 +877,12 @@ Result<ClosingSignedMessage> ClosingSignedMessage::Deserialize(const std::vector
 
     msg.channel_id = ReadUint256(data, offset);
     msg.fee_satoshis = ReadU64(data, offset);
-
-    auto sig_bytes = ReadBytes(data, offset, 64);
-    auto sig_result = Signature::Deserialize(sig_bytes);
-    if (sig_result.IsOk()) {
-        msg.signature = sig_result.Unwrap();
-    }
+    msg.signature = ReadSignature(data, offset);
 
     while (offset < data.size()) {
         auto tlv_result = TLVRecord::Deserialize(data, offset);
         if (tlv_result.IsError()) break;
-        auto tlv = tlv_result.Unwrap();
+        auto tlv = tlv_result.GetValue();
         msg.tlv_records[tlv.type] = tlv.value;
     }
 
@@ -995,7 +966,7 @@ std::vector<uint8_t> ChannelReestablishMessage::Serialize() const {
     WriteU64(data, next_commitment_number);
     WriteU64(data, next_revocation_number);
     WriteUint256(data, your_last_per_commitment_secret);
-    WriteBytes(data, my_current_per_commitment_point.Serialize());
+    WritePublicKey(data, my_current_per_commitment_point);
     return data;
 }
 
@@ -1012,11 +983,7 @@ Result<ChannelReestablishMessage> ChannelReestablishMessage::Deserialize(const s
     msg.next_revocation_number = ReadU64(data, offset);
     msg.your_last_per_commitment_secret = ReadUint256(data, offset);
 
-    auto key_bytes = ReadBytes(data, offset, 33);
-    auto key_result = PublicKey::Deserialize(key_bytes);
-    if (key_result.IsOk()) {
-        msg.my_current_per_commitment_point = key_result.Unwrap();
-    }
+    msg.my_current_per_commitment_point = ReadPublicKey(data, offset);
 
     return Result<ChannelReestablishMessage>::Ok(msg);
 }
@@ -1029,8 +996,8 @@ std::vector<uint8_t> AnnouncementSignaturesMessage::Serialize() const {
     std::vector<uint8_t> data;
     WriteUint256(data, channel_id);
     WriteU64(data, short_channel_id);
-    WriteBytes(data, node_signature.Serialize());
-    WriteBytes(data, bitcoin_signature.Serialize());
+    WriteSignature(data, node_signature);
+    WriteSignature(data, bitcoin_signature);
     return data;
 }
 
@@ -1044,25 +1011,15 @@ Result<AnnouncementSignaturesMessage> AnnouncementSignaturesMessage::Deserialize
 
     msg.channel_id = ReadUint256(data, offset);
     msg.short_channel_id = ReadU64(data, offset);
-
-    auto node_sig_bytes = ReadBytes(data, offset, 64);
-    auto node_sig_result = Signature::Deserialize(node_sig_bytes);
-    if (node_sig_result.IsOk()) {
-        msg.node_signature = node_sig_result.Unwrap();
-    }
-
-    auto btc_sig_bytes = ReadBytes(data, offset, 64);
-    auto btc_sig_result = Signature::Deserialize(btc_sig_bytes);
-    if (btc_sig_result.IsOk()) {
-        msg.bitcoin_signature = btc_sig_result.Unwrap();
-    }
+    msg.node_signature = ReadSignature(data, offset);
+    msg.bitcoin_signature = ReadSignature(data, offset);
 
     return Result<AnnouncementSignaturesMessage>::Ok(msg);
 }
 
 std::vector<uint8_t> ChannelUpdateMessage::Serialize() const {
     std::vector<uint8_t> data;
-    WriteBytes(data, signature.Serialize());
+    WriteSignature(data, signature);
     WriteUint256(data, chain_hash);
     WriteU64(data, short_channel_id);
     WriteU32(data, timestamp);
@@ -1088,12 +1045,7 @@ Result<ChannelUpdateMessage> ChannelUpdateMessage::Deserialize(const std::vector
     ChannelUpdateMessage msg;
     size_t offset = 0;
 
-    auto sig_bytes = ReadBytes(data, offset, 64);
-    auto sig_result = Signature::Deserialize(sig_bytes);
-    if (sig_result.IsOk()) {
-        msg.signature = sig_result.Unwrap();
-    }
-
+    msg.signature = ReadSignature(data, offset);
     msg.chain_hash = ReadUint256(data, offset);
     msg.short_channel_id = ReadU64(data, offset);
     msg.timestamp = ReadU32(data, offset);
@@ -1145,7 +1097,7 @@ Result<QueryShortChannelIdsMessage> QueryShortChannelIdsMessage::Deserialize(con
     while (offset < data.size()) {
         auto tlv_result = TLVRecord::Deserialize(data, offset);
         if (tlv_result.IsError()) break;
-        auto tlv = tlv_result.Unwrap();
+        auto tlv = tlv_result.GetValue();
         msg.tlv_records[tlv.type] = tlv.value;
     }
 
@@ -1202,7 +1154,7 @@ Result<QueryChannelRangeMessage> QueryChannelRangeMessage::Deserialize(const std
     while (offset < data.size()) {
         auto tlv_result = TLVRecord::Deserialize(data, offset);
         if (tlv_result.IsError()) break;
-        auto tlv = tlv_result.Unwrap();
+        auto tlv = tlv_result.GetValue();
         msg.tlv_records[tlv.type] = tlv.value;
     }
 
@@ -1249,7 +1201,7 @@ Result<ReplyChannelRangeMessage> ReplyChannelRangeMessage::Deserialize(const std
     while (offset < data.size()) {
         auto tlv_result = TLVRecord::Deserialize(data, offset);
         if (tlv_result.IsError()) break;
-        auto tlv = tlv_result.Unwrap();
+        auto tlv = tlv_result.GetValue();
         msg.tlv_records[tlv.type] = tlv.value;
     }
 

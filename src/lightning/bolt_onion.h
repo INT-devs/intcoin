@@ -9,6 +9,7 @@
 #include "intcoin/crypto.h"
 #include <vector>
 #include <array>
+#include <map>
 
 namespace intcoin {
 namespace bolt {

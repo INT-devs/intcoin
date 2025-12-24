@@ -1901,6 +1901,7 @@ Result<void> MessageHandler::HandlePong(Peer& peer,
     // Peer structure and storing the nonce when sending PING. This is a future enhancement
     // for more robust peer management and detecting misbehaving peers.
     // For now, accepting any valid PONG is sufficient as basic keep-alive.
+    (void)nonce;  // Reserved for future nonce verification
 
     peer.last_message_time = std::chrono::system_clock::now();
 

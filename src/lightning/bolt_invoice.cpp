@@ -73,7 +73,7 @@ namespace {
     }
 
     // Convert between bit groups
-    std::vector<uint8_t> ConvertBits(const std::vector<uint8_t>& data, int frombits, int tobits, bool pad) {
+    [[maybe_unused]] std::vector<uint8_t> ConvertBits(const std::vector<uint8_t>& data, int frombits, int tobits, bool pad) {
         std::vector<uint8_t> result;
         int acc = 0;
         int bits = 0;
@@ -101,7 +101,7 @@ namespace {
     }
 
     // Helper to write BigSize encoding
-    void WriteBigSize(std::vector<uint8_t>& data, uint64_t value) {
+    [[maybe_unused]] void WriteBigSize(std::vector<uint8_t>& data, uint64_t value) {
         if (value < 253) {
             data.push_back(static_cast<uint8_t>(value));
         } else if (value < 65536) {
@@ -123,7 +123,7 @@ namespace {
     }
 
     // Helper to read BigSize encoding
-    uint64_t ReadBigSize(const std::vector<uint8_t>& data, size_t& offset) {
+    [[maybe_unused]] uint64_t ReadBigSize(const std::vector<uint8_t>& data, size_t& offset) {
         if (offset >= data.size()) return 0;
 
         uint8_t first = data[offset++];
@@ -158,7 +158,7 @@ namespace {
 
 std::vector<uint8_t> RouteHint::Serialize() const {
     std::vector<uint8_t> data;
-    auto pubkey_bytes = node_id.Serialize();
+    std::vector<uint8_t> pubkey_bytes(node_id.begin(), node_id.end());
     data.insert(data.end(), pubkey_bytes.begin(), pubkey_bytes.end());
 
     for (int i = 7; i >= 0; i--) {
@@ -188,9 +188,10 @@ Result<RouteHint> RouteHint::Deserialize(const std::vector<uint8_t>& data) {
     size_t offset = 0;
 
     std::vector<uint8_t> pubkey_bytes(data.begin(), data.begin() + 33);
-    auto pubkey_result = PublicKey::Deserialize(pubkey_bytes);
-    if (pubkey_result.IsOk()) {
-        hint.node_id = pubkey_result.Unwrap();
+    // Note: Lightning uses 33-byte ECDH keys, but Dilithium uses 1952-byte keys
+    // This is a compatibility issue that needs proper hybrid crypto solution
+    if (pubkey_bytes.size() <= hint.node_id.size()) {
+        std::copy(pubkey_bytes.begin(), pubkey_bytes.end(), hint.node_id.begin());
     }
     offset += 33;
 
@@ -360,7 +361,8 @@ std::string LightningInvoice::Encode() const {
     }
 
     // Payee public key (n)
-    write_tagged(static_cast<uint8_t>(InvoiceTag::PAYEE_PUBLIC_KEY), payee_pubkey.Serialize());
+    write_tagged(static_cast<uint8_t>(InvoiceTag::PAYEE_PUBLIC_KEY),
+                std::vector<uint8_t>(payee_pubkey.begin(), payee_pubkey.end()));
 
     // Description hash (h)
     if (description_hash.has_value()) {
@@ -502,9 +504,10 @@ Result<LightningInvoice> LightningInvoice::Decode(const std::string& bolt11_stri
 
             case InvoiceTag::PAYEE_PUBLIC_KEY:
                 if (field_data8.size() == 33) {
-                    auto pubkey_result = PublicKey::Deserialize(field_data8);
-                    if (pubkey_result.IsOk()) {
-                        invoice.payee_pubkey = pubkey_result.Unwrap();
+                    // Note: Lightning uses 33-byte ECDH keys, but Dilithium uses 1952-byte keys
+                    // This is a compatibility issue that needs proper hybrid crypto solution
+                    if (field_data8.size() <= invoice.payee_pubkey.size()) {
+                        std::copy(field_data8.begin(), field_data8.end(), invoice.payee_pubkey.begin());
                     }
                 }
                 break;
@@ -527,17 +530,18 @@ Result<LightningInvoice> LightningInvoice::Decode(const std::string& bolt11_stri
 
 Result<void> LightningInvoice::Sign(const SecretKey& node_privkey) {
     auto signing_data = GetSigningData();
-    auto sig_result = node_privkey.Sign(signing_data);
+    auto sig_result = DilithiumCrypto::Sign(signing_data, node_privkey);
     if (sig_result.IsError()) {
         return Result<void>::Error("Failed to sign invoice");
     }
-    signature = sig_result.Unwrap();
+    signature = sig_result.GetValue();
     return Result<void>::Ok();
 }
 
 bool LightningInvoice::Verify() const {
     auto signing_data = GetSigningData();
-    return payee_pubkey.Verify(signing_data, signature);
+    auto result = DilithiumCrypto::Verify(signing_data, signature, payee_pubkey);
+    return result.IsOk();
 }
 
 bool LightningInvoice::IsExpired() const {
@@ -620,7 +624,7 @@ InvoiceBuilder& InvoiceBuilder::WithFallbackAddress(const FallbackAddress& addr)
 Result<LightningInvoice> InvoiceBuilder::Build(const SecretKey& node_privkey) {
     auto sign_result = invoice_.Sign(node_privkey);
     if (sign_result.IsError()) {
-        return Result<LightningInvoice>::Error(sign_result.ErrorMessage());
+        return Result<LightningInvoice>::Error(sign_result.error);
     }
     return Result<LightningInvoice>::Ok(invoice_);
 }

@@ -29,7 +29,7 @@ Traditional cryptocurrencies like Bitcoin use ECDSA cryptography, which will be 
 
 - **Consensus**: Proof-of-Work (RandomX algorithm)
 - **Block Time**: 2 minutes
-- **Total Supply**: 21,000,000 INT
+- **Total Supply**: 221,000,000,000,000 INT (221 Trillion)
 - **Address Format**: Bech32 (int1 prefix for mainnet, intc1 for testnet)
 - **Transaction Model**: UTXO (Unspent Transaction Output)
 - **Scripting**: Bitcoin-style transaction scripts
@@ -91,7 +91,7 @@ Features:
 sudo apt update
 sudo apt install build-essential cmake git libboost-all-dev libssl-dev \
   librocksdb-dev qt6-base-dev libzmq3-dev libevent-dev
-git clone https://github.com/INT-team/INTcoin.git intcoin
+git clone https://gitlab.com/intcoin/crypto.git intcoin
 cd intcoin
 mkdir build && cd build
 cmake ..
@@ -101,7 +101,7 @@ make -j$(nproc)
 **macOS:**
 ```bash
 brew install cmake boost openssl rocksdb qt@6 zeromq libevent
-git clone https://github.com/INT-team/INTcoin.git intcoin
+git clone https://gitlab.com/intcoin/crypto.git intcoin
 cd intcoin
 mkdir build && cd build
 cmake ..
@@ -225,9 +225,9 @@ intcoin/
 
 - **Algorithm**: RandomX (CPU-optimized Proof-of-Work)
 - **Block Time**: 2 minutes (120 seconds)
-- **Block Reward**: 50 INT (halving every 210,000 blocks)
-- **Total Supply**: 21,000,000 INT
-- **Difficulty Adjustment**: Every 1440 blocks (~2 days)
+- **Block Reward**: 105,113,636 INT (halving every 1,051,200 blocks / ~4 years)
+- **Total Supply**: 221,000,000,000,000 INT (221 Trillion)
+- **Difficulty Adjustment**: Digishield V3 (every block, 60 block averaging window)
 - **Transaction Model**: UTXO
 - **Script System**: Bitcoin-compatible opcodes
 - **Address Encoding**: Bech32 (int1/intc1)
@@ -272,7 +272,7 @@ intcoin/
 
 **Build Steps:**
 ```bash
-git clone https://github.com/INT-team/INTcoin.git intcoin
+git clone https://gitlab.com/intcoin/crypto.git intcoin
 cd intcoin
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -307,7 +307,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 ## Community
 
 - **Website**: https://international-coin.org
-- **Repository**: https://github.com/INT-team/INTcoin
+- **Repository**: https://gitlab.com/intcoin/crypto
 - **Discord**: https://discord.gg/intcoin
 - **Twitter**: @intcoin_crypto
 - **Email**: team@international-coin.org

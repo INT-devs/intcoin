@@ -108,8 +108,32 @@ Result<void> BlockValidator::ValidateTransactions(const Block& block) const {
     uint64_t height = chain_.GetBestHeight() + 1;
     uint64_t expected_reward = GetBlockReward(height);
 
+    // Calculate total fees from all non-coinbase transactions
     uint64_t total_fees = 0;
-    // TODO: Calculate total fees from transactions
+    for (size_t i = 1; i < block.transactions.size(); i++) {
+        const auto& tx = block.transactions[i];
+
+        // Calculate total input value
+        uint64_t total_input = 0;
+        for (const auto& input : tx.inputs) {
+            OutPoint outpoint;
+            outpoint.tx_hash = input.prev_tx_hash;
+            outpoint.index = input.prev_tx_index;
+
+            auto utxo = chain_.GetUTXO(outpoint);
+            if (utxo.has_value()) {
+                total_input += utxo->value;
+            }
+        }
+
+        // Calculate total output value
+        uint64_t total_output = tx.GetTotalOutputValue();
+
+        // Fee = input - output
+        if (total_input >= total_output) {
+            total_fees += (total_input - total_output);
+        }
+    }
 
     uint64_t coinbase_value = block.transactions[0].GetTotalOutputValue();
     if (coinbase_value > expected_reward + total_fees) {
@@ -140,8 +164,11 @@ Result<void> BlockValidator::ValidateProofOfWork(const BlockHeader& header) cons
         return Result<void>::Error("Proof of work failed");
     }
 
-    // TODO: Validate RandomX hash
-    // For now, we just check the basic PoW
+    // Validate RandomX hash (ASIC-resistant mining)
+    auto randomx_result = RandomXValidator::ValidateBlockHash(header);
+    if (randomx_result.IsError()) {
+        return Result<void>::Error("RandomX validation failed: " + randomx_result.error);
+    }
 
     return Result<void>::Ok();
 }
@@ -153,9 +180,16 @@ Result<void> BlockValidator::ValidateTimestamp(const BlockHeader& header) const 
         return Result<void>::Error("Block timestamp too far in future");
     }
 
-    // Check timestamp is greater than median of last 11 blocks
-    // TODO: Implement median time past check
-    // For now, just check it's not zero
+    // Check timestamp is greater than median of last 11 blocks (BIP 113)
+    uint64_t height = chain_.GetBestHeight() + 1;
+    if (height > 0) {  // Skip genesis block
+        uint64_t median_time_past = ConsensusValidator::GetMedianTimePast(chain_, height, 11);
+        if (header.timestamp <= median_time_past) {
+            return Result<void>::Error("Block timestamp must be greater than median time past");
+        }
+    }
+
+    // Check timestamp is not zero
     if (header.timestamp == 0) {
         return Result<void>::Error("Block timestamp is zero");
     }
@@ -306,8 +340,12 @@ Result<void> TxValidator::ValidateInputs(const Transaction& tx) const {
             return Result<void>::Error("Input " + std::to_string(i) + " references non-existent UTXO");
         }
 
-        // TODO: Validate script_sig against script_pubkey
-        // For now, we just check the UTXO exists
+        // Validate script_sig against script_pubkey
+        auto script_result = ExecuteScript(input.script_sig, utxo->script_pubkey, tx, i);
+        if (!script_result.success) {
+            return Result<void>::Error("Input " + std::to_string(i) + " script validation failed: " +
+                                      script_result.error);
+        }
     }
 
     return Result<void>::Ok();

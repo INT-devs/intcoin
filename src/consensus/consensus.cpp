@@ -10,6 +10,7 @@
 #include <randomx.h>
 #include <mutex>
 #include <memory>
+#include <algorithm>
 
 namespace intcoin {
 
@@ -499,19 +500,19 @@ Result<void> ConsensusValidator::ValidateBlockHeader(const BlockHeader& header,
     // 4. Validate previous block hash (unless genesis)
     if (height > 0) {
         uint256 expected_prev_hash = chain.GetBestBlockHash();
-        if (header.previous_block_hash != expected_prev_hash) {
+        if (header.prev_block_hash != expected_prev_hash) {
             return Result<void>::Error("Previous block hash mismatch");
         }
     } else {
         // Genesis block should have zero previous hash
         uint256 zero_hash = {};
-        if (header.previous_block_hash != zero_hash) {
+        if (header.prev_block_hash != zero_hash) {
             return Result<void>::Error("Genesis block must have zero previous hash");
         }
     }
 
     // 5. Validate difficulty target
-    uint256 target = DifficultyBitsToTarget(header.difficulty_bits);
+    uint256 target = DifficultyCalculator::CompactToTarget(header.bits);
     uint256 hash = header.GetHash();
 
     if (hash > target) {
@@ -667,6 +668,33 @@ Result<void> ChainValidator::ValidateReorgDepth(uint64_t current_height,
     }
 
     return Result<void>::Ok();
+}
+
+uint64_t ConsensusValidator::GetMedianTimePast(const class Blockchain& chain,
+                                               uint64_t height,
+                                               size_t num_blocks) {
+    // Collect timestamps from the last num_blocks blocks
+    std::vector<uint64_t> timestamps;
+    timestamps.reserve(num_blocks);
+
+    // Start from the given height and go backwards
+    uint64_t current_height = height;
+    for (size_t i = 0; i < num_blocks && current_height > 0; i++) {
+        current_height--;
+        auto block_result = chain.GetBlockByHeight(current_height);
+        if (block_result.IsOk()) {
+            timestamps.push_back(block_result.value->header.timestamp);
+        }
+    }
+
+    // If we don't have enough blocks, return 0 (genesis case)
+    if (timestamps.empty()) {
+        return 0;
+    }
+
+    // Sort timestamps and return median
+    std::sort(timestamps.begin(), timestamps.end());
+    return timestamps[timestamps.size() / 2];
 }
 
 // ============================================================================

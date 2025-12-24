@@ -492,7 +492,7 @@ std::string bolt11 = invoice.Unwrap().Encode();
 
 - [BOLT Specifications](https://github.com/lightning/bolts)
 - [Lightning Network Paper](https://lightning.network/lightning-network-paper.pdf)
-- [INTcoin Lightning Implementation](https://github.com/INT-team/INTcoin)
+- [INTcoin Lightning Implementation](https://gitlab.com/intcoin/crypto)
 
 ---
 

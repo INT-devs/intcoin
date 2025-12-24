@@ -20,21 +20,24 @@ enum class OpCode : uint8_t {
     // Push data
     OP_PUSHDATA = 0x01,     // Push N bytes
 
-    // Crypto operations
-    OP_DUP = 0x10,           // Duplicate top stack item
-    OP_HASH = 0x11,          // SHA3-256 hash
-    OP_CHECKSIG = 0x12,      // Verify Dilithium signature
+    // Logic
+    OP_VERIFY = 0x69,        // Verify and consume
 
     // Stack operations
-    OP_DROP = 0x20,          // Remove top stack item
-    OP_SWAP = 0x21,          // Swap top two items
+    OP_DROP = 0x75,          // Remove top stack item
+    OP_DUP = 0x76,           // Duplicate top stack item
+    OP_SWAP = 0x7C,          // Swap top two items
 
     // Logic
-    OP_EQUAL = 0x30,         // Check equality
-    OP_VERIFY = 0x31,        // Verify and consume
+    OP_EQUAL = 0x87,         // Check equality
+    OP_EQUALVERIFY = 0x88,   // OP_EQUAL followed by OP_VERIFY
 
     // Special
-    OP_RETURN = 0xFF,        // Mark output as unspendable (data storage)
+    OP_RETURN = 0x6A,        // Mark output as unspendable (data storage)
+
+    // Crypto operations (Bitcoin-compatible opcodes, INTcoin crypto)
+    OP_HASH = 0xA9,          // SHA3-256 hash (vs Bitcoin's HASH160)
+    OP_CHECKSIG = 0xAC,      // Verify Dilithium signature (vs Bitcoin's ECDSA)
 };
 
 // ============================================================================

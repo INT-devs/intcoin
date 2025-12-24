@@ -9,6 +9,7 @@
 #include <cctype>
 #include <sstream>
 #include <chrono>
+#include <iomanip>
 
 namespace intcoin {
 namespace sanitize {
