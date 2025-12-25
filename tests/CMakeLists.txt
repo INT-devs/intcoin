@@ -20,7 +20,7 @@ target_link_libraries(test_bech32 intcoin_core)
 
 # Test: Serialization
 add_executable(test_serialization test_serialization.cpp)
-target_link_libraries(test_serialization intcoin_core)
+target_link_libraries(test_serialization intcoin_core ${ROCKSDB_LIB})
 
 # Test: Storage (RocksDB)
 add_executable(test_storage test_storage.cpp)
@@ -32,7 +32,7 @@ target_link_libraries(test_validation intcoin_core ${ROCKSDB_LIB})
 
 # Test: Genesis Block
 add_executable(test_genesis test_genesis.cpp)
-target_link_libraries(test_genesis intcoin_core)
+target_link_libraries(test_genesis intcoin_core ${ROCKSDB_LIB})
 
 # Test: Network Protocol
 add_executable(test_network test_network.cpp)

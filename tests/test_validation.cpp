@@ -17,11 +17,26 @@ using namespace intcoin;
 // Test Helper Functions
 // ============================================================================
 
+// Global test keypair for signing test transactions
+static DilithiumCrypto::KeyPair g_test_keypair;
+static bool g_keypair_initialized = false;
+
+void InitializeTestKeyPair() {
+    if (!g_keypair_initialized) {
+        auto result = DilithiumCrypto::GenerateKeyPair();
+        assert(result.IsOk());
+        g_test_keypair = *result.value;
+        g_keypair_initialized = true;
+    }
+}
+
 void CleanupTestDB() {
     system("rm -rf /tmp/intcoin_test_validation_db");
 }
 
 Block CreateValidTestBlock(const uint256& prev_hash, uint64_t height) {
+    InitializeTestKeyPair();
+
     Block block;
 
     // Create header
@@ -44,8 +59,9 @@ Block CreateValidTestBlock(const uint256& prev_hash, uint64_t height) {
     coinbase_input.sequence = 0xFFFFFFFF;
     coinbase.inputs.push_back(coinbase_input);
 
-    // Coinbase output
-    uint256 pubkey_hash{1, 2, 3, 4, 5}; // Mock public key hash
+    // Coinbase output - use test keypair's public key hash
+    std::vector<uint8_t> pubkey_vec(g_test_keypair.public_key.begin(), g_test_keypair.public_key.end());
+    uint256 pubkey_hash = SHA3_256(pubkey_vec);
     TxOut coinbase_output(GetBlockReward(height), Script::CreateP2PKH(pubkey_hash));
     coinbase.outputs.push_back(coinbase_output);
 
@@ -58,22 +74,51 @@ Block CreateValidTestBlock(const uint256& prev_hash, uint64_t height) {
 }
 
 Transaction CreateValidTransaction(const uint256& prev_tx, uint32_t prev_index, uint64_t value) {
+    InitializeTestKeyPair();
+
     Transaction tx;
     tx.version = 1;
     tx.locktime = 0;
 
-    // Input
+    // Input - initially with empty script_sig for signing
     TxIn input;
     input.prev_tx_hash = prev_tx;
     input.prev_tx_index = prev_index;
-    input.script_sig = Script(); // Simplified
+    input.script_sig = Script(); // Will be filled after signing
     input.sequence = 0xFFFFFFFF;
     tx.inputs.push_back(input);
 
-    // Output (send to mock address)
-    uint256 pubkey_hash{1, 2, 3, 4, 5}; // Mock public key hash
+    // Output - send to same test keypair
+    std::vector<uint8_t> pubkey_vec(g_test_keypair.public_key.begin(), g_test_keypair.public_key.end());
+    uint256 pubkey_hash = SHA3_256(pubkey_vec);
     TxOut output(value - 1000, Script::CreateP2PKH(pubkey_hash)); // Deduct fee
     tx.outputs.push_back(output);
+
+    // Sign the transaction
+    uint256 sig_hash = tx.GetHashForSigning(SIGHASH_ALL, 0);
+    auto sig_result = DilithiumCrypto::SignHash(sig_hash, g_test_keypair.secret_key);
+    assert(sig_result.IsOk());
+
+    // Create P2PKH script_sig: <signature> <public key>
+    std::vector<uint8_t> script_bytes;
+
+    // Push signature (3309 bytes) using OP_PUSHDATA with 2-byte length
+    const Signature& sig = *sig_result.value;
+    script_bytes.push_back(0x01);  // OP_PUSHDATA
+    uint16_t sig_len = static_cast<uint16_t>(sig.size());
+    script_bytes.push_back(sig_len & 0xFF);          // Low byte
+    script_bytes.push_back((sig_len >> 8) & 0xFF);  // High byte
+    script_bytes.insert(script_bytes.end(), sig.begin(), sig.end());
+
+    // Push public key (1952 bytes) using OP_PUSHDATA with 2-byte length
+    script_bytes.push_back(0x01);  // OP_PUSHDATA
+    uint16_t pubkey_len = static_cast<uint16_t>(g_test_keypair.public_key.size());
+    script_bytes.push_back(pubkey_len & 0xFF);          // Low byte
+    script_bytes.push_back((pubkey_len >> 8) & 0xFF);  // High byte
+    script_bytes.insert(script_bytes.end(), g_test_keypair.public_key.begin(), g_test_keypair.public_key.end());
+
+    // Update input with signed script_sig
+    tx.inputs[0].script_sig = Script(script_bytes);
 
     return tx;
 }
@@ -355,6 +400,9 @@ void TestUTXOValidation() {
         genesis.transactions[0].outputs[0].value);
 
     auto result1 = validator.ValidateInputs(valid_spend);
+    if (!result1.IsOk()) {
+        std::cout << "✗ ValidateInputs failed: " << result1.error << "\n";
+    }
     assert(result1.IsOk());
     std::cout << "✓ Transaction spending existing UTXO accepted\n";
 
