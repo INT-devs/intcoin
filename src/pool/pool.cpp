@@ -9,6 +9,24 @@
 #include "intcoin/util.h"
 #include <algorithm>
 #include <cmath>
+#include <memory>
+
+// Forward declarations of server classes and factory functions
+namespace intcoin {
+namespace stratum {
+    class StratumServer;
+    StratumServer* CreateStratumServer(uint16_t port, MiningPoolServer& pool);
+    void DestroyStratumServer(StratumServer* server);
+    Result<void> StratumServerStart(StratumServer* server);
+    void StratumServerBroadcastWork(StratumServer* server, const Work& work);
+}
+namespace pool {
+    class HttpApiServer;
+    HttpApiServer* CreateHttpApiServer(uint16_t port, MiningPoolServer& pool);
+    void DestroyHttpApiServer(HttpApiServer* server);
+    Result<void> HttpApiServerStart(HttpApiServer* server);
+}
+}
 
 namespace intcoin {
 
@@ -506,6 +524,8 @@ public:
         , next_share_id_(1)
         , next_round_id_(1)
         , vardiff_(config.target_share_time, config.vardiff_retarget_time, config.vardiff_variance)
+        , stratum_server_(nullptr)
+        , http_api_server_(nullptr)
     {
         current_round_.round_id = next_round_id_++;
         current_round_.started_at = std::chrono::system_clock::now();
@@ -560,18 +580,21 @@ public:
     std::optional<MiningPoolServer::BlockFoundCallback> block_found_callback_;
     std::optional<MiningPoolServer::PayoutCallback> payout_callback_;
 
-    // Network server threads (will be implemented separately)
-    std::thread stratum_thread_;
-    std::thread http_thread_;
+    // Network servers (raw pointers due to forward declarations)
+    stratum::StratumServer* stratum_server_;
+    pool::HttpApiServer* http_api_server_;
 
     void Stop() {
         running_ = false;
-        // Join threads if running
-        if (stratum_thread_.joinable()) {
-            stratum_thread_.join();
+
+        // Stop and delete network servers
+        if (stratum_server_) {
+            stratum::DestroyStratumServer(stratum_server_);
+            stratum_server_ = nullptr;
         }
-        if (http_thread_.joinable()) {
-            http_thread_.join();
+        if (http_api_server_) {
+            pool::DestroyHttpApiServer(http_api_server_);
+            http_api_server_ = nullptr;
         }
     }
 };
@@ -603,11 +626,31 @@ Result<void> MiningPoolServer::Start() {
         return Result<void>::Error("Failed to create initial work: " + work_result.error);
     }
 
-    // TODO: Start Stratum server thread
-    // impl_->stratum_thread_ = std::thread([this]() { RunStratumServer(); });
+    // Initialize and start Stratum server
+    impl_->stratum_server_ = stratum::CreateStratumServer(
+        impl_->config_.stratum_port, *this);
 
-    // TODO: Start HTTP API server thread
-    // impl_->http_thread_ = std::thread([this]() { RunHttpServer(); });
+    auto stratum_result = stratum::StratumServerStart(impl_->stratum_server_);
+    if (!stratum_result.IsOk()) {
+        stratum::DestroyStratumServer(impl_->stratum_server_);
+        impl_->stratum_server_ = nullptr;
+        impl_->running_ = false;
+        return Result<void>::Error("Failed to start Stratum server: " + stratum_result.error);
+    }
+
+    // Initialize and start HTTP API server
+    impl_->http_api_server_ = pool::CreateHttpApiServer(
+        impl_->config_.http_port, *this);
+
+    auto http_result = pool::HttpApiServerStart(impl_->http_api_server_);
+    if (!http_result.IsOk()) {
+        stratum::DestroyStratumServer(impl_->stratum_server_);
+        impl_->stratum_server_ = nullptr;
+        pool::DestroyHttpApiServer(impl_->http_api_server_);
+        impl_->http_api_server_ = nullptr;
+        impl_->running_ = false;
+        return Result<void>::Error("Failed to start HTTP API server: " + http_result.error);
+    }
 
     return Result<void>::Ok();
 }
@@ -1125,8 +1168,10 @@ Result<void> MiningPoolServer::UpdateWork() {
 }
 
 void MiningPoolServer::BroadcastWork(const Work& work) {
-    // TODO: Implement Stratum broadcast to all connected workers
-    // For now, just store the work (it's already stored in CreateWork)
+    // Broadcast work to all connected miners via Stratum
+    if (impl_->stratum_server_) {
+        stratum::StratumServerBroadcastWork(impl_->stratum_server_, work);
+    }
 }
 
 // Configuration

@@ -1118,5 +1118,30 @@ private:
     }
 };
 
+// Factory and wrapper functions for external use
+StratumServer* CreateStratumServer(uint16_t port, MiningPoolServer& pool) {
+    return new StratumServer(port, pool);
+}
+
+void DestroyStratumServer(StratumServer* server) {
+    if (server) {
+        server->Stop();
+        delete server;
+    }
+}
+
+Result<void> StratumServerStart(StratumServer* server) {
+    if (server) {
+        return server->Start();
+    }
+    return Result<void>::Error("Null server pointer");
+}
+
+void StratumServerBroadcastWork(StratumServer* server, const Work& work) {
+    if (server) {
+        server->BroadcastWork(work);
+    }
+}
+
 } // namespace stratum
 } // namespace intcoin

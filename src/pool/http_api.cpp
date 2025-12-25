@@ -460,5 +460,24 @@ private:
     std::thread server_thread_;
 };
 
+// Factory and wrapper functions for external use
+HttpApiServer* CreateHttpApiServer(uint16_t port, MiningPoolServer& pool) {
+    return new HttpApiServer(port, pool);
+}
+
+void DestroyHttpApiServer(HttpApiServer* server) {
+    if (server) {
+        server->Stop();
+        delete server;
+    }
+}
+
+Result<void> HttpApiServerStart(HttpApiServer* server) {
+    if (server) {
+        return server->Start();
+    }
+    return Result<void>::Error("Null server pointer");
+}
+
 } // namespace pool
 } // namespace intcoin
