@@ -124,11 +124,11 @@ void test_mnemonic_to_seed() {
 void test_master_key_generation() {
     std::cout << "Testing master key generation...\n";
 
-    // Generate seed
-    std::vector<std::string> mnemonic = {
-        "abandon", "ability", "able", "about", "above", "absent",
-        "absorb", "abstract", "absurd", "abuse", "access", "accident"
-    };
+    // Generate a valid mnemonic and seed
+    auto mnemonic_result = Mnemonic::Generate(12);
+    assert(mnemonic_result.IsOk());
+    std::vector<std::string> mnemonic = *mnemonic_result.value;
+
     auto seed_result = Mnemonic::ToSeed(mnemonic, "");
     assert(seed_result.IsOk());
     auto seed = seed_result.value.value();
@@ -159,12 +159,10 @@ void test_master_key_generation() {
 void test_child_key_derivation() {
     std::cout << "Testing child key derivation...\n";
 
-    // Generate master key
-    std::vector<std::string> mnemonic = {
-        "abandon", "ability", "able", "about", "above", "absent",
-        "absorb", "abstract", "absurd", "abuse", "access", "accident"
-    };
-    auto seed = Mnemonic::ToSeed(mnemonic, "").value.value();
+    // Generate master key from valid mnemonic
+    auto mnemonic_result = Mnemonic::Generate(12);
+    assert(mnemonic_result.IsOk());
+    auto seed = Mnemonic::ToSeed(*mnemonic_result.value, "").value.value();
     auto master = HDKeyDerivation::GenerateMaster(seed).value.value();
 
     // Derive hardened child (m/0')
@@ -247,12 +245,10 @@ void test_derivation_path() {
 void test_full_path_derivation() {
     std::cout << "Testing full BIP44 path derivation...\n";
 
-    // Generate master key
-    std::vector<std::string> mnemonic = {
-        "abandon", "ability", "able", "about", "above", "absent",
-        "absorb", "abstract", "absurd", "abuse", "access", "accident"
-    };
-    auto seed = Mnemonic::ToSeed(mnemonic, "").value.value();
+    // Generate master key from valid mnemonic
+    auto mnemonic_result = Mnemonic::Generate(12);
+    assert(mnemonic_result.IsOk());
+    auto seed = Mnemonic::ToSeed(*mnemonic_result.value, "").value.value();
     auto master = HDKeyDerivation::GenerateMaster(seed).value.value();
 
     // Derive BIP44 path: m/44'/2210'/0'/0/0
@@ -511,10 +507,10 @@ void test_mnemonic_export() {
     config.coin_type = 2210;
 
     // Create wallet with known mnemonic
-    std::vector<std::string> original_mnemonic = {
-        "abandon", "ability", "able", "about", "above", "absent",
-        "absorb", "abstract", "absurd", "abuse", "access", "accident"
-    };
+    // Generate a valid mnemonic
+    auto mnemonic_gen_result = Mnemonic::Generate(12);
+    assert(mnemonic_gen_result.IsOk());
+    std::vector<std::string> original_mnemonic = *mnemonic_gen_result.value;
 
     Wallet wallet(config);
     wallet.Create(original_mnemonic, "");
