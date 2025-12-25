@@ -33,6 +33,7 @@ constexpr char PREFIX_ADDRESS_INDEX = 'i';   // address -> [tx_hashes]
 constexpr char PREFIX_CHAINSTATE = 'c';      // chainstate metadata
 constexpr char PREFIX_PEER = 'p';            // peer_id -> PeerInfo
 constexpr char PREFIX_BLOCK_INDEX = 'x';     // block_hash -> BlockIndex
+constexpr char PREFIX_SPENT_OUTPUTS = 's';   // block_hash -> [SpentOutput]
 
 } // namespace db
 
@@ -103,6 +104,24 @@ struct BlockIndex {
 
     /// Deserialize
     static Result<BlockIndex> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// ============================================================================
+// Spent Output (for reorganization support)
+// ============================================================================
+
+struct SpentOutput {
+    /// The outpoint that was spent
+    OutPoint outpoint;
+
+    /// The output that was spent
+    TxOut output;
+
+    /// Serialize
+    std::vector<uint8_t> Serialize() const;
+
+    /// Deserialize
+    static Result<SpentOutput> Deserialize(const std::vector<uint8_t>& data);
 };
 
 // ============================================================================
@@ -264,6 +283,20 @@ public:
     /// Get all UTXOs for address
     Result<std::vector<std::pair<OutPoint, TxOut>>> GetUTXOsForAddress(
         const std::string& address) const;
+
+    // ------------------------------------------------------------------------
+    // Spent Output Operations (for reorganization support)
+    // ------------------------------------------------------------------------
+
+    /// Store spent outputs for a block
+    Result<void> StoreSpentOutputs(const uint256& block_hash,
+                                   const std::vector<SpentOutput>& spent_outputs);
+
+    /// Get spent outputs for a block
+    Result<std::vector<SpentOutput>> GetSpentOutputs(const uint256& block_hash) const;
+
+    /// Delete spent outputs for a block
+    Result<void> DeleteSpentOutputs(const uint256& block_hash);
 
     // ------------------------------------------------------------------------
     // Chain State Operations

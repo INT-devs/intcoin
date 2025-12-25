@@ -4,6 +4,7 @@
  */
 
 #include "intcoin/block.h"
+#include "intcoin/blockchain.h"
 #include "intcoin/crypto.h"
 #include "intcoin/util.h"
 #include "intcoin/consensus.h"
@@ -133,18 +134,28 @@ uint256 Block::CalculateMerkleRoot() const {
     return intcoin::CalculateMerkleRoot(tx_hashes);
 }
 
-Result<void> Block::Verify() const {
-    // TODO: Implement full block verification
-    // 1. Verify block header
-    // 2. Verify PoW
-    // 3. Verify merkle root
-    // 4. Verify transactions
-    return Result<void>::Error("Not implemented");
+Result<void> Block::Verify(const Blockchain& chain) const {
+    BlockValidator validator(chain);
+    return validator.Validate(*this);
 }
 
-Result<void> Block::VerifyTransactions() const {
-    // TODO: Implement transaction verification
-    return Result<void>::Error("Not implemented");
+Result<void> Block::VerifyTransactions(const Blockchain& chain) const {
+    TxValidator validator(chain);
+
+    for (size_t i = 0; i < transactions.size(); i++) {
+        // Skip coinbase validation (first transaction) - it has different rules
+        if (i == 0) {
+            // Coinbase validation is handled separately
+            continue;
+        }
+
+        auto result = validator.Validate(transactions[i]);
+        if (!result.IsOk()) {
+            return Result<void>::Error("Transaction " + std::to_string(i) + " invalid: " + result.error);
+        }
+    }
+
+    return Result<void>::Ok();
 }
 
 uint64_t Block::GetTotalFees() const {
@@ -402,24 +413,33 @@ const uint256& GetGenesisBlockHash() {
 // Block Validation
 // ============================================================================
 
-Result<void> ValidateBlockHeader(const BlockHeader& header) {
-    // TODO: Implement header validation
-    return Result<void>::Error("Not implemented");
+Result<void> ValidateBlockHeader(const BlockHeader& header, const Blockchain& chain) {
+    BlockValidator validator(chain);
+    return validator.ValidateHeader(header);
 }
 
 Result<void> ValidateBlockStructure(const Block& block) {
-    // TODO: Implement structure validation
-    return Result<void>::Error("Not implemented");
+    // Structure validation doesn't require blockchain state
+    // Just check basic structure (transactions, merkle root, etc.)
+    if (block.transactions.empty()) {
+        return Result<void>::Error("Block has no transactions");
+    }
+
+    // Verify merkle root matches calculated value
+    uint256 calculated_merkle = block.CalculateMerkleRoot();
+    if (block.header.merkle_root != calculated_merkle) {
+        return Result<void>::Error("Invalid merkle root");
+    }
+
+    return Result<void>::Ok();
 }
 
-Result<void> ValidateBlockTransactions(const Block& block) {
-    // TODO: Implement transaction validation
-    return Result<void>::Error("Not implemented");
+Result<void> ValidateBlockTransactions(const Block& block, const Blockchain& chain) {
+    return block.VerifyTransactions(chain);
 }
 
 Result<void> ValidateProofOfWork(const BlockHeader& header) {
-    // TODO: Implement PoW validation
-    return Result<void>::Error("Not implemented");
+    return RandomXValidator::ValidateBlockHash(header);
 }
 
 // ============================================================================

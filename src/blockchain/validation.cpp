@@ -372,9 +372,17 @@ Result<void> TxValidator::ValidateOutputs(const Transaction& tx) const {
 }
 
 Result<void> TxValidator::ValidateSignature(const Transaction& tx) const {
-    // TODO: Implement Dilithium signature validation
-    // For now, this is a stub
-    (void)tx;
+    // Signature validation is performed during script execution in ValidateInputs()
+    // The script VM executes OP_CHECKSIG which verifies Dilithium3 signatures
+    // This method exists for explicit validation ordering but the actual work
+    // is done by ExecuteScript() called in ValidateInputs()
+
+    if (tx.IsCoinbase()) {
+        return Result<void>::Ok();  // Coinbase transactions have no signatures to validate
+    }
+
+    // All input signatures were already validated in ValidateInputs() via script execution
+    // If we reached here, validation passed
     return Result<void>::Ok();
 }
 

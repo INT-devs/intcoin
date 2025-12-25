@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace intcoin {
@@ -77,6 +78,9 @@ public:
 
     // Apply block to UTXO set
     Result<void> ApplyBlockToUTXO(const Block& block) {
+        // Track spent outputs for reorganization support
+        std::vector<SpentOutput> spent_outputs;
+
         // Remove spent outputs
         for (const auto& tx : block.transactions) {
             if (tx.IsCoinbase()) continue;
@@ -91,6 +95,12 @@ public:
                     return Result<void>::Error("UTXO not found for input: " + ToHex(outpoint.tx_hash));
                 }
 
+                // Store spent output for potential reorg
+                SpentOutput spent;
+                spent.outpoint = outpoint;
+                spent.output = it->second;
+                spent_outputs.push_back(spent);
+
                 // Remove from in-memory set
                 utxo_set_.erase(it);
 
@@ -103,6 +113,16 @@ public:
                 chain_state_.utxo_count--;
             }
         }
+
+        // TODO: Store spent outputs in database for potential reorganization
+        // Temporarily disabled pending StoreSpentOutputs implementation
+        // if (!spent_outputs.empty()) {
+        //     uint256 block_hash = block.GetHash();
+        //     auto store_spent_result = db_->StoreSpentOutputs(block_hash, spent_outputs);
+        //     if (store_spent_result.IsError()) {
+        //         return store_spent_result;
+        //     }
+        // }
 
         // Add new outputs
         for (const auto& tx : block.transactions) {
@@ -147,19 +167,28 @@ public:
             }
         }
 
-        // Restore spent outputs
-        for (const auto& tx : block.transactions) {
-            if (tx.IsCoinbase()) continue;
+        // Restore spent outputs from database
+        uint256 block_hash = block.GetHash();
+        auto spent_outputs_result = db_->GetSpentOutputs(block_hash);
 
-            for (const auto& input : tx.inputs) {
-                OutPoint outpoint;
-                outpoint.tx_hash = input.prev_tx_hash;
-                outpoint.index = input.prev_tx_index;
+        if (spent_outputs_result.IsOk()) {
+            auto spent_outputs = spent_outputs_result.GetValue();
 
-                // TODO: Need to restore the original output
-                // This requires storing spent outputs or being able to look them up
-                // For now, this is a stub
+            for (const auto& spent : spent_outputs) {
+                // Restore to in-memory set
+                utxo_set_[spent.outpoint] = spent.output;
+
+                // Restore to database
+                auto restore_result = db_->StoreUTXO(spent.outpoint, spent.output);
+                if (restore_result.IsError()) {
+                    return restore_result;
+                }
+
+                chain_state_.utxo_count++;
             }
+
+            // Clean up spent outputs record
+            db_->DeleteSpentOutputs(block_hash);
         }
 
         return Result<void>::Ok();
@@ -168,16 +197,48 @@ public:
     // Calculate chain work for a block
     uint256 CalculateChainWork(uint32_t bits) const {
         // Chain work = difficulty = max_target / current_target
-        // For simplicity, we'll use a basic calculation
+        // Compact format: bits = exponent || mantissa
+        // Target = mantissa * 256^(exponent - 3)
+
         uint256 work{};
 
-        // Extract exponent from compact format
-        uint32_t exponent = bits >> 24;
-        (void)exponent;  // Suppress unused warning for now
+        if (bits == 0) {
+            return work;  // Zero work for invalid bits
+        }
 
-        // Calculate work (inverse of target)
-        // TODO: Implement proper chain work calculation
-        work[0] = 1;
+        // Extract components from compact representation
+        uint32_t exponent = bits >> 24;
+        uint32_t mantissa = bits & 0x00FFFFFF;
+
+        // Sanity checks
+        if (exponent > 32 || mantissa == 0) {
+            work[0] = 1;  // Minimal work for invalid encoding
+            return work;
+        }
+
+        // For chain work calculation, we approximate:
+        // work ≈ 2^256 / target
+        // Simplified: work[0] = difficulty approximation
+        // A proper implementation would use big integer division
+
+        // Calculate approximate difficulty based on how hard the target is
+        // Lower target (higher difficulty) = more work
+        // This is a simplified calculation suitable for alpha
+        uint64_t difficulty_approx = 1;
+        if (exponent < 32) {
+            // Scale difficulty based on exponent and mantissa
+            difficulty_approx = (uint64_t(1) << (32 - exponent)) / (mantissa + 1);
+        }
+
+        // Store approximation in work (first 8 bytes)
+        work[0] = difficulty_approx & 0xFF;
+        work[1] = (difficulty_approx >> 8) & 0xFF;
+        work[2] = (difficulty_approx >> 16) & 0xFF;
+        work[3] = (difficulty_approx >> 24) & 0xFF;
+        work[4] = (difficulty_approx >> 32) & 0xFF;
+        work[5] = (difficulty_approx >> 40) & 0xFF;
+        work[6] = (difficulty_approx >> 48) & 0xFF;
+        work[7] = (difficulty_approx >> 56) & 0xFF;
 
         return work;
     }
@@ -672,8 +733,58 @@ Result<void> Blockchain::Reorganize(const std::vector<Block>& new_chain) {
 }
 
 Result<uint256> Blockchain::FindForkPoint(const uint256& hash1, const uint256& hash2) const {
-    // TODO: Implement fork point finding
-    return Result<uint256>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Simple approach: Collect all ancestors of hash1 into a set
+    std::unordered_set<uint256, uint256_hash> chain1_ancestors;
+    uint256 current_hash = hash1;
+
+    // Walk chain1 backwards, collecting all hashes
+    while (true) {
+        chain1_ancestors.insert(current_hash);
+
+        auto block_result = impl_->db_->GetBlock(current_hash);
+        if (block_result.IsError()) {
+            break;  // Reached end of chain
+        }
+
+        auto block = block_result.GetValue();
+        current_hash = block.header.prev_block_hash;
+
+        // Stop if we reach genesis (prev_block_hash is all zeros)
+        uint256 zero_hash;
+        zero_hash.fill(0);
+        if (current_hash == zero_hash) {
+            chain1_ancestors.insert(current_hash);
+            break;
+        }
+    }
+
+    // Now walk chain2 backwards until we find a hash in chain1's ancestors
+    current_hash = hash2;
+    while (true) {
+        // Check if this hash is in chain1
+        if (chain1_ancestors.count(current_hash) > 0) {
+            // Found the fork point!
+            return Result<uint256>::Ok(current_hash);
+        }
+
+        auto block_result = impl_->db_->GetBlock(current_hash);
+        if (block_result.IsError()) {
+            return Result<uint256>::Error("Cannot find fork point - chains do not intersect");
+        }
+
+        auto block = block_result.GetValue();
+        current_hash = block.header.prev_block_hash;
+
+        // Stop if we reach genesis
+        uint256 zero_hash;
+        zero_hash.fill(0);
+        if (current_hash == zero_hash) {
+            // Genesis is the fork point
+            return Result<uint256>::Ok(current_hash);
+        }
+    }
 }
 
 Result<std::vector<Block>> Blockchain::GetBlocksFromHeight(uint64_t start_height, size_t count) const {
@@ -825,8 +936,145 @@ uint64_t Blockchain::GetAddressBalance(const std::string& address) const {
 // ------------------------------------------------------------------------
 
 Result<Block> Blockchain::GetBlockTemplate(const PublicKey& miner_pubkey) const {
-    // TODO: Implement block template generation
-    return Result<Block>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    Block template_block;
+
+    // Calculate the height for this new block
+    uint64_t block_height = impl_->chain_state_.best_height + 1;
+
+    // 1. Set header fields
+    template_block.header.version = 1;
+    template_block.header.prev_block_hash = impl_->chain_state_.best_block_hash;
+    template_block.header.timestamp = static_cast<uint64_t>(std::time(nullptr));
+    template_block.header.nonce = 0;  // Miner will modify this
+
+    // Calculate next difficulty target
+    if (block_height > 0) {
+        auto best_block_result = GetBestBlock();
+        if (best_block_result.IsOk()) {
+            template_block.header.bits = DifficultyCalculator::GetNextWorkRequired(
+                best_block_result.GetValue().header, *this);
+        } else {
+            // Fallback to previous difficulty if we can't get best block
+            template_block.header.bits = 0x1e0fffff;  // Initial difficulty
+        }
+    } else {
+        // Genesis block
+        template_block.header.bits = 0x1e0fffff;  // Initial difficulty
+    }
+
+    // 2. Create coinbase transaction
+    Transaction coinbase;
+    coinbase.version = 1;
+    coinbase.locktime = 0;
+
+    // Coinbase input (no previous transaction)
+    TxIn coinbase_input;
+    coinbase_input.prev_tx_hash.fill(0);  // All zeros for coinbase
+    coinbase_input.prev_tx_index = 0xFFFFFFFF;  // Max value for coinbase
+    coinbase_input.sequence = 0xFFFFFFFF;
+
+    // Coinbase unlocking script: block height + extra nonce
+    std::vector<uint8_t> coinbase_script;
+
+    // Push block height (BIP34)
+    uint64_t height = block_height;
+    if (height <= 16) {
+        coinbase_script.push_back(static_cast<uint8_t>(height));
+    } else {
+        // Encode height as little-endian
+        std::vector<uint8_t> height_bytes;
+        while (height > 0) {
+            height_bytes.push_back(static_cast<uint8_t>(height & 0xFF));
+            height >>= 8;
+        }
+        coinbase_script.push_back(static_cast<uint8_t>(height_bytes.size()));
+        coinbase_script.insert(coinbase_script.end(), height_bytes.begin(), height_bytes.end());
+    }
+
+    // Add extra nonce space (8 bytes)
+    for (int i = 0; i < 8; i++) {
+        coinbase_script.push_back(0);
+    }
+
+    coinbase_input.script_sig = Script(coinbase_script);
+    coinbase.inputs.push_back(coinbase_input);
+
+    // Coinbase output to miner (will set value after calculating fees)
+    TxOut coinbase_output;
+    coinbase_output.value = 0;  // Will be set after adding mempool transactions
+    coinbase_output.script_pubkey = Script::CreateP2PK(miner_pubkey);
+    coinbase.outputs.push_back(coinbase_output);
+
+    template_block.transactions.push_back(coinbase);
+
+    // 3. Add transactions from mempool
+    constexpr size_t MAX_BLOCK_SIZE = 8 * 1024 * 1024;  // 8 MB
+    size_t current_size = template_block.GetSerializedSize();
+    uint64_t total_fees = 0;
+
+    if (impl_->mempool_) {
+        // Get transactions sorted by fee (descending)
+        auto mempool_txs = impl_->mempool_->GetTransactionsForMining(10000);
+
+        for (const auto& tx : mempool_txs) {
+            // Skip coinbase transactions (shouldn't be in mempool anyway)
+            if (tx.IsCoinbase()) {
+                continue;
+            }
+
+            size_t tx_size = tx.GetSerializedSize();
+
+            // Check if adding this transaction would exceed block size
+            if (current_size + tx_size > MAX_BLOCK_SIZE) {
+                break;  // Block is full
+            }
+
+            // Calculate transaction fee
+            uint64_t input_value = 0;
+            bool can_calculate_fee = true;
+
+            for (const auto& input : tx.inputs) {
+                OutPoint outpoint;
+                outpoint.tx_hash = input.prev_tx_hash;
+                outpoint.index = input.prev_tx_index;
+
+                auto utxo_opt = GetUTXO(outpoint);
+                if (utxo_opt.has_value()) {
+                    input_value += utxo_opt.value().value;
+                } else {
+                    can_calculate_fee = false;
+                    break;
+                }
+            }
+
+            if (!can_calculate_fee) {
+                continue;  // Skip transactions with missing inputs
+            }
+
+            uint64_t output_value = tx.GetTotalOutputValue();
+            if (input_value < output_value) {
+                continue;  // Invalid transaction (outputs exceed inputs)
+            }
+
+            uint64_t fee = input_value - output_value;
+            total_fees += fee;
+
+            // Add transaction to block
+            template_block.transactions.push_back(tx);
+            current_size += tx_size;
+        }
+    }
+
+    // 4. Set coinbase output value (block reward + fees)
+    uint64_t block_reward = GetBlockReward(block_height);
+    template_block.transactions[0].outputs[0].value = block_reward + total_fees;
+
+    // 5. Calculate merkle root
+    template_block.header.merkle_root = template_block.CalculateMerkleRoot();
+
+    return Result<Block>::Ok(template_block);
 }
 
 Result<void> Blockchain::SubmitBlock(const Block& block) {

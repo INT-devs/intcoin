@@ -239,9 +239,8 @@ public:
                     std::copy(pubkey_bytes.begin(), pubkey_bytes.end(), pubkey.begin());
                     std::copy(signature_bytes.begin(), signature_bytes.end(), signature.begin());
 
-                    // Get transaction hash for signing
-                    // TODO: Need proper transaction serialization without signatures
-                    uint256 tx_hash = tx->GetHash();
+                    // Get transaction hash for signing (proper SIGHASH_ALL verification)
+                    uint256 tx_hash = tx->GetHashForSigning(SIGHASH_ALL, input_index);
 
                     auto result = DilithiumCrypto::VerifyHash(tx_hash, signature, pubkey);
                     stack.push_back(result.IsOk() ? std::vector<uint8_t>{1} : std::vector<uint8_t>{0});

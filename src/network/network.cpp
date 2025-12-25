@@ -1412,11 +1412,13 @@ Result<void> MessageHandler::HandleBlock(Peer& peer,
     auto block_hash = block.GetHash();
 
     // Basic validation
-    // 1. Verify block structure and PoW
-    auto verify_result = block.Verify();
-    if (verify_result.IsError()) {
-        peer.IncreaseBanScore(100); // Severe violation
-        return Result<void>::Error("Block verification failed: " + verify_result.error);
+    // 1. Verify block structure and PoW (requires blockchain for full validation)
+    if (blockchain) {
+        auto verify_result = block.Verify(*blockchain);
+        if (verify_result.IsError()) {
+            peer.IncreaseBanScore(100); // Severe violation
+            return Result<void>::Error("Block verification failed: " + verify_result.error);
+        }
     }
 
     // 2. Check block timestamp (not too far in the future)
@@ -1448,7 +1450,7 @@ Result<void> MessageHandler::HandleBlock(Peer& peer,
         }
 
         // 5. Validate all transactions in the block
-        auto tx_validate_result = block.VerifyTransactions();
+        auto tx_validate_result = block.VerifyTransactions(*blockchain);
         if (tx_validate_result.IsError()) {
             peer.IncreaseBanScore(50);
             return Result<void>::Error("Block transaction validation failed: " + tx_validate_result.error);

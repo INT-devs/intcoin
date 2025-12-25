@@ -83,10 +83,10 @@ public:
     uint256 CalculateMerkleRoot() const;
 
     /// Verify block structure and PoW
-    Result<void> Verify() const;
+    Result<void> Verify(const class Blockchain& chain) const;
 
     /// Verify all transactions
-    Result<void> VerifyTransactions() const;
+    Result<void> VerifyTransactions(const class Blockchain& chain) const;
 
     /// Get total transaction fees
     uint64_t GetTotalFees() const;
@@ -125,13 +125,13 @@ const uint256& GetGenesisBlockHash();
 // ============================================================================
 
 /// Validate block header
-Result<void> ValidateBlockHeader(const BlockHeader& header);
+Result<void> ValidateBlockHeader(const BlockHeader& header, const class Blockchain& chain);
 
 /// Validate block structure
 Result<void> ValidateBlockStructure(const Block& block);
 
 /// Validate block transactions
-Result<void> ValidateBlockTransactions(const Block& block);
+Result<void> ValidateBlockTransactions(const Block& block, const class Blockchain& chain);
 
 /// Validate block PoW
 Result<void> ValidateProofOfWork(const BlockHeader& header);

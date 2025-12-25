@@ -19,6 +19,11 @@
 #include <QStackedWidget>
 #include <QMessageBox>
 #include <QFileDialog>
+#include <QInputDialog>
+#include <QVBoxLayout>
+#include <QLineEdit>
+#include <QLabel>
+#include <QDialogButtonBox>
 #include <QApplication>
 
 namespace intcoin {
@@ -298,8 +303,88 @@ void MainWindow::updateStatus() {
 }
 
 void MainWindow::createNewWallet() {
-    QMessageBox::information(this, tr("Create New Wallet"),
-        tr("New wallet creation not yet implemented."));
+    // Create dialog for password input
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Create New Wallet"));
+
+    QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+    QLabel* infoLabel = new QLabel(tr("A new HD wallet will be created with a BIP39 mnemonic phrase.\n"
+                                       "Please enter a strong password to encrypt your wallet:"));
+    layout->addWidget(infoLabel);
+
+    QLineEdit* passwordEdit = new QLineEdit();
+    passwordEdit->setEchoMode(QLineEdit::Password);
+    passwordEdit->setPlaceholderText(tr("Enter password (min 8 characters)"));
+    layout->addWidget(passwordEdit);
+
+    QLineEdit* confirmEdit = new QLineEdit();
+    confirmEdit->setEchoMode(QLineEdit::Password);
+    confirmEdit->setPlaceholderText(tr("Confirm password"));
+    layout->addWidget(confirmEdit);
+
+    QDialogButtonBox* buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    layout->addWidget(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString password = passwordEdit->text();
+        QString confirm = confirmEdit->text();
+
+        if (password != confirm) {
+            QMessageBox::warning(this, tr("Error"), tr("Passwords do not match"));
+            return;
+        }
+
+        if (password.length() < 8) {
+            QMessageBox::warning(this, tr("Error"),
+                tr("Password must be at least 8 characters"));
+            return;
+        }
+
+        // Generate new mnemonic (wallet will generate internally)
+        std::vector<std::string> mnemonic;  // Empty = auto-generate
+
+        // Create new wallet
+        auto create_result = wallet_->Create(mnemonic, "");
+        if (create_result.IsError()) {
+            QMessageBox::critical(this, tr("Error"),
+                QString::fromStdString("Failed to create wallet: " + create_result.error));
+            return;
+        }
+
+        // Encrypt wallet
+        auto encrypt_result = wallet_->Encrypt(password.toStdString());
+        if (encrypt_result.IsError()) {
+            QMessageBox::critical(this, tr("Error"),
+                QString::fromStdString("Failed to encrypt wallet: " + encrypt_result.error));
+            return;
+        }
+
+        // Get mnemonic for backup
+        auto mnemonic_result = wallet_->GetMnemonic();
+        if (mnemonic_result.IsOk()) {
+            auto mnemonic_words = mnemonic_result.GetValue();
+
+            // Show mnemonic phrase
+            QString mnemonic_text;
+            for (size_t i = 0; i < mnemonic_words.size(); i++) {
+                mnemonic_text += QString::number(i + 1) + ". " +
+                                QString::fromStdString(mnemonic_words[i]) + "\n";
+            }
+
+            QMessageBox::information(this, tr("Backup Your Wallet"),
+                tr("IMPORTANT: Write down this recovery phrase and store it safely.\n\n"
+                   "Recovery Phrase:\n\n%1\n\n"
+                   "Anyone with this phrase can restore your wallet!").arg(mnemonic_text));
+        }
+
+        QMessageBox::information(this, tr("Success"),
+            tr("New wallet created and encrypted successfully!"));
+    }
 }
 
 void MainWindow::openWallet() {
@@ -307,8 +392,20 @@ void MainWindow::openWallet() {
         tr("Open Wallet"), "", tr("Wallet Files (*.dat)"));
 
     if (!fileName.isEmpty()) {
+        // Close current wallet if loaded
+        if (wallet_->IsLoaded()) {
+            auto close_result = wallet_->Close();
+            if (close_result.IsError()) {
+                QMessageBox::warning(this, tr("Warning"),
+                    QString::fromStdString("Failed to close current wallet: " + close_result.error));
+            }
+        }
+
+        // Load new wallet
+        // Note: This requires wallet path configuration, which may need wallet config update
         QMessageBox::information(this, tr("Open Wallet"),
-            tr("Wallet opening not yet implemented."));
+            tr("Wallet file selected: %1\n\nNote: Full wallet loading requires "
+               "wallet path configuration update.").arg(fileName));
     }
 }
 
@@ -317,24 +414,125 @@ void MainWindow::backupWallet() {
         tr("Backup Wallet"), "wallet-backup.dat", tr("Wallet Files (*.dat)"));
 
     if (!fileName.isEmpty()) {
-        QMessageBox::information(this, tr("Backup Wallet"),
-            tr("Wallet backup not yet implemented."));
+        auto result = wallet_->BackupWallet(fileName.toStdString());
+
+        if (result.IsOk()) {
+            QMessageBox::information(this, tr("Success"),
+                tr("Wallet backed up successfully to:\n%1").arg(fileName));
+        } else {
+            QMessageBox::critical(this, tr("Error"),
+                QString::fromStdString("Backup failed: " + result.error));
+        }
     }
 }
 
 void MainWindow::encryptWallet() {
-    QMessageBox::information(this, tr("Encrypt Wallet"),
-        tr("Wallet encryption not yet implemented."));
+    if (wallet_->IsEncrypted()) {
+        QMessageBox::information(this, tr("Already Encrypted"),
+            tr("Wallet is already encrypted."));
+        return;
+    }
+
+    // Get password
+    QInputDialog dialog(this);
+    dialog.setWindowTitle(tr("Encrypt Wallet"));
+    dialog.setLabelText(tr("Enter new password (min 8 characters):"));
+    dialog.setTextEchoMode(QLineEdit::Password);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString password = dialog.textValue();
+
+        if (password.length() < 8) {
+            QMessageBox::warning(this, tr("Error"),
+                tr("Password must be at least 8 characters"));
+            return;
+        }
+
+        // Confirm password
+        QInputDialog confirmDialog(this);
+        confirmDialog.setWindowTitle(tr("Confirm Password"));
+        confirmDialog.setLabelText(tr("Confirm password:"));
+        confirmDialog.setTextEchoMode(QLineEdit::Password);
+
+        if (confirmDialog.exec() == QDialog::Accepted) {
+            QString confirm = confirmDialog.textValue();
+
+            if (password != confirm) {
+                QMessageBox::warning(this, tr("Error"),
+                    tr("Passwords do not match"));
+                return;
+            }
+
+            auto result = wallet_->Encrypt(password.toStdString());
+
+            if (result.IsOk()) {
+                QMessageBox::information(this, tr("Success"),
+                    tr("Wallet encrypted successfully!\n\nYou will need this password "
+                       "to unlock your wallet and send transactions."));
+            } else {
+                QMessageBox::critical(this, tr("Error"),
+                    QString::fromStdString("Encryption failed: " + result.error));
+            }
+        }
+    }
 }
 
 void MainWindow::unlockWallet() {
-    QMessageBox::information(this, tr("Unlock Wallet"),
-        tr("Wallet unlock not yet implemented."));
+    if (!wallet_->IsEncrypted()) {
+        QMessageBox::information(this, tr("Not Encrypted"),
+            tr("Wallet is not encrypted."));
+        return;
+    }
+
+    if (!wallet_->IsLocked()) {
+        QMessageBox::information(this, tr("Already Unlocked"),
+            tr("Wallet is already unlocked."));
+        return;
+    }
+
+    // Get password
+    QInputDialog dialog(this);
+    dialog.setWindowTitle(tr("Unlock Wallet"));
+    dialog.setLabelText(tr("Enter wallet password:"));
+    dialog.setTextEchoMode(QLineEdit::Password);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString password = dialog.textValue();
+
+        auto result = wallet_->Unlock(password.toStdString(), 0);  // 0 = no timeout
+
+        if (result.IsOk()) {
+            QMessageBox::information(this, tr("Success"),
+                tr("Wallet unlocked successfully!"));
+        } else {
+            QMessageBox::critical(this, tr("Error"),
+                QString::fromStdString("Unlock failed: " + result.error));
+        }
+    }
 }
 
 void MainWindow::lockWallet() {
-    QMessageBox::information(this, tr("Lock Wallet"),
-        tr("Wallet lock not yet implemented."));
+    if (!wallet_->IsEncrypted()) {
+        QMessageBox::information(this, tr("Not Encrypted"),
+            tr("Wallet is not encrypted."));
+        return;
+    }
+
+    if (wallet_->IsLocked()) {
+        QMessageBox::information(this, tr("Already Locked"),
+            tr("Wallet is already locked."));
+        return;
+    }
+
+    auto result = wallet_->Lock();
+
+    if (result.IsOk()) {
+        QMessageBox::information(this, tr("Success"),
+            tr("Wallet locked successfully."));
+    } else {
+        QMessageBox::critical(this, tr("Error"),
+            QString::fromStdString("Lock failed: " + result.error));
+    }
 }
 
 } // namespace qt

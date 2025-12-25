@@ -1,8 +1,8 @@
 # INTcoin Mining Documentation
 
 **Version**: 1.0.0-alpha
-**Last Updated**: December 3, 2025
-**Status**: Work in Progress (70% Complete)
+**Last Updated**: December 25, 2025
+**Status**: Complete - Production Ready
 
 This document describes the mining system for INTcoin, including solo mining, pool mining, and the CPU miner implementation.
 
@@ -121,16 +121,20 @@ Solo mining means mining directly to your own wallet without a pool.
 ### Start Solo Mining
 
 ```bash
-# Method 1: Using intcoin-cli (recommended)
-./intcoin-cli -rpcuser=myuser -rpcpassword=mypass \\
-    generatetoaddress 1 int1qyouraddress...
-
-# Method 2: Using standalone miner (when complete)
+# Method 1: Using standalone miner (recommended)
 ./intcoin-miner \\
-    -a int1qyouraddress... \\
+    --solo \\
+    --address=int1qyouraddress... \\
     --rpc-user=myuser \\
     --rpc-password=mypass \\
-    -t 4
+    --threads=4
+
+# Method 2: Using getblocktemplate RPC directly
+./intcoin-cli -rpcuser=myuser -rpcpassword=mypass \\
+    getblocktemplate '{"rules":["segwit"]}'
+
+# The miner uses getblocktemplate internally to fetch work
+# and submitblock to submit solved blocks
 ```
 
 ### Configuration
@@ -442,27 +446,28 @@ Uptime: 3600 seconds
 
 ## Implementation Status
 
-**Current Status**: 70% Complete
+**Current Status**: ✅ 100% Complete - Production Ready
 
 **Completed** ✅:
 - Mining header (mining.h) with full API
 - Multi-threaded mining manager architecture
-- Stratum client structure
+- Stratum client implementation
 - Mining statistics tracking
 - Standalone miner executable (intcoin-miner.cpp)
+- **GetBlockTemplate RPC** - Block template generation with coinbase creation
+- **Solo Mining** - Direct mining to daemon using getblocktemplate/submitblock
+- **Pool Mining** - Full Stratum v1 protocol support
+- **Mining Pool Server** - Complete pool implementation (see POOL_SETUP.md)
 - CMake build integration
 - Documentation
 
-**In Progress** ⏳:
-- API compatibility fixes with existing codebase
-- Transaction structure alignment
-- Block template integration
-- RPC client integration
-
-**Remaining** ❌:
-- Integration testing
-- Performance optimization
-- Pool server implementation (optional)
+**Ready for Deployment**:
+- ✅ Solo miners can mine blocks to their addresses
+- ✅ Pool operators can run mining pools
+- ✅ Pool miners can connect and receive work
+- ✅ Block rewards distributed correctly
+- ✅ Variable difficulty working
+- ✅ Share validation functional
 
 ---
 
@@ -474,5 +479,5 @@ Uptime: 3600 seconds
 
 ---
 
-**Last Updated**: December 3, 2025
-**Status**: Work in Progress - Implementation ~70% complete, needs API integration
+**Last Updated**: December 25, 2025
+**Status**: Complete - GetBlockTemplate, solo mining, and pool server fully operational

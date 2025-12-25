@@ -1,6 +1,6 @@
 # INTcoin Core
 
-**Version 1.0.0-alpha** | **License: MIT** | **Status: 99% Complete - Mainnet Launch Q1 2026**
+**Version 1.0.0-alpha** | **License: MIT** | **Status: Release Candidate - Mainnet Launch Q1 2026**
 
 A next-generation cryptocurrency built on post-quantum cryptography (Dilithium3) with full Lightning Network support, designed to secure value in the quantum computing era.
 
@@ -68,9 +68,10 @@ Features:
 ### Mining
 
 - **Algorithm**: RandomX (CPU-optimized, ASIC-resistant)
-- **Pool Support**: Stratum protocol with failover
-- **Solo Mining**: Direct mining to daemon
-- **Hashrate**: Auto-adjusted difficulty every 1440 blocks (~2 days)
+- **Solo Mining**: GetBlockTemplate RPC for direct mining
+- **Pool Support**: Full Stratum v1 protocol with VarDiff
+- **Pool Server**: Built-in mining pool server with HTTP API
+- **Difficulty**: Digishield V3 adjustment (every block, 60-block window)
 
 ### Wallet
 
@@ -121,25 +122,36 @@ make -j$(sysctl -n hw.ncpu)
 
 # Start Qt wallet
 ./build/bin/intcoin-qt
+
+# Start mining pool server
+./build/bin/intcoin-pool-server --config=pool.conf
 ```
 
 ### Mining
 
 ```bash
-# Solo mining
+# Solo mining (using GetBlockTemplate RPC)
 ./build/bin/intcoin-miner \
+  --solo \
   --address=int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh \
   --rpc-user=user \
   --rpc-password=pass \
   --threads=4
 
-# Pool mining
+# Pool mining (Stratum protocol)
 ./build/bin/intcoin-miner \
   --pool \
   --pool-host=pool.international-coin.org \
   --pool-port=3333 \
-  --pool-user=worker1 \
+  --pool-user=worker1.miner01 \
+  --pool-password=x \
   --threads=4
+
+# Run a mining pool
+./build/bin/intcoin-pool-server \
+  --stratum-port=3333 \
+  --http-port=8080 \
+  --payout-threshold=1000000000
 ```
 
 ---
@@ -153,8 +165,8 @@ make -j$(sysctl -n hw.ncpu)
 
 ### User Guides
 - [Wallet Guide](docs/WALLET.md)
-- [Mining Guide](docs/MINER_GUIDE.md)
-- [Mining Pool Guide](docs/Mining-Pool-Stratum.md)
+- [Mining Guide](docs/MINING.md)
+- [Pool Setup Guide](docs/POOL_SETUP.md)
 - [Privacy Guide](docs/PRIVACY.md)
 
 ### Technical Documentation
@@ -175,23 +187,25 @@ make -j$(sysctl -n hw.ncpu)
 
 ## Project Status
 
-**Development Progress: 99% Complete**
+**Development Progress: v1.0.0-alpha Release Candidate**
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Core Blockchain | ✅ 100% | UTXO, consensus, validation complete |
+| Core Blockchain | ✅ 100% | UTXO, consensus, validation, reorg support complete |
 | Cryptography | ✅ 100% | Dilithium3, SHA3-256 implemented |
-| Mining | ✅ 100% | RandomX PoW, pool support |
-| Lightning Network | ✅ 95% | BOLT #1-12 framework complete |
-| Qt Wallet | ✅ 100% | Full-featured desktop wallet |
+| Mining | ✅ 100% | GetBlockTemplate, RandomX PoW, solo + pool mining |
+| Mining Pool Server | ✅ 100% | Stratum protocol, VarDiff, HTTP API, database |
+| Lightning Network | ⏳ 57% | BOLT #1-12 framework (deferred to v1.0.0-beta) |
+| Qt Wallet | ✅ 100% | Full-featured desktop wallet with all dialogs |
 | RPC Server | ✅ 100% | JSON-RPC 2.0 with authentication |
 | P2P Network | ✅ 100% | Peer discovery, relay, sync |
 | Security | ✅ 100% | Sanitization, fuzzing, audits |
-| Testing | ✅ 100% | 12 test suites, 45+ tests passing |
-| Documentation | ✅ 100% | 100+ pages of comprehensive docs |
+| Testing | ⏳ 85% | Core tests passing, pool/Qt tests pending |
+| Documentation | ⏳ 90% | Core docs complete, pool setup guide pending |
 | CI/CD | ✅ 100% | Automated builds and tests |
 
-**Next Milestone**: Mainnet Launch (Q1 2026)
+**v1.0.0-alpha**: All core functionality operational
+**Next Milestone**: v1.0.0-beta (Lightning Network business logic - February 2026)
 
 ---
 
@@ -359,4 +373,4 @@ See [ROADMAP.md](ROADMAP.md) for our 10-year development plan.
 
 ---
 
-*Last Updated: December 23, 2025*
+*Last Updated: December 25, 2025 - v1.0.0-alpha Release Candidate*

@@ -438,6 +438,9 @@ cmake --build . --config Release --target intcoin-qt
 # Build the miner
 cmake --build . --config Release --target intcoin-miner
 
+# Build the pool server
+cmake --build . --config Release --target intcoin-pool-server
+
 # Build the wallet utility
 cmake --build . --config Release --target wallet-tool
 ```
@@ -447,11 +450,12 @@ cmake --build . --config Release --target wallet-tool
 The `.exe` files will be in:
 ```
 build\bin\Release\
-├── intcoind.exe        (~8.5 MB)  - Full node daemon
-├── intcoin-cli.exe     (~850 KB)  - Command-line interface
-├── intcoin-qt.exe      (~12 MB)   - Desktop wallet GUI
-├── intcoin-miner.exe   (~8.2 MB)  - CPU miner
-└── wallet-tool.exe     (~1.2 MB)  - Wallet management utility
+├── intcoind.exe              (~8.5 MB)  - Full node daemon
+├── intcoin-cli.exe           (~850 KB)  - Command-line interface
+├── intcoin-qt.exe            (~12 MB)   - Desktop wallet GUI
+├── intcoin-miner.exe         (~8.2 MB)  - CPU miner
+├── intcoin-pool-server.exe   (~9.0 MB)  - Mining pool server
+└── wallet-tool.exe           (~1.2 MB)  - Wallet management utility
 ```
 
 #### Create Distribution Package
@@ -833,6 +837,7 @@ After running the installation scripts:
 - `intcoin-cli` - Command-line interface (73 KB)
 - `intcoin-qt` - Qt desktop wallet (180 KB)
 - `intcoin-miner` - CPU miner (7.0 MB)
+- `intcoin-pool-server` - Mining pool server (8.5 MB)
 - `wallet-tool` - Wallet management utility
 
 **Libraries** (`/usr/local/lib/`):
