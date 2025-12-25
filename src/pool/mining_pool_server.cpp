@@ -512,7 +512,7 @@ Result<void> MiningPoolServer::ProcessBlockFound(const Share& share) {
             return Result<void>::Error("Block submission failed: " + submit_result.error);
         }
 
-        impl_->current_round_.block_height = found_block.header.height;
+        impl_->current_round_.block_height = found_block.GetHeight();
         impl_->current_round_.block_reward = found_block.transactions[0].outputs[0].value;
     }
 
@@ -569,7 +569,9 @@ Result<Work> MiningPoolServer::CreateWork(bool clean_jobs) {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
 
     // Get block template from blockchain
-    auto template_result = impl_->blockchain_->GetBlockTemplate(impl_->miner_->GetPublicKey());
+    // Use pool address for coinbase payout
+    PublicKey pool_pubkey;  // TODO: Parse impl_->config_.pool_address to PublicKey
+    auto template_result = impl_->blockchain_->GetBlockTemplate(pool_pubkey);
     if (template_result.IsError()) {
         return Result<Work>::Error("Failed to get block template: " + template_result.error);
     }
@@ -583,7 +585,7 @@ Result<Work> MiningPoolServer::CreateWork(bool clean_jobs) {
     work.coinbase_tx = block_template.transactions[0];
     work.transactions.assign(block_template.transactions.begin() + 1, block_template.transactions.end());
     work.merkle_root = block_template.header.merkle_root;
-    work.height = block_template.header.height;
+    work.height = block_template.GetHeight();
     work.difficulty = impl_->blockchain_->GetDifficulty();
     work.created_at = std::chrono::system_clock::now();
     work.clean_jobs = clean_jobs;

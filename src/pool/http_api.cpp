@@ -8,6 +8,7 @@
 #include "intcoin/rpc.h"
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 
 namespace intcoin {
 namespace pool {
@@ -28,7 +29,9 @@ namespace pool {
 class HttpApiServer {
 public:
     HttpApiServer(uint16_t port, MiningPoolServer& pool)
-        : port_(port), pool_(pool), is_running_(false) {}
+        : port_(port), pool_(pool), is_running_(false) {
+        (void)port_;  // TODO: Use when implementing HTTP server
+    }
 
     Result<void> Start() {
         // TODO: Implement HTTP server
@@ -56,13 +59,13 @@ public:
     rpc::JSONValue GetPoolStats() {
         auto stats = pool_.GetStatistics();
 
-        rpc::JSONObject response;
-        response["hashrate"] = static_cast<int64_t>(stats.pool_hashrate);
-        response["difficulty"] = static_cast<int64_t>(stats.network_difficulty);
-        response["miners"] = static_cast<int64_t>(stats.active_miners);
-        response["blocks_found"] = static_cast<int64_t>(stats.blocks_found);
-        response["total_shares"] = static_cast<int64_t>(stats.total_shares);
-        response["valid_shares_24h"] = static_cast<int64_t>(stats.shares_last_day);
+        std::map<std::string, rpc::JSONValue> response;
+        response["hashrate"] = rpc::JSONValue(static_cast<int64_t>(stats.pool_hashrate));
+        response["difficulty"] = rpc::JSONValue(static_cast<int64_t>(stats.network_difficulty));
+        response["miners"] = rpc::JSONValue(static_cast<int64_t>(stats.active_miners));
+        response["blocks_found"] = rpc::JSONValue(static_cast<int64_t>(stats.blocks_found));
+        response["total_shares"] = rpc::JSONValue(static_cast<int64_t>(stats.total_shares));
+        response["valid_shares_24h"] = rpc::JSONValue(static_cast<int64_t>(stats.shares_last_day));
 
         return rpc::JSONValue(response);
     }
@@ -79,14 +82,15 @@ public:
         for (const auto& round : rounds) {
             if (!round.is_complete) continue;
 
-            rpc::JSONObject block;
-            block["height"] = static_cast<int64_t>(round.block_height);
-            block["hash"] = ToHex(round.block_hash);
-            block["timestamp"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-                round.ended_at.time_since_epoch()).count();
-            block["finder"] = "pool";  // TODO: Get actual finder
-            block["reward"] = static_cast<int64_t>(round.block_reward);
-            block["status"] = "confirmed";  // TODO: Check actual status
+            std::map<std::string, rpc::JSONValue> block;
+            block["height"] = rpc::JSONValue(static_cast<int64_t>(round.block_height));
+            block["hash"] = rpc::JSONValue(ToHex(round.block_hash));
+            block["timestamp"] = rpc::JSONValue(static_cast<int64_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    round.ended_at.time_since_epoch()).count()));
+            block["finder"] = rpc::JSONValue("pool");  // TODO: Get actual finder
+            block["reward"] = rpc::JSONValue(static_cast<int64_t>(round.block_reward));
+            block["status"] = rpc::JSONValue("confirmed");  // TODO: Check actual status
 
             blocks.push_back(rpc::JSONValue(block));
         }
@@ -123,11 +127,11 @@ public:
         for (size_t i = 0; i < std::min(static_cast<size_t>(limit), miners.size()); i++) {
             const auto& miner = miners[i];
 
-            rpc::JSONObject miner_obj;
-            miner_obj["rank"] = static_cast<int64_t>(i + 1);
-            miner_obj["address"] = miner.payout_address;
-            miner_obj["hashrate"] = static_cast<int64_t>(pool_.CalculateMinerHashrate(miner.miner_id));
-            miner_obj["shares"] = static_cast<int64_t>(miner.total_shares_accepted);
+            std::map<std::string, rpc::JSONValue> miner_obj;
+            miner_obj["rank"] = rpc::JSONValue(static_cast<int64_t>(i + 1));
+            miner_obj["address"] = rpc::JSONValue(miner.payout_address);
+            miner_obj["hashrate"] = rpc::JSONValue(static_cast<int64_t>(pool_.CalculateMinerHashrate(miner.miner_id)));
+            miner_obj["shares"] = rpc::JSONValue(static_cast<int64_t>(miner.total_shares_accepted));
 
             top_miners.push_back(rpc::JSONValue(miner_obj));
         }
@@ -145,20 +149,20 @@ public:
 
         for (const auto& miner : miners) {
             if (miner.payout_address == address) {
-                rpc::JSONObject stats;
-                stats["address"] = miner.payout_address;
-                stats["hashrate"] = static_cast<int64_t>(pool_.CalculateMinerHashrate(miner.miner_id));
-                stats["shares"] = static_cast<int64_t>(miner.total_shares_accepted);
-                stats["balance"] = static_cast<int64_t>(miner.unpaid_balance);
-                stats["total_paid"] = static_cast<int64_t>(miner.paid_balance);
+                std::map<std::string, rpc::JSONValue> stats;
+                stats["address"] = rpc::JSONValue(miner.payout_address);
+                stats["hashrate"] = rpc::JSONValue(static_cast<int64_t>(pool_.CalculateMinerHashrate(miner.miner_id)));
+                stats["shares"] = rpc::JSONValue(static_cast<int64_t>(miner.total_shares_accepted));
+                stats["balance"] = rpc::JSONValue(static_cast<int64_t>(miner.unpaid_balance));
+                stats["total_paid"] = rpc::JSONValue(static_cast<int64_t>(miner.paid_balance));
 
                 return rpc::JSONValue(stats);
             }
         }
 
         // Worker not found
-        rpc::JSONObject error;
-        error["error"] = "Worker not found";
+        std::map<std::string, rpc::JSONValue> error;
+        error["error"] = rpc::JSONValue("Worker not found");
         return rpc::JSONValue(error);
     }
 

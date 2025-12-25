@@ -10,7 +10,6 @@
 #include <fstream>
 
 using namespace intcoin;
-using namespace intcoin::pool;
 
 // Global pool server
 static MiningPoolServer* g_pool_server = nullptr;

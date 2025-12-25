@@ -13,6 +13,9 @@
 #include <fcntl.h>
 #include <thread>
 #include <map>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
 
 // OpenSSL includes for TLS/SSL support
 #ifdef STRATUM_USE_SSL
@@ -180,8 +183,13 @@ Result<std::map<std::string, std::string>> ParseJSON(const std::string& json) {
 
 class StratumServer {
 public:
-    StratumServer(uint16_t port, MiningPoolServer& pool, bool use_ssl = false,
-                  const std::string& cert_file = "", const std::string& key_file = "")
+    StratumServer(uint16_t port, MiningPoolServer& pool
+#ifdef STRATUM_USE_SSL
+                  , bool use_ssl = false
+                  , const std::string& cert_file = ""
+                  , const std::string& key_file = ""
+#endif
+                  )
         : port_(port)
         , pool_(pool)
         , is_running_(false)
@@ -189,9 +197,11 @@ public:
         , next_conn_id_(1)
         , connection_timeout_(300)  // 5 minutes default
         , max_connections_per_ip_(10)
+#ifdef STRATUM_USE_SSL
         , use_ssl_(use_ssl)
         , ssl_cert_file_(cert_file)
         , ssl_key_file_(key_file)
+#endif
         , total_connections_(0)
         , total_shares_(0)
         , total_valid_shares_(0)
@@ -347,9 +357,12 @@ private:
     // Configuration
     uint32_t connection_timeout_;      // Seconds
     uint32_t max_connections_per_ip_;
+
+#ifdef STRATUM_USE_SSL
     bool use_ssl_;
     std::string ssl_cert_file_;
     std::string ssl_key_file_;
+#endif
 
     // Metrics
     std::atomic<uint64_t> total_connections_;
@@ -846,6 +859,7 @@ private:
             return;
         }
         uint32_t ntime = ntime_result.GetValue();
+        (void)ntime;  // TODO: Use ntime in share validation
 
         // Parse extranonce2
         auto extranonce2_result = HexToBytes(extranonce2_hex);
@@ -1037,7 +1051,7 @@ private:
     Result<Message> ParseStratumMessage(const std::string& json) {
         auto parse_result = ParseJSON(json);
         if (parse_result.IsError()) {
-            return Result<Message>::Error(parse_result.GetError());
+            return Result<Message>::Error(parse_result.error);
         }
 
         auto fields = parse_result.GetValue();
