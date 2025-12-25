@@ -44,6 +44,7 @@ option(BUILD_WALLET_QT "Build Qt wallet" ON)
 option(BUILD_DAEMON "Build intcoind daemon" ON)
 option(BUILD_CLI "Build intcoin-cli" ON)
 option(BUILD_MINER "Build miner" ON)
+option(BUILD_POOL_SERVER "Build mining pool server" ON)
 option(BUILD_EXPLORER "Build block explorer" ON)
 option(BUILD_FAUCET "Build testnet faucet" ON)
 option(ENABLE_LIGHTNING "Enable Lightning Network" OFF)  # Deferred
@@ -224,6 +225,10 @@ set(INTCOIN_CORE_SOURCES
 
     # Mining Pool
     src/pool/pool.cpp
+    src/pool/stratum_server.cpp
+    src/pool/mining_pool_server.cpp
+    src/pool/http_api.cpp
+    src/pool/pool_database.cpp
 
     # Block Explorer
     src/explorer/explorer.cpp
@@ -313,6 +318,25 @@ if(BUILD_MINER)
     )
     target_link_libraries(intcoin-miner intcoin_core ${ROCKSDB_LIB})
     install(TARGETS intcoin-miner DESTINATION bin)
+endif()
+
+# intcoin-pool-server
+if(BUILD_POOL_SERVER)
+    find_library(ROCKSDB_LIB rocksdb REQUIRED)
+
+    add_executable(intcoin-pool-server
+        src/pool/intcoin-pool-server.cpp
+    )
+    target_link_libraries(intcoin-pool-server intcoin_core ${ROCKSDB_LIB})
+
+    # Link OpenSSL for SSL/TLS support
+    if(OPENSSL_FOUND)
+        target_link_libraries(intcoin-pool-server OpenSSL::SSL OpenSSL::Crypto)
+    else()
+        target_link_libraries(intcoin-pool-server ssl crypto)
+    endif()
+
+    install(TARGETS intcoin-pool-server DESTINATION bin)
 endif()
 
 # Qt Wallet
