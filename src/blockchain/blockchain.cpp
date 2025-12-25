@@ -1096,20 +1096,111 @@ Blockchain::BlockchainInfo Blockchain::GetInfo() const {
     info.total_transactions = impl_->chain_state_.total_transactions;
     info.total_supply = impl_->chain_state_.total_supply;
     info.utxo_count = impl_->chain_state_.utxo_count;
-    info.verification_progress = 1.0;  // TODO: Calculate actual progress
+
+    // Calculate verification progress based on block timestamp vs current time
+    // Progress = min(1.0, (best_block_timestamp / current_time))
+    if (impl_->chain_state_.best_height > 0) {
+        auto best_block_result = GetBlockByHeight(impl_->chain_state_.best_height);
+        if (best_block_result.IsOk()) {
+            uint64_t best_timestamp = best_block_result.GetValue().header.timestamp;
+            uint64_t current_time = static_cast<uint64_t>(std::time(nullptr));
+
+            if (current_time > 0 && best_timestamp > 0) {
+                double progress = static_cast<double>(best_timestamp) / static_cast<double>(current_time);
+                info.verification_progress = std::min(1.0, progress);
+            } else {
+                info.verification_progress = 1.0;
+            }
+        } else {
+            info.verification_progress = 1.0;
+        }
+    } else {
+        info.verification_progress = 0.0;  // No blocks yet
+    }
+
     info.pruned = false;
 
     return info;
 }
 
 Result<Blockchain::BlockStats> Blockchain::GetBlockStats(const uint256& block_hash) const {
-    // TODO: Implement block stats
-    return Result<BlockStats>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Get the block
+    auto block_result = GetBlock(block_hash);
+    if (!block_result.IsOk()) {
+        return Result<BlockStats>::Error("Block not found: " + block_result.error);
+    }
+
+    auto block = block_result.GetValue();
+
+    // Get block index to retrieve height
+    auto index_result = impl_->db_->GetBlockIndex(block_hash);
+    if (!index_result.IsOk()) {
+        return Result<BlockStats>::Error("Block index not found: " + index_result.error);
+    }
+
+    auto index = index_result.GetValue();
+
+    BlockStats stats;
+    stats.height = index.height;
+    stats.hash = block.GetHash();
+    stats.timestamp = block.header.timestamp;
+    stats.tx_count = static_cast<uint32_t>(block.transactions.size());
+
+    // Calculate total fees (sum of all transaction fees)
+    stats.total_fees = 0;
+    for (size_t i = 1; i < block.transactions.size(); i++) {  // Skip coinbase
+        const auto& tx = block.transactions[i];
+
+        // Calculate input value
+        uint64_t input_value = 0;
+        for (const auto& input : tx.inputs) {
+            OutPoint outpoint{input.prev_tx_hash, input.prev_tx_index};
+            auto utxo_result = impl_->db_->GetUTXO(outpoint);
+            if (utxo_result.IsOk()) {
+                input_value += utxo_result.GetValue().value;
+            }
+        }
+
+        // Calculate output value
+        uint64_t output_value = 0;
+        for (const auto& output : tx.outputs) {
+            output_value += output.value;
+        }
+
+        // Fee is difference
+        if (input_value >= output_value) {
+            stats.total_fees += (input_value - output_value);
+        }
+    }
+
+    // Get block reward from consensus
+    stats.block_reward = GetBlockReward(index.height);
+
+    // Calculate block size and weight
+    auto serialized = block.Serialize();
+    stats.size = static_cast<uint32_t>(serialized.size());
+    stats.weight = static_cast<uint32_t>(serialized.size() * 4);  // Weight = size * 4 (no SegWit)
+
+    // Calculate difficulty from bits
+    stats.difficulty = DifficultyCalculator::GetDifficulty(block.header.bits);
+
+    return Result<BlockStats>::Ok(stats);
 }
 
 Result<Blockchain::BlockStats> Blockchain::GetBlockStatsByHeight(uint64_t height) const {
-    // TODO: Implement block stats by height
-    return Result<BlockStats>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Get block by height first
+    auto block_result = GetBlockByHeight(height);
+    if (!block_result.IsOk()) {
+        return Result<BlockStats>::Error("Block at height " + std::to_string(height) + " not found");
+    }
+
+    // Use GetBlockStats with the hash
+    auto block = block_result.GetValue();
+    return GetBlockStats(block.GetHash());
 }
 
 // ------------------------------------------------------------------------

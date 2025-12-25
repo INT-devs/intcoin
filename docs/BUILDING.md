@@ -728,9 +728,68 @@ which intcoin-qt
 
 ## Automated Installation
 
-**Status**: ✅ Available for Linux and FreeBSD
+**Status**: ✅ Available for Windows, Linux, and FreeBSD
 
 INTcoin provides automated installation scripts that handle all dependency installation, building from source, and system configuration.
+
+### Windows Build Script
+
+**Script**: `scripts/build-windows.ps1`
+
+**Supported Versions**:
+- Windows 10 (64-bit)
+- Windows 11 (64-bit)
+
+**Prerequisites**:
+- Visual Studio 2022 with C++ workload
+- Git for Windows
+- CMake 3.28+
+
+**Features**:
+- Sets up vcpkg for dependency management
+- Installs all required dependencies via vcpkg (RocksDB, OpenSSL, zlib, curl, nlohmann-json, sqlite3)
+- Builds and installs liboqs 0.15.0 (post-quantum crypto)
+- Builds and installs RandomX 1.2.1 (ASIC-resistant PoW)
+- Builds all INTcoin executables
+- Creates distributable package with all required DLLs
+- Generates README for distribution
+
+**Usage**:
+```powershell
+# Run in PowerShell (as Administrator recommended)
+cd C:\path\to\intcoin
+.\scripts\build-windows.ps1
+
+# Installation process:
+# 1. Checks prerequisites (Visual Studio, CMake, Git)
+# 2. Sets up vcpkg and installs dependencies (30-60 minutes first run)
+# 3. Builds liboqs 0.15.0 from source
+# 4. Builds RandomX 1.2.1 from source
+# 5. Configures and builds INTcoin
+# 6. Creates distribution package in dist-windows/
+
+# Custom build options:
+.\scripts\build-windows.ps1 -BuildType Debug          # Debug build
+.\scripts\build-windows.ps1 -SkipDependencies         # Skip dependency build
+.\scripts\build-windows.ps1 -CleanBuild               # Clean build from scratch
+.\scripts\build-windows.ps1 -VcpkgRoot "C:\vcpkg"     # Custom vcpkg location
+
+# After build:
+cd dist-windows
+.\intcoind.exe --help      # Run INTcoin daemon
+.\intcoin-qt.exe           # Run Qt wallet
+```
+
+**Distribution Package**:
+The script creates a `dist-windows/` folder containing:
+- All .exe executables (intcoind.exe, intcoin-cli.exe, etc.)
+- Required DLLs (rocksdb.dll, OpenSSL, VC++ runtime)
+- README.txt with quick start instructions
+
+To create a distributable ZIP:
+```powershell
+Compress-Archive -Path 'dist-windows\*' -DestinationPath 'intcoin-windows-x64.zip'
+```
 
 ### Linux Installation Script
 
@@ -746,7 +805,7 @@ INTcoin provides automated installation scripts that handle all dependency insta
 **Features**:
 - Installs latest CMake 3.28+ from Kitware repositories
 - Builds and installs OpenSSL 3.5.4 from source
-- Builds and installs liboqs 0.12.0 (post-quantum crypto)
+- Builds and installs liboqs 0.15.0 (post-quantum crypto)
 - Builds and installs RandomX 1.2.1 (ASIC-resistant PoW)
 - Builds INTcoin from source
 - Creates systemd service for intcoind
@@ -761,7 +820,7 @@ sudo ./scripts/install-linux.sh
 # 1. Detects Linux distribution automatically
 # 2. Installs build tools and dependencies
 # 3. Downloads and builds OpenSSL 3.5.4
-# 4. Downloads and builds liboqs 0.12.0
+# 4. Downloads and builds liboqs 0.15.0
 # 5. Downloads and builds RandomX 1.2.1
 # 6. Builds INTcoin with all features
 # 7. Runs test suite
@@ -787,7 +846,7 @@ sudo systemctl status intcoind  # Check status
 **Features**:
 - Installs dependencies via pkg
 - Builds OpenSSL 3.5.4 from source
-- Builds liboqs 0.12.0 and RandomX 1.2.1
+- Builds liboqs 0.15.0 and RandomX 1.2.1
 - Builds INTcoin from source
 - Creates rc.d service for intcoind
 - Sets up configuration and log directories
@@ -842,8 +901,8 @@ After running the installation scripts:
 
 **Libraries** (`/usr/local/lib/`):
 - `libintcoin_core.a` - Core library
-- `liboqs.a` - Post-quantum crypto
-- `librandomx.a` - RandomX PoW
+- `liboqs.a` - Post-quantum crypto (0.15.0)
+- `librandomx.a` - RandomX PoW (1.2.1)
 - `libssl.so.3` - OpenSSL 3.5.4
 - `libcrypto.so.3` - OpenSSL crypto
 

@@ -1,312 +1,252 @@
-#!/usr/bin/env sh
+#!/bin/sh
 # INTcoin FreeBSD Installation Script
-# Copyright (c) 2025 INTcoin Team (Neil Adamson)
+# Supports: FreeBSD 13.0+
 
-set -e  # Exit on error
-set -u  # Exit on undefined variable
+set -e
 
-# Configuration
-INSTALL_PREFIX="${INSTALL_PREFIX:-/usr/local}"
-BUILD_JOBS="${BUILD_JOBS:-$(sysctl -n hw.ncpu)}"
-BUILD_TYPE="${BUILD_TYPE:-Release}"
-TEMP_DIR="/tmp/intcoin-build-$$"
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
 
-# Version requirements (latest stable as of December 2024)
-LIBOQS_VERSION="0.12.0"
-RANDOMX_VERSION="v1.2.1"
-OPENSSL_VERSION="3.5.4"
-CMAKE_MIN_VERSION="3.28"
+error() { printf "${RED}ERROR: %s${NC}\n" "$1" >&2; exit 1; }
+success() { printf "${GREEN}✓ %s${NC}\n" "$1"; }
+info() { printf "${CYAN}%s${NC}\n" "$1"; }
+warning() { printf "${YELLOW}⚠ %s${NC}\n" "$1"; }
 
-# Print banner
-print_banner() {
-    echo ""
-    echo "╔═══════════════════════════════════════════════════════╗"
-    echo "║         INTcoin FreeBSD Installation Script          ║"
-    echo "║                                                       ║"
-    echo "║  This script will install INTcoin and dependencies:  ║"
-    echo "║  - Latest CMake from pkg (3.28+)                     ║"
-    echo "║  - OpenSSL ${OPENSSL_VERSION} from source                       ║"
-    echo "║  - liboqs ${LIBOQS_VERSION} (Post-quantum crypto)              ║"
-    echo "║  - RandomX ${RANDOMX_VERSION} (ASIC-resistant PoW)             ║"
-    echo "╚═══════════════════════════════════════════════════════╝"
-    echo ""
-}
+printf "${CYAN}=========================================${NC}\n"
+printf "${CYAN}INTcoin FreeBSD Installation Script${NC}\n"
+printf "${CYAN}=========================================${NC}\n"
+printf "\n"
 
-# Print status message
-info() {
-    echo "[INFO] $1"
-}
+# Detect FreeBSD version
+if [ ! -f /bin/freebsd-version ]; then
+    error "This script is for FreeBSD only"
+fi
 
-# Print success message
-success() {
-    echo "[SUCCESS] $1"
-}
-
-# Print warning message
-warn() {
-    echo "[WARNING] $1"
-}
-
-# Print error message and exit
-error() {
-    echo "[ERROR] $1"
-    exit 1
-}
+FREEBSD_VERSION=$(/bin/freebsd-version | cut -d'-' -f1)
+info "Detected: FreeBSD $FREEBSD_VERSION"
+printf "\n"
 
 # Check if running as root
-check_root() {
-    if [ "$(id -u)" -ne 0 ]; then
-        error "This script must be run as root (use sudo)"
-    fi
-}
+if [ "$(id -u)" -eq 0 ]; then
+    warning "Running as root. Installation will be system-wide."
+    INSTALL_PREFIX="/usr/local"
+    INSTALL_AS_ROOT=true
+else
+    info "Running as user. Installation will be in home directory."
+    INSTALL_PREFIX="$HOME/.local"
+    INSTALL_AS_ROOT=false
+fi
+
+# Configuration
+BUILD_TYPE="${BUILD_TYPE:-Release}"
+BUILD_TESTS="${BUILD_TESTS:-ON}"
+BUILD_QT="${BUILD_QT:-ON}"
+NUM_CORES=$(sysctl -n hw.ncpu)
+
+info "Build Configuration:"
+info "  Install Prefix: $INSTALL_PREFIX"
+info "  Build Type: $BUILD_TYPE"
+info "  Build Tests: $BUILD_TESTS"
+info "  Build Qt Wallet: $BUILD_QT"
+info "  CPU Cores: $NUM_CORES"
+printf "\n"
 
 # Install dependencies
 install_dependencies() {
     info "Installing dependencies..."
 
-    pkg install -y \
+    if [ "$INSTALL_AS_ROOT" = true ]; then
+        PKG_CMD="pkg"
+    else
+        PKG_CMD="sudo pkg"
+    fi
+
+    # Update package repository
+    $PKG_CMD update
+
+    # Core dependencies
+    $PKG_CMD install -y \
         cmake \
+        ninja \
         git \
         pkgconf \
-        gmake \
-        wget \
-        curl \
-        boost-all \
         openssl \
         rocksdb \
-        zeromq \
-        libevent \
-        qt6-base \
-        qt6-tools \
-        astyle \
-        ninja \
-        doxygen
+        curl \
+        sqlite3 \
+        nlohmann-json \
+        autoconf \
+        automake \
+        libtool \
+        gmake
+
+    # Compiler (LLVM/Clang is default on FreeBSD)
+    $PKG_CMD install -y llvm14
+
+    # Qt dependencies (optional)
+    if [ "$BUILD_QT" = "ON" ]; then
+        $PKG_CMD install -y \
+            qt5-buildtools \
+            qt5-qmake \
+            qt5-core \
+            qt5-gui \
+            qt5-widgets \
+            qt5-network \
+            libqrencode
+    fi
 
     success "Dependencies installed"
 }
 
-# Install latest CMake from pkg
-install_cmake() {
-    info "Ensuring latest CMake is installed..."
+# Build liboqs
+build_liboqs() {
+    info "Building liboqs 0.15.0..."
 
-    # FreeBSD pkg usually has recent CMake versions
-    pkg install -y cmake
+    LIBOQS_DIR="$HOME/.intcoin-build/liboqs"
+    LIBOQS_INSTALL="$INSTALL_PREFIX"
 
-    # Verify CMake version
-    CMAKE_VERSION=$(cmake --version | head -n1 | awk '{print $3}')
-    success "CMake $CMAKE_VERSION installed"
-}
-
-# Build and install OpenSSL from source
-install_openssl() {
-    info "Building and installing OpenSSL $OPENSSL_VERSION..."
-
-    cd "$TEMP_DIR"
-
-    # Download OpenSSL
-    if [ ! -f "openssl-${OPENSSL_VERSION}.tar.gz" ]; then
-        fetch "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"
+    if [ ! -d "$LIBOQS_DIR" ]; then
+        mkdir -p "$(dirname "$LIBOQS_DIR")"
+        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git "$LIBOQS_DIR"
     fi
 
-    # Extract
-    tar xzvf "openssl-${OPENSSL_VERSION}.tar.gz"
-    cd "openssl-${OPENSSL_VERSION}"
+    cd "$LIBOQS_DIR"
 
-    # Configure with RPATH support
-    ./config -Wl,--enable-new-dtags,-rpath,'$(LIBRPATH)'
-
-    # Build
-    gmake -j"$BUILD_JOBS"
-
-    # Install
-    gmake install
-
-    # Update library cache
-    /sbin/ldconfig -m "$INSTALL_PREFIX/lib"
-
-    # Verify installation
-    OPENSSL_INSTALLED_VERSION=$(/usr/local/bin/openssl version | awk '{print $2}')
-    success "OpenSSL $OPENSSL_INSTALLED_VERSION installed"
-}
-
-# Build and install liboqs
-install_liboqs() {
-    info "Building and installing liboqs $LIBOQS_VERSION..."
-
-    cd "$TEMP_DIR"
-
-    if [ ! -d "liboqs" ]; then
-        git clone --depth 1 --branch "$LIBOQS_VERSION" \
-            https://github.com/open-quantum-safe/liboqs.git
+    if [ -d build ]; then
+        rm -rf build
     fi
+    mkdir build && cd build
 
-    cd liboqs
-    mkdir -p build && cd build
-
-    cmake \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
-        -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+    cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+        -DCMAKE_INSTALL_PREFIX="$LIBOQS_INSTALL" \
         -DBUILD_SHARED_LIBS=OFF \
         -DOQS_BUILD_ONLY_LIB=ON \
+        -DCMAKE_C_COMPILER=clang14 \
+        -DCMAKE_CXX_COMPILER=clang++14 \
         ..
 
-    gmake -j"$BUILD_JOBS"
-    gmake install
+    ninja
+    ninja install
 
-    success "liboqs installed"
+    success "liboqs built and installed"
 }
 
-# Build and install RandomX
-install_randomx() {
-    info "Building and installing RandomX $RANDOMX_VERSION..."
+# Build RandomX
+build_randomx() {
+    info "Building RandomX 1.2.1..."
 
-    cd "$TEMP_DIR"
+    RANDOMX_DIR="$HOME/.intcoin-build/randomx"
+    RANDOMX_INSTALL="$INSTALL_PREFIX"
 
-    if [ ! -d "RandomX" ]; then
-        git clone --depth 1 --branch "$RANDOMX_VERSION" \
-            https://github.com/tevador/RandomX.git
+    if [ ! -d "$RANDOMX_DIR" ]; then
+        mkdir -p "$(dirname "$RANDOMX_DIR")"
+        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git "$RANDOMX_DIR"
     fi
 
-    cd RandomX
-    mkdir -p build && cd build
+    cd "$RANDOMX_DIR"
 
-    cmake \
-        -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
-        -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+    if [ -d build ]; then
+        rm -rf build
+    fi
+    mkdir build && cd build
+
+    cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+        -DCMAKE_INSTALL_PREFIX="$RANDOMX_INSTALL" \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DCMAKE_C_COMPILER=clang14 \
+        -DCMAKE_CXX_COMPILER=clang++14 \
         ..
 
-    gmake -j"$BUILD_JOBS"
-    gmake install
+    ninja
+    ninja install
 
-    success "RandomX installed"
+    success "RandomX built and installed"
 }
 
-# Build and install INTcoin
-install_intcoin() {
+# Build INTcoin
+build_intcoin() {
     info "Building INTcoin..."
 
-    # Get the parent directory of the scripts directory
-    INTCOIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-    cd "$INTCOIN_DIR"
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    BUILD_DIR="$SCRIPT_DIR/build-freebsd"
 
-    # Create build directory
-    mkdir -p build && cd build
+    if [ -d "$BUILD_DIR" ]; then
+        rm -rf "$BUILD_DIR"
+    fi
+    mkdir -p "$BUILD_DIR"
 
-    # Configure
-    cmake \
+    cd "$BUILD_DIR"
+
+    cmake -GNinja \
+        -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
         -DCMAKE_INSTALL_PREFIX="$INSTALL_PREFIX" \
-        -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+        -DBUILD_TESTS=$BUILD_TESTS \
+        -DBUILD_QT=$BUILD_QT \
+        -DCMAKE_C_COMPILER=clang14 \
+        -DCMAKE_CXX_COMPILER=clang++14 \
         ..
 
-    # Build
-    gmake -j"$BUILD_JOBS"
+    ninja -j$NUM_CORES
 
-    # Run tests
-    info "Running tests..."
-    ctest --output-on-failure || warn "Some tests failed"
+    if [ "$BUILD_TESTS" = "ON" ]; then
+        info "Running tests..."
+        ctest --output-on-failure || warning "Some tests failed"
+    fi
 
-    # Install
-    gmake install
+    ninja install
 
-    success "INTcoin installed"
+    success "INTcoin built and installed"
 }
 
-# Create configuration directory
-setup_config() {
-    info "Setting up configuration..."
+# Create rc.d service
+create_rc_service() {
+    if [ "$INSTALL_AS_ROOT" = true ]; then
+        info "Creating rc.d service..."
 
-    # Create config directory
-    mkdir -p /usr/local/etc/intcoin
+        # Create intcoin user
+        if ! pw usershow intcoin > /dev/null 2>&1; then
+            pw useradd intcoin -c "INTcoin Daemon" -d /var/db/intcoin -s /bin/sh
+        fi
 
-    # Create default config if it doesn't exist
-    if [ ! -f /usr/local/etc/intcoin/intcoin.conf ]; then
-        cat > /usr/local/etc/intcoin/intcoin.conf <<'EOF'
-# INTcoin Configuration File
+        # Create directories
+        mkdir -p /usr/local/etc/intcoin
+        mkdir -p /var/db/intcoin
+        chown -R intcoin:intcoin /var/db/intcoin
 
-# Network settings
-#testnet=0
-#port=12211        # Mainnet P2P port
-#rpcport=12212     # Mainnet RPC port
-
-# Testnet settings (uncomment if using testnet)
-#testnet=1
-#port=22211        # Testnet P2P port
-#rpcport=22212     # Testnet RPC port
-
-# Lightning Network (if enabled)
-#lightning=0
-#lightning.port=2213     # Lightning P2P port
-#lightning.rpcport=2214  # Lightning RPC port
-
-# Tor settings (if enabled)
-#tor=0
-#tor.proxy=127.0.0.1:9050  # Tor SOCKS5 proxy
-
-# Connection settings
-#rpcuser=intcoinrpc
-#rpcpassword=changeme
-#rpcallowip=127.0.0.1
-
-# Data directory
-#datadir=/var/db/intcoin
-
-# Daemon settings
-#daemon=1
-#server=1
-
-# Mining
-#gen=0
-#genproclimit=-1
-
-# Logging
-#debug=0
-#printtoconsole=0
-
-# Network optimization
-#maxconnections=125
-#maxuploadtarget=0
+        # Create default config
+        if [ ! -f /usr/local/etc/intcoin/intcoin.conf ]; then
+            cat > /usr/local/etc/intcoin/intcoin.conf <<EOF
+# INTcoin Configuration
+datadir=/var/db/intcoin
+rpcuser=intcoinrpc
+rpcpassword=$(openssl rand -hex 32)
+rpcport=2211
+port=2210
+server=1
+daemon=1
 EOF
-        success "Created default configuration at /usr/local/etc/intcoin/intcoin.conf"
-    else
-        info "Configuration file already exists"
-    fi
-}
+            chmod 600 /usr/local/etc/intcoin/intcoin.conf
+            chown intcoin:intcoin /usr/local/etc/intcoin/intcoin.conf
+        fi
 
-# Create rc.d service script
-setup_rc_service() {
-    info "Setting up rc.d service..."
-
-    # Create intcoin user if it doesn't exist
-    if ! pw usershow intcoin >/dev/null 2>&1; then
-        pw useradd intcoin -m -d /var/db/intcoin -s /usr/sbin/nologin -c "INTcoin Daemon"
-        success "Created intcoin user"
-    fi
-
-    # Create data directory
-    mkdir -p /var/db/intcoin
-    chown intcoin:intcoin /var/db/intcoin
-    chmod 750 /var/db/intcoin
-
-    # Create log directory
-    mkdir -p /var/log/intcoin
-    chown intcoin:intcoin /var/log/intcoin
-    chmod 750 /var/log/intcoin
-
-    # Create rc.d service script
-    cat > /usr/local/etc/rc.d/intcoind <<'EOF'
+        # Create rc.d script
+        cat > /usr/local/etc/rc.d/intcoind <<'EOF'
 #!/bin/sh
-
+#
 # PROVIDE: intcoind
 # REQUIRE: LOGIN cleanvar
 # KEYWORD: shutdown
-
+#
 # Add the following lines to /etc/rc.conf to enable intcoind:
 #
 # intcoind_enable="YES"
-# intcoind_user="intcoin"
-# intcoind_group="intcoin"
-# intcoind_conf="/usr/local/etc/intcoin/intcoin.conf"
-# intcoind_datadir="/var/db/intcoin"
+#
 
 . /etc/rc.subr
 
@@ -318,13 +258,12 @@ load_rc_config $name
 : ${intcoind_enable:="NO"}
 : ${intcoind_user:="intcoin"}
 : ${intcoind_group:="intcoin"}
-: ${intcoind_conf:="/usr/local/etc/intcoin/intcoin.conf"}
 : ${intcoind_datadir:="/var/db/intcoin"}
-: ${intcoind_pidfile:="/var/run/intcoind.pid"}
+: ${intcoind_config:="/usr/local/etc/intcoin/intcoin.conf"}
 
-pidfile="${intcoind_pidfile}"
 command="/usr/local/bin/intcoind"
-command_args="-daemon -conf=${intcoind_conf} -datadir=${intcoind_datadir} -pid=${pidfile}"
+command_args="-daemon -conf=${intcoind_config} -datadir=${intcoind_datadir}"
+pidfile="${intcoind_datadir}/intcoind.pid"
 
 start_precmd="intcoind_prestart"
 stop_cmd="intcoind_stop"
@@ -332,114 +271,129 @@ stop_cmd="intcoind_stop"
 intcoind_prestart()
 {
     if [ ! -d "${intcoind_datadir}" ]; then
-        install -d -o ${intcoind_user} -g ${intcoind_group} -m 750 ${intcoind_datadir}
+        mkdir -p "${intcoind_datadir}"
+        chown ${intcoind_user}:${intcoind_group} "${intcoind_datadir}"
     fi
-
-    if [ ! -f "${intcoind_conf}" ]; then
-        echo "Configuration file ${intcoind_conf} not found"
-        return 1
-    fi
-
-    return 0
 }
 
 intcoind_stop()
 {
-    echo "Stopping ${name}..."
-    /usr/local/bin/intcoin-cli -conf=${intcoind_conf} stop
-    wait_for_pids $(cat ${pidfile} 2>/dev/null)
+    /usr/local/bin/intcoin-cli stop
 }
 
 run_rc_command "$1"
 EOF
 
-    # Make executable
-    chmod +x /usr/local/etc/rc.d/intcoind
+        chmod 755 /usr/local/etc/rc.d/intcoind
 
-    success "rc.d service created"
-    info "Enable with: sysrc intcoind_enable=YES"
-    info "Start with: service intcoind start"
+        success "rc.d service created"
+        info "To enable on boot: sysrc intcoind_enable=YES"
+        info "To start service: service intcoind start"
+        info "To view logs: tail -f /var/db/intcoin/debug.log"
+    else
+        info "Skipping rc.d service creation (not running as root)"
+    fi
 }
 
-# Update library cache
-update_ldconfig() {
-    info "Updating library cache..."
+# Update PATH
+update_path() {
+    if [ "$INSTALL_AS_ROOT" = false ]; then
+        BIN_DIR="$INSTALL_PREFIX/bin"
 
-    /etc/rc.d/ldconfig restart
+        # Add to PATH if not already there
+        case ":$PATH:" in
+            *":$BIN_DIR:"*) ;;
+            *)
+                info "Adding $BIN_DIR to PATH..."
 
-    success "Library cache updated"
+                # Determine shell config file
+                SHELL_NAME=$(basename "$SHELL")
+                case "$SHELL_NAME" in
+                    bash)
+                        SHELL_RC="$HOME/.bashrc"
+                        ;;
+                    zsh)
+                        SHELL_RC="$HOME/.zshrc"
+                        ;;
+                    tcsh|csh)
+                        SHELL_RC="$HOME/.cshrc"
+                        ;;
+                    *)
+                        SHELL_RC="$HOME/.profile"
+                        ;;
+                esac
+
+                printf "\n" >> "$SHELL_RC"
+                printf "# INTcoin\n" >> "$SHELL_RC"
+                printf "export PATH=\"%s:\$PATH\"\n" "$BIN_DIR" >> "$SHELL_RC"
+
+                success "Updated $SHELL_RC"
+                info "Run: source $SHELL_RC  (or restart your shell)"
+                ;;
+        esac
+    fi
 }
 
-# Print installation summary
-print_summary() {
-    echo ""
-    echo "╔═══════════════════════════════════════════════════════╗"
-    echo "║          Installation Complete!                       ║"
-    echo "╚═══════════════════════════════════════════════════════╝"
-    echo ""
-    echo "Installed versions:"
-    echo "  - CMake         : $(cmake --version | head -n1 | awk '{print $3}')"
-    echo "  - OpenSSL       : $(/usr/local/bin/openssl version 2>/dev/null | awk '{print $2}' || echo 'system')"
-    echo "  - liboqs        : $LIBOQS_VERSION"
-    echo "  - RandomX       : ${RANDOMX_VERSION#v}"
-    echo ""
-    echo "Installed binaries:"
-    echo "  - intcoind      : $INSTALL_PREFIX/bin/intcoind"
-    echo "  - intcoin-cli   : $INSTALL_PREFIX/bin/intcoin-cli"
-    echo "  - intcoin-qt    : $INSTALL_PREFIX/bin/intcoin-qt"
-    echo "  - intcoin-miner : $INSTALL_PREFIX/bin/intcoin-miner"
-    echo ""
-    echo "Configuration:"
-    echo "  - Config file   : /usr/local/etc/intcoin/intcoin.conf"
-    echo "  - Data directory: /var/db/intcoin"
-    echo "  - Log directory : /var/log/intcoin"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Edit configuration: ee /usr/local/etc/intcoin/intcoin.conf"
-    echo "  2. Enable service: sysrc intcoind_enable=YES"
-    echo "  3. Start daemon: service intcoind start"
-    echo "  4. Check status: service intcoind status"
-    echo "  5. View logs: tail -f /var/log/intcoin/debug.log"
-    echo ""
-    echo "CLI usage:"
-    echo "  intcoin-cli getinfo"
-    echo "  intcoin-cli getblockchaininfo"
-    echo "  intcoin-cli help"
-    echo ""
-    echo "Documentation: https://code.international-coin.org/intcoin/core/wiki"
-    echo ""
-}
-
-# Main installation function
+# Main installation flow
 main() {
-    print_banner
+    info "Starting installation..."
+    printf "\n"
 
-    # Check prerequisites
-    check_root
-
-    # Create temp directory
-    mkdir -p "$TEMP_DIR"
-
-    # Install steps
+    # Install system dependencies
     install_dependencies
-    install_cmake
-    install_openssl
-    install_liboqs
-    install_randomx
-    install_intcoin
+    printf "\n"
 
-    # Configuration and services
-    setup_config
-    setup_rc_service
-    update_ldconfig
+    # Build liboqs
+    build_liboqs
+    printf "\n"
 
-    # Cleanup
-    info "Cleaning up temporary files..."
-    rm -rf "$TEMP_DIR"
+    # Build RandomX
+    build_randomx
+    printf "\n"
 
-    # Print summary
-    print_summary
+    # Build INTcoin
+    build_intcoin
+    printf "\n"
+
+    # Create rc.d service (if root)
+    create_rc_service
+    printf "\n"
+
+    # Update PATH (if user install)
+    update_path
+    printf "\n"
+
+    # Installation complete
+    printf "${GREEN}=========================================${NC}\n"
+    printf "${GREEN}Installation Complete!${NC}\n"
+    printf "${GREEN}=========================================${NC}\n"
+    printf "\n"
+    printf "${CYAN}Installed executables:${NC}\n"
+    printf "  - intcoind          : Full node daemon\n"
+    printf "  - intcoin-cli       : Command-line interface\n"
+    printf "  - intcoin-wallet    : Wallet management\n"
+    printf "  - intcoin-miner     : Standalone miner\n"
+    printf "  - intcoin-pool-server : Mining pool server\n"
+    if [ "$BUILD_QT" = "ON" ]; then
+        printf "  - intcoin-qt        : Qt graphical wallet\n"
+    fi
+    printf "\n"
+    printf "${CYAN}Installation location:${NC} %s/bin\n" "$INSTALL_PREFIX"
+    printf "\n"
+    printf "${CYAN}Quick start:${NC}\n"
+    if [ "$INSTALL_AS_ROOT" = true ]; then
+        printf "  service intcoind start        # Start daemon\n"
+        printf "  intcoin-cli getinfo           # Check status\n"
+    else
+        printf "  intcoind -daemon              # Start daemon\n"
+        printf "  intcoin-cli getinfo           # Check status\n"
+    fi
+    printf "\n"
+    printf "${CYAN}Documentation:${NC}\n"
+    printf "  %s/docs/\n" "$(dirname "$0")"
+    printf "\n"
+    success "Done!"
 }
 
-# Run main function
-main "$@"
+# Run main installation
+main

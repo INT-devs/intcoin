@@ -1,399 +1,414 @@
 # INTcoin Windows Build Script
-# Copyright (c) 2025 INTcoin Team (Neil Adamson)
-
-#Requires -RunAsAdministrator
+# Automates the complete Windows build process for creating .exe executables
+# Requirements: Visual Studio 2022, Git, CMake, vcpkg
 
 param(
-    [string]$InstallPrefix = "C:\Program Files\INTcoin",
     [string]$BuildType = "Release",
-    [string]$VcpkgRoot = "C:\vcpkg",
+    [string]$VcpkgRoot = "$env:USERPROFILE\vcpkg",
     [switch]$SkipDependencies,
-    [switch]$SkipTests
+    [switch]$CleanBuild
 )
 
 $ErrorActionPreference = "Stop"
 
-# Configuration
-$LIBOQS_VERSION = "0.15.0"
-$RANDOMX_VERSION = "v1.2.1"
-$TEMP_DIR = "$env:TEMP\intcoin-build-$PID"
-
 # Colors for output
-function Write-Info {
-    param([string]$Message)
-    Write-Host "[INFO] $Message" -ForegroundColor Cyan
-}
+function Write-Success { Write-Host $args -ForegroundColor Green }
+function Write-Info { Write-Host $args -ForegroundColor Cyan }
+function Write-Warning { Write-Host $args -ForegroundColor Yellow }
+function Write-Error { Write-Host $args -ForegroundColor Red }
 
-function Write-Success {
-    param([string]$Message)
-    Write-Host "[SUCCESS] $Message" -ForegroundColor Green
-}
+Write-Info "========================================="
+Write-Info "INTcoin Windows Build Script"
+Write-Info "========================================="
+Write-Info ""
 
-function Write-Warning {
-    param([string]$Message)
-    Write-Host "[WARNING] $Message" -ForegroundColor Yellow
-}
+# Get script directory and project root
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = $ScriptDir
+$BuildDir = Join-Path $ProjectRoot "build-windows"
+$DistDir = Join-Path $ProjectRoot "dist-windows"
 
-function Write-Error {
-    param([string]$Message)
-    Write-Host "[ERROR] $Message" -ForegroundColor Red
-}
-
-# Print banner
-function Print-Banner {
-    Write-Host ""
-    Write-Host "╔═══════════════════════════════════════════════════════╗" -ForegroundColor Blue
-    Write-Host "║        INTcoin Windows Build Script                  ║" -ForegroundColor Blue
-    Write-Host "║                                                       ║" -ForegroundColor Blue
-    Write-Host "║  This script will build INTcoin for Windows           ║" -ForegroundColor Blue
-    Write-Host "╚═══════════════════════════════════════════════════════╝" -ForegroundColor Blue
-    Write-Host ""
-}
+Write-Info "Project Root: $ProjectRoot"
+Write-Info "Build Directory: $BuildDir"
+Write-Info "Distribution Directory: $DistDir"
+Write-Info ""
 
 # Check prerequisites
-function Test-Prerequisites {
-    Write-Info "Checking prerequisites..."
+Write-Info "Checking prerequisites..."
 
-    # Check Visual Studio
-    $vsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-    if (-not (Test-Path $vsWhere)) {
-        throw "Visual Studio 2022 not found. Please install Visual Studio 2022 with C++ workload."
-    }
+# Check Visual Studio
+$vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+    -latest -property installationPath -version "[17.0,18.0)" 2>$null
 
-    $vsPath = & $vsWhere -latest -property installationPath
-    if (-not $vsPath) {
-        throw "Visual Studio installation path not found."
-    }
-
-    Write-Success "Found Visual Studio at: $vsPath"
-
-    # Check CMake
-    if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
-        throw "CMake not found. Please install CMake and add it to PATH."
-    }
-
-    $cmakeVersion = (cmake --version | Select-String -Pattern "(\d+\.\d+\.\d+)").Matches.Groups[1].Value
-    Write-Success "Found CMake version: $cmakeVersion"
-
-    # Check Git
-    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-        throw "Git not found. Please install Git and add it to PATH."
-    }
-
-    Write-Success "Prerequisites check passed"
+if (-not $vsPath) {
+    Write-Error "ERROR: Visual Studio 2022 not found!"
+    Write-Error "Please install Visual Studio 2022 with C++ workload"
+    exit 1
 }
+Write-Success "✓ Visual Studio 2022: $vsPath"
 
-# Install vcpkg dependencies
-function Install-VcpkgDependencies {
-    Write-Info "Installing dependencies via vcpkg..."
+# Check CMake
+$cmake = Get-Command cmake -ErrorAction SilentlyContinue
+if (-not $cmake) {
+    Write-Error "ERROR: CMake not found!"
+    Write-Error "Please install CMake and add it to PATH"
+    exit 1
+}
+Write-Success "✓ CMake: $($cmake.Version)"
+
+# Check Git
+$git = Get-Command git -ErrorAction SilentlyContinue
+if (-not $git) {
+    Write-Error "ERROR: Git not found!"
+    Write-Error "Please install Git and add it to PATH"
+    exit 1
+}
+Write-Success "✓ Git: Found"
+
+Write-Info ""
+
+# Setup vcpkg
+if (-not $SkipDependencies) {
+    Write-Info "Setting up vcpkg..."
 
     if (-not (Test-Path $VcpkgRoot)) {
-        Write-Info "vcpkg not found. Installing vcpkg..."
+        Write-Info "Cloning vcpkg to $VcpkgRoot..."
         git clone https://github.com/Microsoft/vcpkg.git $VcpkgRoot
-        & "$VcpkgRoot\bootstrap-vcpkg.bat"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "ERROR: Failed to clone vcpkg"
+            exit 1
+        }
+    } else {
+        Write-Info "vcpkg already exists, updating..."
+        Push-Location $VcpkgRoot
+        git pull
+        Pop-Location
     }
 
+    # Bootstrap vcpkg
+    $vcpkgExe = Join-Path $VcpkgRoot "vcpkg.exe"
+    if (-not (Test-Path $vcpkgExe)) {
+        Write-Info "Bootstrapping vcpkg..."
+        Push-Location $VcpkgRoot
+        & .\bootstrap-vcpkg.bat
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "ERROR: Failed to bootstrap vcpkg"
+            exit 1
+        }
+        Pop-Location
+    }
+
+    Write-Success "✓ vcpkg ready"
+
     # Install dependencies
+    Write-Info "Installing dependencies via vcpkg..."
+    Write-Info "This may take 30-60 minutes on first run..."
+
     $packages = @(
-        "boost:x64-windows",
-        "openssl:x64-windows",
         "rocksdb:x64-windows",
-        "zeromq:x64-windows",
-        "libevent:x64-windows",
-        "qt6-base:x64-windows",
-        "qt6-tools:x64-windows"
+        "openssl:x64-windows",
+        "zlib:x64-windows",
+        "curl:x64-windows",
+        "nlohmann-json:x64-windows",
+        "sqlite3:x64-windows"
     )
 
     foreach ($package in $packages) {
         Write-Info "Installing $package..."
-        & "$VcpkgRoot\vcpkg.exe" install $package
+        & $vcpkgExe install $package
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "ERROR: Failed to install $package"
+            exit 1
+        }
     }
 
-    # Integrate with Visual Studio
-    & "$VcpkgRoot\vcpkg.exe" integrate install
-
-    Write-Success "Dependencies installed"
+    Write-Success "✓ All vcpkg dependencies installed"
+    Write-Info ""
 }
 
 # Build liboqs
-function Build-Liboqs {
-    Write-Info "Building liboqs $LIBOQS_VERSION..."
+if (-not $SkipDependencies) {
+    Write-Info "Building liboqs 0.15.0..."
 
-    Push-Location $TEMP_DIR
+    $liboqsDir = Join-Path $ProjectRoot "build-windows-deps\liboqs"
+    $liboqsBuildDir = Join-Path $liboqsDir "build"
+    $liboqsInstallDir = Join-Path $ProjectRoot "build-windows-deps\liboqs-install"
 
-    if (-not (Test-Path "liboqs")) {
-        git clone --depth 1 --branch $LIBOQS_VERSION https://github.com/open-quantum-safe/liboqs.git
+    if (-not (Test-Path $liboqsDir)) {
+        Write-Info "Cloning liboqs..."
+        New-Item -ItemType Directory -Force -Path (Join-Path $ProjectRoot "build-windows-deps") | Out-Null
+        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git $liboqsDir
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "ERROR: Failed to clone liboqs"
+            exit 1
+        }
     }
 
-    Push-Location liboqs
-    New-Item -ItemType Directory -Force -Path build | Out-Null
-    Push-Location build
+    if (-not (Test-Path $liboqsInstallDir) -or $CleanBuild) {
+        if (Test-Path $liboqsBuildDir) {
+            Remove-Item -Recurse -Force $liboqsBuildDir
+        }
+        New-Item -ItemType Directory -Force -Path $liboqsBuildDir | Out-Null
 
-    cmake -G "Visual Studio 17 2022" -A x64 `
-        -DCMAKE_BUILD_TYPE=$BuildType `
-        -DBUILD_SHARED_LIBS=OFF `
-        -DOQS_BUILD_ONLY_LIB=ON `
-        ..
+        Push-Location $liboqsBuildDir
 
-    cmake --build . --config $BuildType --parallel
+        cmake -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=$BuildType `
+            -DCMAKE_INSTALL_PREFIX="$liboqsInstallDir" `
+            -DBUILD_SHARED_LIBS=OFF `
+            -DOQS_BUILD_ONLY_LIB=ON `
+            ..
 
-    # Install
-    cmake --install . --prefix "$env:ProgramFiles\liboqs" --config $BuildType
+        if ($LASTEXITCODE -ne 0) {
+            Pop-Location
+            Write-Error "ERROR: liboqs CMake configuration failed"
+            exit 1
+        }
 
-    Pop-Location
-    Pop-Location
-    Pop-Location
+        cmake --build . --config $BuildType
+        if ($LASTEXITCODE -ne 0) {
+            Pop-Location
+            Write-Error "ERROR: liboqs build failed"
+            exit 1
+        }
 
-    Write-Success "liboqs built and installed"
+        cmake --install . --config $BuildType
+        if ($LASTEXITCODE -ne 0) {
+            Pop-Location
+            Write-Error "ERROR: liboqs install failed"
+            exit 1
+        }
+
+        Pop-Location
+    }
+
+    Write-Success "✓ liboqs built and installed"
+    Write-Info ""
 }
 
 # Build RandomX
-function Build-RandomX {
-    Write-Info "Building RandomX $RANDOMX_VERSION..."
+if (-not $SkipDependencies) {
+    Write-Info "Building RandomX 1.2.1..."
 
-    Push-Location $TEMP_DIR
+    $randomxDir = Join-Path $ProjectRoot "build-windows-deps\randomx"
+    $randomxBuildDir = Join-Path $randomxDir "build"
+    $randomxInstallDir = Join-Path $ProjectRoot "build-windows-deps\randomx-install"
 
-    if (-not (Test-Path "RandomX")) {
-        git clone --depth 1 --branch $RANDOMX_VERSION https://github.com/tevador/RandomX.git
+    if (-not (Test-Path $randomxDir)) {
+        Write-Info "Cloning RandomX..."
+        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git $randomxDir
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "ERROR: Failed to clone RandomX"
+            exit 1
+        }
     }
 
-    Push-Location RandomX
-    New-Item -ItemType Directory -Force -Path build | Out-Null
-    Push-Location build
+    if (-not (Test-Path $randomxInstallDir) -or $CleanBuild) {
+        if (Test-Path $randomxBuildDir) {
+            Remove-Item -Recurse -Force $randomxBuildDir
+        }
+        New-Item -ItemType Directory -Force -Path $randomxBuildDir | Out-Null
 
-    cmake -G "Visual Studio 17 2022" -A x64 `
-        -DCMAKE_BUILD_TYPE=$BuildType `
-        ..
+        Push-Location $randomxBuildDir
 
-    cmake --build . --config $BuildType --parallel
+        cmake -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_BUILD_TYPE=$BuildType `
+            -DCMAKE_INSTALL_PREFIX="$randomxInstallDir" `
+            -DBUILD_SHARED_LIBS=OFF `
+            ..
 
-    # Install
-    cmake --install . --prefix "$env:ProgramFiles\RandomX" --config $BuildType
+        if ($LASTEXITCODE -ne 0) {
+            Pop-Location
+            Write-Error "ERROR: RandomX CMake configuration failed"
+            exit 1
+        }
 
-    Pop-Location
-    Pop-Location
-    Pop-Location
+        cmake --build . --config $BuildType
+        if ($LASTEXITCODE -ne 0) {
+            Pop-Location
+            Write-Error "ERROR: RandomX build failed"
+            exit 1
+        }
 
-    Write-Success "RandomX built and installed"
+        cmake --install . --config $BuildType
+        if ($LASTEXITCODE -ne 0) {
+            Pop-Location
+            Write-Error "ERROR: RandomX install failed"
+            exit 1
+        }
+
+        Pop-Location
+    }
+
+    Write-Success "✓ RandomX built and installed"
+    Write-Info ""
 }
 
 # Build INTcoin
-function Build-Intcoin {
-    Write-Info "Building INTcoin..."
+Write-Info "Building INTcoin..."
 
-    # Get source directory (where this script is located)
-    $SourceDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($CleanBuild -and (Test-Path $BuildDir)) {
+    Write-Info "Cleaning previous build..."
+    Remove-Item -Recurse -Force $BuildDir
+}
 
-    # Create build directory
-    $BuildDir = Join-Path $SourceDir "build-windows"
-    New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
-    Push-Location $BuildDir
+New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 
-    # Configure
-    cmake -G "Visual Studio 17 2022" -A x64 `
-        -DCMAKE_BUILD_TYPE=$BuildType `
-        -DCMAKE_TOOLCHAIN_FILE="$VcpkgRoot\scripts\buildsystems\vcpkg.cmake" `
-        -DCMAKE_PREFIX_PATH="$env:ProgramFiles\liboqs;$env:ProgramFiles\RandomX" `
-        ..
+Push-Location $BuildDir
 
-    # Build
-    cmake --build . --config $BuildType --parallel
+$cmakeToolchain = Join-Path $VcpkgRoot "scripts\buildsystems\vcpkg.cmake"
+$liboqsInstallDir = Join-Path $ProjectRoot "build-windows-deps\liboqs-install"
+$randomxInstallDir = Join-Path $ProjectRoot "build-windows-deps\randomx-install"
 
-    # Run tests
-    if (-not $SkipTests) {
-        Write-Info "Running tests..."
-        ctest -C $BuildType --output-on-failure
-    }
+Write-Info "Configuring INTcoin build..."
 
+cmake -G "Visual Studio 17 2022" -A x64 `
+    -DCMAKE_BUILD_TYPE=$BuildType `
+    -DCMAKE_TOOLCHAIN_FILE="$cmakeToolchain" `
+    -DLIBOQS_ROOT="$liboqsInstallDir" `
+    -DRANDOMX_ROOT="$randomxInstallDir" `
+    -DBUILD_TESTS=ON `
+    -DBUILD_QT=ON `
+    ..
+
+if ($LASTEXITCODE -ne 0) {
     Pop-Location
-
-    Write-Success "INTcoin built successfully"
-
-    # Copy binaries
-    $BinDir = Join-Path $BuildDir "$BuildType"
-    Write-Info "Binaries located at: $BinDir"
-    Write-Info "  - intcoind.exe"
-    Write-Info "  - intcoin-cli.exe"
-    Write-Info "  - intcoin-qt.exe"
-    Write-Info "  - intcoin-miner.exe"
+    Write-Error "ERROR: INTcoin CMake configuration failed"
+    exit 1
 }
 
-# Create installer package
-function Create-Installer {
-    Write-Info "Creating installer package..."
+Write-Info "Building INTcoin executables..."
 
-    $BuildDir = Join-Path $PWD "build-windows"
-    $BinDir = Join-Path $BuildDir "$BuildType"
-    $PackageDir = Join-Path $BuildDir "package"
+cmake --build . --config $BuildType --parallel
 
-    # Create package directory structure
-    New-Item -ItemType Directory -Force -Path "$PackageDir\bin" | Out-Null
-    New-Item -ItemType Directory -Force -Path "$PackageDir\conf" | Out-Null
-    New-Item -ItemType Directory -Force -Path "$PackageDir\doc" | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Pop-Location
+    Write-Error "ERROR: INTcoin build failed"
+    exit 1
+}
 
-    # Copy binaries
-    Copy-Item "$BinDir\intcoind.exe" "$PackageDir\bin\"
-    Copy-Item "$BinDir\intcoin-cli.exe" "$PackageDir\bin\"
-    Copy-Item "$BinDir\intcoin-qt.exe" "$PackageDir\bin\"
-    Copy-Item "$BinDir\intcoin-miner.exe" "$PackageDir\bin\"
+Pop-Location
 
-    # Copy configuration template
-    $ConfigContent = @"
-# INTcoin Configuration File
+Write-Success "✓ INTcoin built successfully"
+Write-Info ""
 
-# Network settings
-#testnet=0
-#port=12211        # Mainnet P2P port
-#rpcport=12212     # Mainnet RPC port
+# Create distribution package
+Write-Info "Creating distribution package..."
 
-# Testnet settings (uncomment if using testnet)
-#testnet=1
-#port=22211        # Testnet P2P port
-#rpcport=22212     # Testnet RPC port
+if (Test-Path $DistDir) {
+    Remove-Item -Recurse -Force $DistDir
+}
+New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
 
-# Lightning Network (if enabled)
-#lightning=0
-#lightning.port=2213     # Lightning P2P port
-#lightning.rpcport=2214  # Lightning RPC port
+# Copy executables
+$exeFiles = @(
+    "intcoind.exe",
+    "intcoin-cli.exe",
+    "intcoin-wallet.exe",
+    "intcoin-miner.exe",
+    "intcoin-pool-server.exe",
+    "intcoin-qt.exe"
+)
 
-# Tor settings (if enabled)
-#tor=0
-#tor.proxy=127.0.0.1:9050  # Tor SOCKS5 proxy
+$buildBinDir = Join-Path $BuildDir "$BuildType"
 
-# Connection settings
-#rpcuser=intcoinrpc
-#rpcpassword=changeme
-#rpcallowip=127.0.0.1
+foreach ($exe in $exeFiles) {
+    $sourcePath = Join-Path $buildBinDir $exe
+    if (Test-Path $sourcePath) {
+        Write-Info "Copying $exe..."
+        Copy-Item $sourcePath $DistDir
+    } else {
+        Write-Warning "Warning: $exe not found, skipping..."
+    }
+}
 
-# Data directory
-#datadir=C:\Users\$env:USERNAME\AppData\Roaming\INTcoin
+# Copy required DLLs
+Write-Info "Copying required DLLs..."
 
-# Daemon settings
-#daemon=1
-#server=1
+$vcpkgBinDir = Join-Path $VcpkgRoot "installed\x64-windows\bin"
+$requiredDlls = @(
+    "rocksdb.dll",
+    "zlib1.dll",
+    "libcrypto-3-x64.dll",
+    "libssl-3-x64.dll"
+)
 
-# Mining
-#gen=0
-#genproclimit=-1
+foreach ($dll in $requiredDlls) {
+    $sourcePath = Join-Path $vcpkgBinDir $dll
+    if (Test-Path $sourcePath) {
+        Copy-Item $sourcePath $DistDir
+    } else {
+        Write-Warning "Warning: $dll not found, application may not run"
+    }
+}
 
-# Logging
-#debug=0
-#printtoconsole=0
+# Copy Visual C++ runtime (if needed)
+$vcRedistDir = Join-Path $vsPath "VC\Redist\MSVC"
+if (Test-Path $vcRedistDir) {
+    $latestRedist = Get-ChildItem $vcRedistDir | Sort-Object Name -Descending | Select-Object -First 1
+    $vcRuntimeDll = Join-Path $latestRedist.FullName "x64\Microsoft.VC143.CRT\msvcp140.dll"
+    if (Test-Path $vcRuntimeDll) {
+        Copy-Item $vcRuntimeDll $DistDir
+        $vcRuntimeDll2 = Join-Path $latestRedist.FullName "x64\Microsoft.VC143.CRT\vcruntime140.dll"
+        Copy-Item $vcRuntimeDll2 $DistDir
+    }
+}
+
+# Create README for distribution
+$readmeContent = @"
+INTcoin v1.0.0-alpha - Windows Distribution
+============================================
+
+This package contains the Windows executables for INTcoin.
+
+Executables:
+- intcoind.exe          : Full node daemon
+- intcoin-cli.exe       : Command-line interface
+- intcoin-wallet.exe    : Wallet management tool
+- intcoin-miner.exe     : Standalone miner
+- intcoin-pool-server.exe : Mining pool server
+- intcoin-qt.exe        : Qt graphical wallet (if built)
+
+Quick Start:
+1. Extract all files to a directory
+2. Run intcoind.exe to start the node
+3. Use intcoin-cli.exe to interact with the node
+4. See docs/ for full documentation
+
+Requirements:
+- Windows 10/11 (64-bit)
+- 4GB RAM minimum, 8GB recommended
+- 50GB disk space for blockchain
+
+For more information, visit: https://github.com/intcoin/crypto
+
+Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+Build Type: $BuildType
 "@
-    Set-Content -Path "$PackageDir\conf\intcoin.conf" -Value $ConfigContent
 
-    # Copy documentation
-    if (Test-Path "README.md") {
-        Copy-Item "README.md" "$PackageDir\doc\"
+Set-Content -Path (Join-Path $DistDir "README.txt") -Value $readmeContent
+
+Write-Success "✓ Distribution package created"
+Write-Info ""
+
+# Summary
+Write-Info "========================================="
+Write-Success "Build Complete!"
+Write-Info "========================================="
+Write-Info ""
+Write-Info "Executables location: $DistDir"
+Write-Info ""
+Write-Info "Created files:"
+Get-ChildItem $DistDir | ForEach-Object {
+    $size = if ($_.Length -lt 1MB) {
+        "{0:N0} KB" -f ($_.Length / 1KB)
+    } else {
+        "{0:N2} MB" -f ($_.Length / 1MB)
     }
-
-    # Create installer script
-    $InstallerContent = @"
-@echo off
-echo INTcoin Windows Installer
-echo.
-
-set INSTALL_DIR=%ProgramFiles%\INTcoin
-set DATA_DIR=%APPDATA%\INTcoin
-
-echo Installing to: %INSTALL_DIR%
-echo.
-
-mkdir "%INSTALL_DIR%\bin"
-mkdir "%DATA_DIR%"
-
-copy /Y bin\*.exe "%INSTALL_DIR%\bin\"
-copy /Y conf\intcoin.conf "%DATA_DIR%\"
-
-echo.
-echo Installation complete!
-echo.
-echo Binaries installed to: %INSTALL_DIR%\bin
-echo Configuration file: %DATA_DIR%\intcoin.conf
-echo.
-echo Add to PATH: setx PATH "%PATH%;%INSTALL_DIR%\bin"
-echo.
-pause
-"@
-    Set-Content -Path "$PackageDir\install.bat" -Value $InstallerContent
-
-    # Create ZIP package
-    $ZipFile = Join-Path $BuildDir "intcoin-windows-x64.zip"
-    if (Test-Path $ZipFile) {
-        Remove-Item $ZipFile
-    }
-
-    Compress-Archive -Path "$PackageDir\*" -DestinationPath $ZipFile
-
-    Write-Success "Installer package created: $ZipFile"
+    Write-Info "  - $($_.Name) ($size)"
 }
-
-# Print summary
-function Print-Summary {
-    Write-Host ""
-    Write-Host "╔═══════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║          Build Complete!                              ║" -ForegroundColor Green
-    Write-Host "╚═══════════════════════════════════════════════════════╝" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "Build artifacts:" -ForegroundColor Cyan
-    Write-Host "  - Build directory: build-windows\$BuildType"
-    Write-Host "  - Package: build-windows\intcoin-windows-x64.zip"
-    Write-Host ""
-    Write-Host "Binaries:" -ForegroundColor Cyan
-    Write-Host "  - intcoind.exe      : Full node daemon"
-    Write-Host "  - intcoin-cli.exe   : Command-line interface"
-    Write-Host "  - intcoin-qt.exe    : Desktop wallet (GUI)"
-    Write-Host "  - intcoin-miner.exe : Mining software"
-    Write-Host ""
-    Write-Host "Next steps:" -ForegroundColor Cyan
-    Write-Host "  1. Extract the ZIP package to your desired location"
-    Write-Host "  2. Run install.bat to install system-wide"
-    Write-Host "  3. Configure: Edit %APPDATA%\INTcoin\intcoin.conf"
-    Write-Host "  4. Start daemon: intcoind.exe"
-    Write-Host ""
-    Write-Host "Documentation: https://code.international-coin.org/intcoin/core/wiki" -ForegroundColor Yellow
-    Write-Host ""
-}
-
-# Main build function
-function Main {
-    Print-Banner
-
-    try {
-        # Check prerequisites
-        Test-Prerequisites
-
-        # Create temp directory
-        New-Item -ItemType Directory -Force -Path $TEMP_DIR | Out-Null
-
-        # Install dependencies
-        if (-not $SkipDependencies) {
-            Install-VcpkgDependencies
-            Build-Liboqs
-            Build-RandomX
-        }
-
-        # Build INTcoin
-        Build-Intcoin
-
-        # Create installer
-        Create-Installer
-
-        # Cleanup
-        Write-Info "Cleaning up temporary files..."
-        Remove-Item -Recurse -Force $TEMP_DIR -ErrorAction SilentlyContinue
-
-        # Print summary
-        Print-Summary
-
-        exit 0
-    }
-    catch {
-        Write-Error "Build failed: $_"
-        Write-Host $_.ScriptStackTrace -ForegroundColor Red
-        exit 1
-    }
-}
-
-# Run main function
-Main
+Write-Info ""
+Write-Info "To create a distributable archive, run:"
+Write-Info "  Compress-Archive -Path '$DistDir\*' -DestinationPath 'intcoin-windows-$BuildType.zip'"
+Write-Info ""
+Write-Success "Done!"
