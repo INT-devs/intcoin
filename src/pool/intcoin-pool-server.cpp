@@ -82,7 +82,7 @@ void print_usage() {
     std::cout << "\n";
 }
 
-struct PoolConfig {
+struct ServerConfig {
     // Stratum server
     std::string stratum_host = "0.0.0.0";
     uint16_t stratum_port = 3333;
@@ -119,7 +119,7 @@ struct PoolConfig {
     bool testnet = false;
 };
 
-bool load_config_file(const std::string& path, PoolConfig& config) {
+bool load_config_file(const std::string& path, ServerConfig& config) {
     std::ifstream file(path);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open config file: " << path << "\n";
@@ -177,7 +177,7 @@ bool load_config_file(const std::string& path, PoolConfig& config) {
 
 int main(int argc, char* argv[]) {
     // Parse command-line arguments
-    PoolConfig config;
+    ServerConfig config;
     std::string config_file;
 
     for (int i = 1; i < argc; i++) {
