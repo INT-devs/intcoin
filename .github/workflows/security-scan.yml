@@ -1,0 +1,129 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run weekly on Mondays at 00:00 UTC
+    - cron: '0 0 * * 1'
+
+jobs:
+  # ============================================================================
+  # CodeQL Analysis
+  # ============================================================================
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp' ]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libssl-dev \
+          libboost-all-dev \
+          librocksdb-dev
+
+    - name: Build
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -GNinja
+        cmake --build build --config Release
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{ matrix.language }}"
+
+  # ============================================================================
+  # Dependency Scanning
+  # ============================================================================
+  dependency-scan:
+    name: Dependency Scan
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # ============================================================================
+  # License Compliance
+  # ============================================================================
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check LICENSE file exists
+      run: |
+        if [ ! -f LICENSE ]; then
+          echo "::error::LICENSE file not found"
+          exit 1
+        fi
+
+    - name: Verify MIT License
+      run: |
+        if ! grep -q "MIT License" LICENSE; then
+          echo "::error::LICENSE file does not contain MIT License text"
+          exit 1
+        fi
+
+    - name: Check for license headers
+      run: |
+        total=0
+        missing=0
+        for file in $(find src include -name '*.cpp' -o -name '*.h'); do
+          total=$((total + 1))
+          if ! grep -q "MIT License" "$file"; then
+            echo "::warning::Missing license header: $file"
+            missing=$((missing + 1))
+          fi
+        done
+
+        echo "Files checked: $total"
+        echo "Missing headers: $missing"
+
+        coverage=$((100 * (total - missing) / total))
+        echo "License header coverage: $coverage%"
+
+        if [ $coverage -lt 90 ]; then
+          echo "::warning::License header coverage is below 90%"
+        fi

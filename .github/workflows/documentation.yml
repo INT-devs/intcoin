@@ -1,0 +1,86 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ============================================================================
+  # Check Documentation
+  # ============================================================================
+  check-docs:
+    name: Check Documentation
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check required documentation files
+      run: |
+        required_docs=(
+          "README.md"
+          "LICENSE"
+          "docs/BUILDING.md"
+          "docs/TESTING.md"
+          "docs/MINING.md"
+          "docs/API_REFERENCE.md"
+        )
+
+        missing=()
+        for doc in "${required_docs[@]}"; do
+          if [ ! -f "$doc" ]; then
+            echo "::error::Missing required documentation: $doc"
+            missing+=("$doc")
+          fi
+        done
+
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "Missing ${#missing[@]} required documentation files"
+          exit 1
+        fi
+
+    - name: Check for broken links in Markdown
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        use-verbose-mode: 'yes'
+        config-file: '.github/markdown-link-check-config.json'
+        folder-path: 'docs/'
+
+    - name: Spell check documentation
+      uses: rojopolis/spellcheck-github-actions@0.35.0
+      with:
+        config_path: .github/spellcheck-config.yml
+        task_name: Markdown
+
+  # ============================================================================
+  # API Documentation
+  # ============================================================================
+  api-docs:
+    name: Generate API Documentation
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Doxygen
+      run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+
+    - name: Generate documentation
+      run: |
+        if [ -f Doxyfile ]; then
+          doxygen Doxyfile
+        else
+          echo "::warning::Doxyfile not found - skipping API documentation generation"
+        fi
+
+    - name: Upload API documentation
+      if: github.ref == 'refs/heads/main'
+      uses: actions/upload-artifact@v3
+      with:
+        name: api-documentation
+        path: docs/html/
