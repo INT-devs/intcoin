@@ -409,32 +409,35 @@ static std::vector<uint8_t> PBKDF2_HMAC_SHA256(const std::string& password,
 static std::vector<size_t> BytesToIndices(const std::vector<uint8_t>& bytes, size_t word_count) {
     std::vector<size_t> indices;
 
-    // Append checksum
-    std::vector<uint8_t> data_with_checksum = bytes;
+    // Calculate checksum
     auto hash = SHA3::Hash(bytes);
     size_t checksum_bits = bytes.size() * 8 / 32;
 
-    // Add checksum bits
-    for (size_t i = 0; i < checksum_bits; i++) {
-        if (hash[i / 8] & (0x80 >> (i % 8))) {
-            data_with_checksum.push_back(0xFF);
+    // Create bit array: entropy + checksum bits
+    size_t total_bits = bytes.size() * 8 + checksum_bits;
+    std::vector<bool> bits;
+    bits.reserve(total_bits);
+
+    // Add entropy bits
+    for (size_t i = 0; i < bytes.size(); i++) {
+        for (size_t j = 0; j < 8; j++) {
+            bits.push_back((bytes[i] & (0x80 >> j)) != 0);
         }
     }
 
+    // Add checksum bits from hash
+    for (size_t i = 0; i < checksum_bits; i++) {
+        bits.push_back((hash[i / 8] & (0x80 >> (i % 8))) != 0);
+    }
+
     // Convert to 11-bit indices
-    size_t bit_pos = 0;
     for (size_t i = 0; i < word_count; i++) {
         size_t index = 0;
         for (size_t j = 0; j < 11; j++) {
-            size_t byte_pos = bit_pos / 8;
-            size_t bit_offset = bit_pos % 8;
-
-            if (byte_pos < data_with_checksum.size()) {
-                if (data_with_checksum[byte_pos] & (0x80 >> bit_offset)) {
-                    index |= (1 << (10 - j));
-                }
+            size_t bit_index = i * 11 + j;
+            if (bit_index < bits.size() && bits[bit_index]) {
+                index |= (1 << (10 - j));
             }
-            bit_pos++;
         }
         indices.push_back(index % 2048);
     }
