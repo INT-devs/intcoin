@@ -15,8 +15,8 @@ project(INTcoin
     LANGUAGES CXX
 )
 
-# Set alpha version suffix
-set(INTCOIN_VERSION_SUFFIX "-alpha")
+# Set beta version suffix
+set(INTCOIN_VERSION_SUFFIX "-beta")
 set(INTCOIN_VERSION_FULL "${PROJECT_VERSION}${INTCOIN_VERSION_SUFFIX}")
 
 # Only support 64-bit systems

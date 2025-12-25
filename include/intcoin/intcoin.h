@@ -61,9 +61,9 @@
 #define INTCOIN_VERSION_MAJOR 1
 #define INTCOIN_VERSION_MINOR 0
 #define INTCOIN_VERSION_PATCH 0
-#define INTCOIN_VERSION_SUFFIX "alpha"
+#define INTCOIN_VERSION_SUFFIX "beta"
 
-#define INTCOIN_VERSION "1.0.0-alpha"
+#define INTCOIN_VERSION "1.0.0-beta"
 #define INTCOIN_COPYRIGHT "Copyright (c) 2025 INTcoin Team (Neil Adamson)"
 #define INTCOIN_LICENSE "MIT License"
 
