@@ -488,4 +488,890 @@ uint256 GenerateJobID() {
     return GetRandomUint256();
 }
 
+// ============================================================================
+// Mining Pool Server Implementation
+// ============================================================================
+
+class MiningPoolServer::Impl {
+public:
+    Impl(const PoolConfig& config,
+         std::shared_ptr<Blockchain> blockchain,
+         std::shared_ptr<Miner> miner)
+        : config_(config)
+        , blockchain_(blockchain)
+        , solo_miner_(miner)
+        , running_(false)
+        , next_miner_id_(1)
+        , next_worker_id_(1)
+        , next_share_id_(1)
+        , next_round_id_(1)
+        , vardiff_(config.target_share_time, config.vardiff_retarget_time, config.vardiff_variance)
+    {
+        current_round_.round_id = next_round_id_++;
+        current_round_.started_at = std::chrono::system_clock::now();
+        current_round_.shares_submitted = 0;
+        current_round_.is_complete = false;
+    }
+
+    ~Impl() {
+        Stop();
+    }
+
+    // Configuration
+    PoolConfig config_;
+    std::shared_ptr<Blockchain> blockchain_;
+    std::shared_ptr<Miner> solo_miner_;  // For solo mining mode
+
+    // Server state
+    std::atomic<bool> running_;
+    std::mutex mutex_;
+
+    // Miners and workers
+    std::map<uint64_t, Miner> miners_;
+    std::map<std::string, uint64_t> username_to_miner_id_;
+    std::map<uint64_t, Worker> workers_;
+    std::map<uint64_t, uint64_t> worker_to_miner_;  // worker_id -> miner_id
+    std::atomic<uint64_t> next_miner_id_;
+    std::atomic<uint64_t> next_worker_id_;
+
+    // Shares and rounds
+    std::vector<Share> recent_shares_;
+    std::atomic<uint64_t> next_share_id_;
+    RoundStatistics current_round_;
+    std::vector<RoundStatistics> round_history_;
+    std::atomic<uint64_t> next_round_id_;
+
+    // Current work
+    std::optional<Work> current_work_;
+    std::mutex work_mutex_;
+
+    // Variable difficulty
+    VarDiffManager vardiff_;
+
+    // Statistics
+    PoolStatistics stats_;
+    std::chrono::system_clock::time_point start_time_;
+
+    // Security - banned miners and IPs
+    std::map<std::string, std::chrono::system_clock::time_point> banned_ips_;
+    std::mutex security_mutex_;
+
+    // Callbacks
+    std::optional<MiningPoolServer::BlockFoundCallback> block_found_callback_;
+    std::optional<MiningPoolServer::PayoutCallback> payout_callback_;
+
+    // Network server threads (will be implemented separately)
+    std::thread stratum_thread_;
+    std::thread http_thread_;
+
+    void Stop() {
+        running_ = false;
+        // Join threads if running
+        if (stratum_thread_.joinable()) {
+            stratum_thread_.join();
+        }
+        if (http_thread_.joinable()) {
+            http_thread_.join();
+        }
+    }
+};
+
+// Constructor
+MiningPoolServer::MiningPoolServer(const PoolConfig& config,
+                                   std::shared_ptr<Blockchain> blockchain,
+                                   std::shared_ptr<Miner> miner)
+    : impl_(std::make_unique<Impl>(config, blockchain, miner))
+{
+    impl_->start_time_ = std::chrono::system_clock::now();
+}
+
+// Destructor
+MiningPoolServer::~MiningPoolServer() = default;
+
+// Server Control
+Result<void> MiningPoolServer::Start() {
+    if (impl_->running_) {
+        return Result<void>::Error("Pool server already running");
+    }
+
+    impl_->running_ = true;
+
+    // Create initial work
+    auto work_result = CreateWork(false);
+    if (!work_result.IsOk()) {
+        impl_->running_ = false;
+        return Result<void>::Error("Failed to create initial work: " + work_result.error);
+    }
+
+    // TODO: Start Stratum server thread
+    // impl_->stratum_thread_ = std::thread([this]() { RunStratumServer(); });
+
+    // TODO: Start HTTP API server thread
+    // impl_->http_thread_ = std::thread([this]() { RunHttpServer(); });
+
+    return Result<void>::Ok();
+}
+
+void MiningPoolServer::Stop() {
+    impl_->Stop();
+}
+
+bool MiningPoolServer::IsRunning() const {
+    return impl_->running_;
+}
+
+// Miner Management
+Result<uint64_t> MiningPoolServer::RegisterMiner(const std::string& username,
+                                                  const std::string& payout_address,
+                                                  const std::string& email)
+{
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Check if username already exists
+    if (impl_->username_to_miner_id_.count(username) > 0) {
+        return Result<uint64_t>::Error("Username already registered");
+    }
+
+    // Check max miners limit
+    if (impl_->miners_.size() >= impl_->config_.max_miners) {
+        return Result<uint64_t>::Error("Maximum miners limit reached");
+    }
+
+    Miner miner;
+    miner.miner_id = impl_->next_miner_id_++;
+    miner.username = username;
+    miner.payout_address = payout_address;
+    miner.email = email;
+    miner.total_shares_submitted = 0;
+    miner.total_shares_accepted = 0;
+    miner.total_shares_rejected = 0;
+    miner.total_blocks_found = 0;
+    miner.total_hashrate = 0.0;
+    miner.unpaid_balance = 0;
+    miner.paid_balance = 0;
+    miner.estimated_earnings = 0;
+    miner.invalid_share_count = 0;
+    miner.is_banned = false;
+    miner.registered_at = std::chrono::system_clock::now();
+    miner.last_seen = std::chrono::system_clock::now();
+
+    impl_->miners_[miner.miner_id] = miner;
+    impl_->username_to_miner_id_[username] = miner.miner_id;
+
+    return Result<uint64_t>::Ok(miner.miner_id);
+}
+
+std::optional<Miner> MiningPoolServer::GetMiner(uint64_t miner_id) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->miners_.find(miner_id);
+    if (it != impl_->miners_.end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+std::optional<Miner> MiningPoolServer::GetMinerByUsername(const std::string& username) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->username_to_miner_id_.find(username);
+    if (it != impl_->username_to_miner_id_.end()) {
+        return GetMiner(it->second);
+    }
+    return std::nullopt;
+}
+
+Result<void> MiningPoolServer::UpdatePayoutAddress(uint64_t miner_id,
+                                                    const std::string& new_address)
+{
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->miners_.find(miner_id);
+    if (it == impl_->miners_.end()) {
+        return Result<void>::Error("Miner not found");
+    }
+
+    it->second.payout_address = new_address;
+    return Result<void>::Ok();
+}
+
+std::vector<Miner> MiningPoolServer::GetAllMiners() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    std::vector<Miner> miners;
+    for (const auto& [id, miner] : impl_->miners_) {
+        miners.push_back(miner);
+    }
+    return miners;
+}
+
+std::vector<Miner> MiningPoolServer::GetActiveMiners() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    std::vector<Miner> active_miners;
+    auto now = std::chrono::system_clock::now();
+    auto timeout = std::chrono::minutes(10);
+
+    for (const auto& [id, miner] : impl_->miners_) {
+        if (now - miner.last_seen < timeout) {
+            active_miners.push_back(miner);
+        }
+    }
+    return active_miners;
+}
+
+// Worker Management
+Result<uint64_t> MiningPoolServer::AddWorker(uint64_t miner_id,
+                                              const std::string& worker_name,
+                                              const std::string& ip_address,
+                                              uint16_t port)
+{
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Check if miner exists
+    auto miner_it = impl_->miners_.find(miner_id);
+    if (miner_it == impl_->miners_.end()) {
+        return Result<uint64_t>::Error("Miner not found");
+    }
+
+    // Check workers per miner limit
+    if (miner_it->second.workers.size() >= impl_->config_.max_workers_per_miner) {
+        return Result<uint64_t>::Error("Maximum workers per miner limit reached");
+    }
+
+    Worker worker;
+    worker.worker_id = impl_->next_worker_id_++;
+    worker.miner_id = miner_id;
+    worker.worker_name = worker_name;
+    worker.shares_submitted = 0;
+    worker.shares_accepted = 0;
+    worker.shares_rejected = 0;
+    worker.shares_stale = 0;
+    worker.blocks_found = 0;
+    worker.current_hashrate = 0.0;
+    worker.average_hashrate = 0.0;
+    worker.current_difficulty = impl_->config_.initial_difficulty;
+    worker.ip_address = ip_address;
+    worker.port = port;
+    worker.connected_at = std::chrono::system_clock::now();
+    worker.last_activity = std::chrono::system_clock::now();
+    worker.is_active = true;
+
+    impl_->workers_[worker.worker_id] = worker;
+    impl_->worker_to_miner_[worker.worker_id] = miner_id;
+    miner_it->second.workers[worker.worker_id] = worker;
+
+    return Result<uint64_t>::Ok(worker.worker_id);
+}
+
+void MiningPoolServer::RemoveWorker(uint64_t worker_id) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    auto worker_it = impl_->workers_.find(worker_id);
+    if (worker_it == impl_->workers_.end()) {
+        return;
+    }
+
+    uint64_t miner_id = impl_->worker_to_miner_[worker_id];
+    auto miner_it = impl_->miners_.find(miner_id);
+    if (miner_it != impl_->miners_.end()) {
+        miner_it->second.workers.erase(worker_id);
+    }
+
+    impl_->workers_.erase(worker_id);
+    impl_->worker_to_miner_.erase(worker_id);
+}
+
+std::optional<Worker> MiningPoolServer::GetWorker(uint64_t worker_id) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->workers_.find(worker_id);
+    if (it != impl_->workers_.end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+std::vector<Worker> MiningPoolServer::GetMinerWorkers(uint64_t miner_id) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    std::vector<Worker> workers;
+
+    for (const auto& [worker_id, worker] : impl_->workers_) {
+        if (worker.miner_id == miner_id) {
+            workers.push_back(worker);
+        }
+    }
+
+    return workers;
+}
+
+void MiningPoolServer::UpdateWorkerActivity(uint64_t worker_id) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->workers_.find(worker_id);
+    if (it != impl_->workers_.end()) {
+        it->second.last_activity = std::chrono::system_clock::now();
+        it->second.is_active = true;
+    }
+}
+
+void MiningPoolServer::DisconnectInactiveWorkers(std::chrono::seconds timeout) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto now = std::chrono::system_clock::now();
+    std::vector<uint64_t> to_remove;
+
+    for (const auto& [worker_id, worker] : impl_->workers_) {
+        if (now - worker.last_activity > timeout) {
+            to_remove.push_back(worker_id);
+        }
+    }
+
+    for (uint64_t worker_id : to_remove) {
+        RemoveWorker(worker_id);
+    }
+}
+
+// Share Processing
+Result<void> MiningPoolServer::SubmitShare(uint64_t worker_id,
+                                            const uint256& job_id,
+                                            const uint256& nonce,
+                                            const uint256& share_hash)
+{
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Get worker
+    auto worker_it = impl_->workers_.find(worker_id);
+    if (worker_it == impl_->workers_.end()) {
+        return Result<void>::Error("Worker not found");
+    }
+
+    // Get miner
+    uint64_t miner_id = impl_->worker_to_miner_[worker_id];
+    auto miner_it = impl_->miners_.find(miner_id);
+    if (miner_it == impl_->miners_.end()) {
+        return Result<void>::Error("Miner not found");
+    }
+
+    // Create share
+    Share share;
+    share.share_id = impl_->next_share_id_++;
+    share.miner_id = miner_id;
+    share.worker_id = worker_id;
+    share.worker_name = worker_it->second.worker_name;
+    share.job_id = job_id;
+    share.nonce = nonce;
+    share.share_hash = share_hash;
+    share.difficulty = worker_it->second.current_difficulty;
+    share.timestamp = std::chrono::system_clock::now();
+    share.valid = false;
+
+    // Validate share
+    auto validation_result = ValidateShare(share);
+    if (!validation_result.IsOk()) {
+        share.valid = false;
+        share.error_msg = validation_result.error;
+
+        // Update statistics
+        worker_it->second.shares_rejected++;
+        miner_it->second.total_shares_rejected++;
+
+        // Check for excessive invalid shares
+        miner_it->second.invalid_share_count++;
+        CheckInvalidShares(miner_id);
+
+        return Result<void>::Error("Share rejected: " + validation_result.error);
+    }
+
+    share.valid = validation_result.GetValue();
+
+    if (share.valid) {
+        ProcessValidShare(share);
+
+        // Check if this is also a valid block
+        auto network_difficulty = impl_->blockchain_->GetDifficulty();
+        if (ShareValidator::IsValidBlock(share_hash, network_difficulty)) {
+            share.is_block = true;
+            auto block_result = ProcessBlockFound(share);
+            if (!block_result.IsOk()) {
+                return Result<void>::Error("Share accepted but block processing failed: " +
+                                          block_result.error);
+            }
+        }
+    }
+
+    // Add to recent shares
+    impl_->recent_shares_.push_back(share);
+
+    // Keep only last 10000 shares in memory
+    if (impl_->recent_shares_.size() > 10000) {
+        impl_->recent_shares_.erase(impl_->recent_shares_.begin(),
+                                    impl_->recent_shares_.begin() + 1000);
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<bool> MiningPoolServer::ValidateShare(const Share& share) {
+    // Get current work
+    std::lock_guard<std::mutex> work_lock(impl_->work_mutex_);
+    if (!impl_->current_work_.has_value()) {
+        return Result<bool>::Error("No current work available");
+    }
+
+    const Work& work = *impl_->current_work_;
+
+    // Validate difficulty
+    if (!ShareValidator::ValidateDifficulty(share.share_hash, share.difficulty)) {
+        return Result<bool>::Error("Share does not meet difficulty requirement");
+    }
+
+    // Validate work
+    if (!ShareValidator::ValidateWork(share, work)) {
+        return Result<bool>::Error("Share is for stale work");
+    }
+
+    // Validate timestamp
+    if (!ShareValidator::ValidateTimestamp(share, work)) {
+        return Result<bool>::Error("Share timestamp invalid");
+    }
+
+    // Check for duplicate
+    if (ShareValidator::IsDuplicateShare(share, impl_->recent_shares_)) {
+        return Result<bool>::Error("Duplicate share");
+    }
+
+    return Result<bool>::Ok(true);
+}
+
+void MiningPoolServer::ProcessValidShare(const Share& share) {
+    // Update worker statistics
+    auto worker_it = impl_->workers_.find(share.worker_id);
+    if (worker_it != impl_->workers_.end()) {
+        worker_it->second.shares_submitted++;
+        worker_it->second.shares_accepted++;
+        worker_it->second.recent_shares.push_back(share.timestamp);
+
+        // Keep only last 100 shares for hashrate calculation
+        if (worker_it->second.recent_shares.size() > 100) {
+            worker_it->second.recent_shares.erase(worker_it->second.recent_shares.begin());
+        }
+
+        // Update hashrate
+        worker_it->second.current_hashrate = CalculateWorkerHashrate(share.worker_id);
+
+        // Update difficulty if needed
+        if (impl_->vardiff_.ShouldAdjust(worker_it->second)) {
+            AdjustWorkerDifficulty(share.worker_id);
+        }
+    }
+
+    // Update miner statistics
+    auto miner_it = impl_->miners_.find(share.miner_id);
+    if (miner_it != impl_->miners_.end()) {
+        miner_it->second.total_shares_submitted++;
+        miner_it->second.total_shares_accepted++;
+        miner_it->second.last_seen = std::chrono::system_clock::now();
+
+        // Reset invalid share count on valid share
+        miner_it->second.invalid_share_count = 0;
+    }
+
+    // Update round statistics
+    impl_->current_round_.shares_submitted++;
+    impl_->current_round_.miner_shares[share.miner_id]++;
+
+    // Update pool statistics
+    impl_->stats_.shares_this_round++;
+    impl_->stats_.total_shares++;
+}
+
+Result<void> MiningPoolServer::ProcessBlockFound(const Share& share) {
+    // Construct block from share and current work
+    std::lock_guard<std::mutex> work_lock(impl_->work_mutex_);
+    if (!impl_->current_work_.has_value()) {
+        return Result<void>::Error("No current work available");
+    }
+
+    const Work& work = *impl_->current_work_;
+
+    Block block;
+    block.header = work.header;
+
+    // Convert uint256 nonce to uint64_t (take first 8 bytes)
+    uint64_t nonce_u64 = 0;
+    for (size_t i = 0; i < 8 && i < share.nonce.size(); i++) {
+        nonce_u64 |= (static_cast<uint64_t>(share.nonce[i]) << (i * 8));
+    }
+    block.header.nonce = nonce_u64;
+    block.transactions = work.transactions;
+
+    // Submit block to blockchain
+    auto submit_result = impl_->blockchain_->AddBlock(block);
+    if (!submit_result.IsOk()) {
+        return Result<void>::Error("Failed to submit block: " + submit_result.error);
+    }
+
+    // Update statistics
+    auto worker_it = impl_->workers_.find(share.worker_id);
+    if (worker_it != impl_->workers_.end()) {
+        worker_it->second.blocks_found++;
+    }
+
+    auto miner_it = impl_->miners_.find(share.miner_id);
+    if (miner_it != impl_->miners_.end()) {
+        miner_it->second.total_blocks_found++;
+    }
+
+    impl_->stats_.blocks_found++;
+    impl_->stats_.blocks_pending++;
+    impl_->stats_.last_block_found = std::chrono::system_clock::now();
+
+    // Complete current round
+    impl_->current_round_.ended_at = std::chrono::system_clock::now();
+    impl_->current_round_.block_height = work.height;
+    impl_->current_round_.block_hash = block.GetHash();
+
+    // Calculate block reward (simplified - actual reward depends on height)
+    uint64_t block_reward = 50 * 100000000ULL;  // 50 INTS in base units
+    impl_->current_round_.block_reward = block_reward;
+    impl_->current_round_.is_complete = true;
+
+    impl_->round_history_.push_back(impl_->current_round_);
+
+    // Start new round
+    impl_->current_round_ = RoundStatistics();
+    impl_->current_round_.round_id = impl_->next_round_id_++;
+    impl_->current_round_.started_at = std::chrono::system_clock::now();
+    impl_->current_round_.is_complete = false;
+
+    // Trigger block found callback
+    if (impl_->block_found_callback_.has_value()) {
+        (*impl_->block_found_callback_)(block, share.miner_id);
+    }
+
+    // Create new work
+    UpdateWork();
+
+    return Result<void>::Ok();
+}
+
+std::vector<Share> MiningPoolServer::GetRecentShares(size_t count) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    if (count >= impl_->recent_shares_.size()) {
+        return impl_->recent_shares_;
+    }
+
+    return std::vector<Share>(impl_->recent_shares_.end() - count,
+                             impl_->recent_shares_.end());
+}
+
+std::vector<Share> MiningPoolServer::GetMinerShares(uint64_t miner_id, size_t count) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    std::vector<Share> miner_shares;
+
+    for (auto it = impl_->recent_shares_.rbegin();
+         it != impl_->recent_shares_.rend() && miner_shares.size() < count; ++it) {
+        if (it->miner_id == miner_id) {
+            miner_shares.push_back(*it);
+        }
+    }
+
+    std::reverse(miner_shares.begin(), miner_shares.end());
+    return miner_shares;
+}
+
+// Work Management
+Result<Work> MiningPoolServer::CreateWork(bool clean_jobs) {
+    std::lock_guard<std::mutex> work_lock(impl_->work_mutex_);
+
+    // Get block template from blockchain
+    // TODO: Use proper wallet/keypair for pool rewards
+    // For now, use a placeholder public key (pool operator should configure this)
+    PublicKey pool_pubkey;
+    pool_pubkey.fill(0);  // Placeholder - should be configured
+
+    auto template_result = impl_->blockchain_->GetBlockTemplate(pool_pubkey);
+    if (!template_result.IsOk()) {
+        return Result<Work>::Error("Failed to get block template: " +
+                                   template_result.error);
+    }
+
+    auto block_template = template_result.GetValue();
+
+    Work work;
+    work.job_id = GenerateJobID();
+    work.header = block_template.header;
+    work.coinbase_tx = block_template.transactions[0];
+    work.transactions = block_template.transactions;
+    work.merkle_root = block_template.header.merkle_root;
+    work.height = impl_->blockchain_->GetBestHeight() + 1;  // Next block height
+    work.difficulty = impl_->blockchain_->GetDifficulty();
+    work.created_at = std::chrono::system_clock::now();
+    work.clean_jobs = clean_jobs;
+
+    impl_->current_work_ = work;
+
+    return Result<Work>::Ok(work);
+}
+
+std::optional<Work> MiningPoolServer::GetCurrentWork() const {
+    std::lock_guard<std::mutex> work_lock(impl_->work_mutex_);
+    return impl_->current_work_;
+}
+
+Result<void> MiningPoolServer::UpdateWork() {
+    auto work_result = CreateWork(true);
+    if (!work_result.IsOk()) {
+        return Result<void>::Error("Failed to create new work: " + work_result.error);
+    }
+
+    // Broadcast new work to all miners
+    BroadcastWork(work_result.GetValue());
+
+    return Result<void>::Ok();
+}
+
+void MiningPoolServer::BroadcastWork(const Work& work) {
+    // TODO: Implement Stratum broadcast to all connected workers
+    // For now, just store the work (it's already stored in CreateWork)
+}
+
+// Configuration
+const PoolConfig& MiningPoolServer::GetConfig() const {
+    return impl_->config_;
+}
+
+void MiningPoolServer::UpdateConfig(const PoolConfig& config) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    impl_->config_ = config;
+}
+
+// Callbacks
+void MiningPoolServer::RegisterBlockFoundCallback(BlockFoundCallback callback) {
+    impl_->block_found_callback_ = callback;
+}
+
+void MiningPoolServer::RegisterPayoutCallback(PayoutCallback callback) {
+    impl_->payout_callback_ = callback;
+}
+
+// Remaining stub methods (to be implemented in next iteration)
+uint64_t MiningPoolServer::CalculateWorkerDifficulty(uint64_t worker_id) const {
+    auto worker = GetWorker(worker_id);
+    if (!worker.has_value()) return impl_->config_.initial_difficulty;
+    return impl_->vardiff_.CalculateDifficulty(*worker);
+}
+
+void MiningPoolServer::AdjustWorkerDifficulty(uint64_t worker_id) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->workers_.find(worker_id);
+    if (it == impl_->workers_.end()) return;
+
+    uint64_t new_diff = impl_->vardiff_.CalculateDifficulty(it->second);
+    it->second.current_difficulty = new_diff;
+
+    // TODO: Send difficulty update via Stratum
+}
+
+void MiningPoolServer::SetWorkerDifficulty(uint64_t worker_id, uint64_t difficulty) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->workers_.find(worker_id);
+    if (it != impl_->workers_.end()) {
+        it->second.current_difficulty = difficulty;
+    }
+}
+
+void MiningPoolServer::AdjustAllDifficulties() {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    for (auto& [worker_id, worker] : impl_->workers_) {
+        if (impl_->vardiff_.ShouldAdjust(worker)) {
+            uint64_t new_diff = impl_->vardiff_.CalculateDifficulty(worker);
+            worker.current_difficulty = new_diff;
+            // TODO: Send difficulty update via Stratum
+        }
+    }
+}
+
+std::map<uint64_t, uint64_t> MiningPoolServer::CalculatePPLNSPayouts(uint64_t block_reward) {
+    return PayoutCalculator::CalculatePPLNS(impl_->recent_shares_,
+                                           impl_->config_.pplns_window,
+                                           block_reward,
+                                           impl_->config_.pool_fee_percent);
+}
+
+std::map<uint64_t, uint64_t> MiningPoolServer::CalculatePPSPayouts() {
+    auto network_diff = impl_->blockchain_->GetDifficulty();
+    auto share_diff = impl_->config_.initial_difficulty;
+    uint64_t expected_shares = HashrateCalculator::CalculateExpectedShares(network_diff, share_diff);
+
+    // Simplified block reward (should use ConsensusValidator::GetBlockReward)
+    uint64_t block_reward = 50 * 100000000ULL;  // 50 INTS in base units
+
+    return PayoutCalculator::CalculatePPS(impl_->recent_shares_,
+                                         expected_shares,
+                                         block_reward,
+                                         impl_->config_.pool_fee_percent);
+}
+
+Result<void> MiningPoolServer::ProcessPayouts() {
+    // TODO: Implement payout processing with transaction creation
+    return Result<void>::Error("Payout processing not yet implemented");
+}
+
+uint64_t MiningPoolServer::GetMinerBalance(uint64_t miner_id) const {
+    auto miner = GetMiner(miner_id);
+    if (!miner.has_value()) return 0;
+    return miner->unpaid_balance;
+}
+
+uint64_t MiningPoolServer::GetMinerEstimatedEarnings(uint64_t miner_id) const {
+    auto miner = GetMiner(miner_id);
+    if (!miner.has_value()) return 0;
+    return miner->estimated_earnings;
+}
+
+PoolStatistics MiningPoolServer::GetStatistics() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    PoolStatistics stats = impl_->stats_;
+
+    // Update real-time statistics
+    stats.network_height = impl_->blockchain_->GetBestHeight();
+    stats.network_difficulty = impl_->blockchain_->GetDifficulty();
+    stats.active_miners = GetActiveMiners().size();
+    stats.active_workers = 0;
+
+    for (const auto& [id, worker] : impl_->workers_) {
+        if (worker.is_active) stats.active_workers++;
+    }
+
+    stats.pool_hashrate = CalculatePoolHashrate();
+
+    auto now = std::chrono::system_clock::now();
+    auto uptime = std::chrono::duration_cast<std::chrono::hours>(now - impl_->start_time_);
+    stats.uptime_hours = uptime.count();
+
+    return stats;
+}
+
+RoundStatistics MiningPoolServer::GetCurrentRound() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    return impl_->current_round_;
+}
+
+std::vector<RoundStatistics> MiningPoolServer::GetRoundHistory(size_t count) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    if (count >= impl_->round_history_.size()) {
+        return impl_->round_history_;
+    }
+
+    return std::vector<RoundStatistics>(impl_->round_history_.end() - count,
+                                       impl_->round_history_.end());
+}
+
+double MiningPoolServer::CalculatePoolHashrate() const {
+    return HashrateCalculator::CalculateHashrate(impl_->recent_shares_,
+                                                 std::chrono::minutes(10));
+}
+
+double MiningPoolServer::CalculateWorkerHashrate(uint64_t worker_id) const {
+    auto shares = GetMinerShares(impl_->worker_to_miner_.at(worker_id), 100);
+    std::vector<Share> worker_shares;
+    for (const auto& share : shares) {
+        if (share.worker_id == worker_id) {
+            worker_shares.push_back(share);
+        }
+    }
+    return HashrateCalculator::CalculateHashrate(worker_shares, std::chrono::minutes(5));
+}
+
+double MiningPoolServer::CalculateMinerHashrate(uint64_t miner_id) const {
+    auto shares = GetMinerShares(miner_id, 200);
+    return HashrateCalculator::CalculateHashrate(shares, std::chrono::minutes(10));
+}
+
+// Stratum Protocol (stubs for now - will implement in separate file)
+Result<stratum::Message> MiningPoolServer::HandleStratumMessage(const std::string& json) {
+    return ParseStratumMessage(json);
+}
+
+Result<stratum::SubscribeResponse> MiningPoolServer::HandleSubscribe(uint64_t conn_id) {
+    // TODO: Implement Stratum subscribe
+    return Result<stratum::SubscribeResponse>::Error("Not implemented");
+}
+
+Result<bool> MiningPoolServer::HandleAuthorize(uint64_t conn_id,
+                                                const std::string& username,
+                                                const std::string& password) {
+    // TODO: Implement Stratum authorize
+    return Result<bool>::Error("Not implemented");
+}
+
+Result<bool> MiningPoolServer::HandleSubmit(uint64_t conn_id,
+                                            const std::string& job_id,
+                                            const std::string& nonce,
+                                            const std::string& result) {
+    // TODO: Implement Stratum submit
+    return Result<bool>::Error("Not implemented");
+}
+
+void MiningPoolServer::SendNotify(uint64_t conn_id, const Work& work) {
+    // TODO: Implement Stratum notify
+}
+
+void MiningPoolServer::SendSetDifficulty(uint64_t conn_id, uint64_t difficulty) {
+    // TODO: Implement Stratum set difficulty
+}
+
+// Security
+void MiningPoolServer::BanMiner(uint64_t miner_id, std::chrono::seconds duration) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->miners_.find(miner_id);
+    if (it != impl_->miners_.end()) {
+        it->second.is_banned = true;
+        it->second.ban_expires = std::chrono::system_clock::now() + duration;
+    }
+}
+
+void MiningPoolServer::UnbanMiner(uint64_t miner_id) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->miners_.find(miner_id);
+    if (it != impl_->miners_.end()) {
+        it->second.is_banned = false;
+    }
+}
+
+bool MiningPoolServer::IsMinerBanned(uint64_t miner_id) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    auto it = impl_->miners_.find(miner_id);
+    if (it == impl_->miners_.end()) return false;
+
+    if (!it->second.is_banned) return false;
+
+    // Check if ban expired
+    auto now = std::chrono::system_clock::now();
+    if (now >= it->second.ban_expires) {
+        return false;
+    }
+
+    return true;
+}
+
+void MiningPoolServer::BlockIP(const std::string& ip, std::chrono::seconds duration) {
+    std::lock_guard<std::mutex> lock(impl_->security_mutex_);
+    impl_->banned_ips_[ip] = std::chrono::system_clock::now() + duration;
+}
+
+bool MiningPoolServer::IsIPBlocked(const std::string& ip) const {
+    std::lock_guard<std::mutex> lock(impl_->security_mutex_);
+    auto it = impl_->banned_ips_.find(ip);
+    if (it == impl_->banned_ips_.end()) return false;
+
+    auto now = std::chrono::system_clock::now();
+    return now < it->second;
+}
+
+void MiningPoolServer::CheckInvalidShares(uint64_t miner_id) {
+    if (!impl_->config_.ban_on_invalid_share) return;
+
+    auto it = impl_->miners_.find(miner_id);
+    if (it == impl_->miners_.end()) return;
+
+    if (it->second.invalid_share_count >= impl_->config_.max_invalid_shares) {
+        BanMiner(miner_id, impl_->config_.ban_duration);
+    }
+}
+
 } // namespace intcoin
