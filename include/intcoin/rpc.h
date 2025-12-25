@@ -299,6 +299,16 @@ public:
     static JSONValue sendrawtransaction(const JSONValue& params, Blockchain& blockchain);
 };
 
+class FeeEstimationRPC {
+public:
+    static void RegisterMethods(RPCServer& server, Blockchain& blockchain);
+
+    // Fee estimation methods
+    static JSONValue estimatesmartfee(const JSONValue& params, Blockchain& blockchain);
+    static JSONValue estimaterawfee(const JSONValue& params, Blockchain& blockchain);
+    static JSONValue estimatefee(const JSONValue& params, Blockchain& blockchain);  // Deprecated, for compatibility
+};
+
 // ============================================================================
 // Helper Functions
 // ============================================================================

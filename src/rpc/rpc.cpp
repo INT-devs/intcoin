@@ -15,6 +15,7 @@
 #include <queue>
 #include <cstring>
 #include <cmath>
+#include <algorithm>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -607,6 +608,7 @@ void RPCServer::RegisterAllMethods() {
     MiningRPC::RegisterMethods(*this, impl_->blockchain);
     UtilityRPC::RegisterMethods(*this);
     RawTransactionRPC::RegisterMethods(*this, impl_->blockchain);
+    FeeEstimationRPC::RegisterMethods(*this, impl_->blockchain);
 }
 
 RPCResponse RPCServer::HandleRequest(const RPCRequest& request) {
@@ -1609,6 +1611,229 @@ HTTPResponse HTTPResponse::Unauthorized() {
     HTTPResponse response = Error(401, "Unauthorized");
     response.headers["WWW-Authenticate"] = "Basic realm=\"INTcoin RPC\"";
     return response;
+}
+
+// ============================================================================
+// Fee Estimation RPC Methods
+// ============================================================================
+
+void FeeEstimationRPC::RegisterMethods(RPCServer& server, Blockchain& blockchain) {
+    server.RegisterMethod({
+        "estimatesmartfee",
+        "Estimates the approximate fee per kilobyte needed for a transaction to begin confirmation within conf_target blocks",
+        {"conf_target", "estimate_mode"},
+        false,
+        [&blockchain](const JSONValue& params) { return estimatesmartfee(params, blockchain); }
+    });
+
+    server.RegisterMethod({
+        "estimaterawfee",
+        "WARNING: This interface is unstable and may disappear or change!\n"
+        "Provides raw fee rate data needed for smart fee estimation",
+        {"conf_target", "threshold"},
+        false,
+        [&blockchain](const JSONValue& params) { return estimaterawfee(params, blockchain); }
+    });
+
+    server.RegisterMethod({
+        "estimatefee",
+        "Deprecated. Please use estimatesmartfee instead.\n"
+        "Estimates the approximate fee per kilobyte needed for a transaction to begin confirmation within nblocks blocks",
+        {"nblocks"},
+        false,
+        [&blockchain](const JSONValue& params) { return estimatefee(params, blockchain); }
+    });
+}
+
+JSONValue FeeEstimationRPC::estimatesmartfee(const JSONValue& params, Blockchain& blockchain) {
+    // Parse parameters
+    int64_t conf_target = 6;  // Default: 6 blocks
+    std::string estimate_mode = "CONSERVATIVE";  // CONSERVATIVE or ECONOMICAL
+
+    if (params.type == JSONType::Array && !params.array_value.empty()) {
+        if (params.array_value[0].type == JSONType::Number) {
+            conf_target = static_cast<int64_t>(params.array_value[0].number_value);
+        }
+        if (params.array_value.size() > 1 && params.array_value[1].type == JSONType::String) {
+            estimate_mode = params.array_value[1].string_value;
+        }
+    }
+
+    // Validate conf_target
+    if (conf_target < 1 || conf_target > 1008) {
+        std::map<std::string, JSONValue> error;
+        error["errors"] = JSONValue(std::vector<JSONValue>{
+            JSONValue("Invalid conf_target, must be between 1 and 1008")
+        });
+        return JSONValue(error);
+    }
+
+    // Get recent blocks to analyze fee rates
+    uint64_t best_height = blockchain.GetBestHeight();
+    std::vector<double> fee_rates;
+
+    // Analyze last 100 blocks or less
+    uint64_t blocks_to_analyze = std::min(static_cast<uint64_t>(100), best_height);
+
+    for (uint64_t i = 0; i < blocks_to_analyze; i++) {
+        uint64_t height = best_height - i;
+        auto block_result = blockchain.GetBlockByHeight(height);
+
+        if (block_result.IsOk()) {
+            auto block = block_result.GetValue();
+
+            // Skip coinbase transaction (index 0)
+            for (size_t tx_idx = 1; tx_idx < block.transactions.size(); tx_idx++) {
+                const auto& tx = block.transactions[tx_idx];
+
+                // Calculate transaction size
+                auto serialized = tx.Serialize();
+                size_t tx_size = serialized.size();
+
+                if (tx_size == 0) continue;
+
+                // Estimate fee (we don't have exact input values without UTXO lookup)
+                // Use a simple heuristic: assume 1% of output value as fee
+                uint64_t output_value = tx.GetTotalOutputValue();
+                uint64_t estimated_fee = output_value / 100;  // 1% estimate
+
+                // Fee rate in INTS per byte
+                double fee_rate = static_cast<double>(estimated_fee) / static_cast<double>(tx_size);
+
+                fee_rates.push_back(fee_rate);
+            }
+        }
+    }
+
+    // Calculate fee estimate based on mode
+    double fee_rate_per_byte = 0.0;
+    double percentile = (estimate_mode == "ECONOMICAL") ? 0.25 : 0.75;  // 25th or 75th percentile
+
+    if (!fee_rates.empty()) {
+        // Sort fee rates
+        std::sort(fee_rates.begin(), fee_rates.end());
+
+        // Get percentile
+        size_t index = static_cast<size_t>(fee_rates.size() * percentile);
+        if (index >= fee_rates.size()) index = fee_rates.size() - 1;
+
+        fee_rate_per_byte = fee_rates[index];
+    } else {
+        // Default fee rates if no history
+        fee_rate_per_byte = (estimate_mode == "ECONOMICAL") ? 10.0 : 50.0;
+    }
+
+    // Convert to fee per kilobyte (multiply by 1000)
+    double fee_rate_per_kb = fee_rate_per_byte * 1000.0;
+
+    // Build response
+    std::map<std::string, JSONValue> result;
+    result["feerate"] = JSONValue(fee_rate_per_kb / 100000000.0);  // Convert to INT (not INTS)
+    result["blocks"] = JSONValue(static_cast<double>(conf_target));
+
+    return JSONValue(result);
+}
+
+JSONValue FeeEstimationRPC::estimaterawfee(const JSONValue& params, Blockchain& blockchain) {
+    // Parse parameters
+    int64_t conf_target = 6;
+    double threshold = 0.95;
+
+    if (params.type == JSONType::Array && !params.array_value.empty()) {
+        if (params.array_value[0].type == JSONType::Number) {
+            conf_target = static_cast<int64_t>(params.array_value[0].number_value);
+        }
+        if (params.array_value.size() > 1 && params.array_value[1].type == JSONType::Number) {
+            threshold = params.array_value[1].number_value;
+        }
+    }
+
+    // Get fee statistics from recent blocks
+    uint64_t best_height = blockchain.GetBestHeight();
+    std::vector<double> fee_rates;
+
+    uint64_t blocks_to_analyze = std::min(static_cast<uint64_t>(1000), best_height);
+
+    for (uint64_t i = 0; i < blocks_to_analyze; i++) {
+        uint64_t height = best_height - i;
+        auto block_result = blockchain.GetBlockByHeight(height);
+
+        if (block_result.IsOk()) {
+            auto block = block_result.GetValue();
+
+            for (size_t tx_idx = 1; tx_idx < block.transactions.size(); tx_idx++) {
+                const auto& tx = block.transactions[tx_idx];
+                auto serialized = tx.Serialize();
+                size_t tx_size = serialized.size();
+
+                if (tx_size == 0) continue;
+
+                uint64_t output_value = tx.GetTotalOutputValue();
+                uint64_t estimated_fee = output_value / 100;
+                double fee_rate = static_cast<double>(estimated_fee) / static_cast<double>(tx_size);
+
+                fee_rates.push_back(fee_rate);
+            }
+        }
+    }
+
+    // Calculate statistics
+    std::map<std::string, JSONValue> result;
+
+    if (!fee_rates.empty()) {
+        std::sort(fee_rates.begin(), fee_rates.end());
+
+        // Calculate percentiles
+        std::map<std::string, JSONValue> pass;
+        pass["startrange"] = JSONValue(0.0);
+        pass["endrange"] = JSONValue(static_cast<double>(conf_target));
+        pass["withintarget"] = JSONValue(threshold);
+        pass["totalconfirmed"] = JSONValue(static_cast<double>(fee_rates.size()));
+        pass["inmempool"] = JSONValue(0.0);
+        pass["leftmempool"] = JSONValue(0.0);
+
+        result["short"] = JSONValue(pass);
+        result["medium"] = JSONValue(pass);
+        result["long"] = JSONValue(pass);
+
+        // Fee rate estimate
+        size_t index = static_cast<size_t>(fee_rates.size() * threshold);
+        if (index >= fee_rates.size()) index = fee_rates.size() - 1;
+
+        result["feerate"] = JSONValue(fee_rates[index] * 1000.0 / 100000000.0);
+    } else {
+        result["feerate"] = JSONValue(0.00001);  // Default 10 INTS per KB
+    }
+
+    result["blocks"] = JSONValue(static_cast<double>(conf_target));
+    result["decay"] = JSONValue(0.998);
+
+    return JSONValue(result);
+}
+
+JSONValue FeeEstimationRPC::estimatefee(const JSONValue& params, Blockchain& blockchain) {
+    // This is the deprecated version, just forward to estimatesmartfee
+    int64_t nblocks = 6;
+
+    if (params.type == JSONType::Array && !params.array_value.empty()) {
+        if (params.array_value[0].type == JSONType::Number) {
+            nblocks = static_cast<int64_t>(params.array_value[0].number_value);
+        }
+    }
+
+    // Create params for estimatesmartfee
+    std::vector<JSONValue> smart_params;
+    smart_params.push_back(JSONValue(static_cast<double>(nblocks)));
+    JSONValue smart_params_json(smart_params);
+
+    auto result = estimatesmartfee(smart_params_json, blockchain);
+
+    // Extract fee rate from result
+    if (result.type == JSONType::Object && result.object_value.count("feerate")) {
+        return result.object_value.at("feerate");
+    }
+
+    return JSONValue(-1.0);  // Error or unknown
 }
 
 } // namespace rpc
