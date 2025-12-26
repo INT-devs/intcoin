@@ -2375,6 +2375,33 @@ Result<std::string> Wallet::GetAddressLabel(const std::string& address) const {
     return impl_->db->ReadLabel(address);
 }
 
+Result<ExtendedKey> Wallet::DeriveLightningKey(uint32_t index) const {
+    if (!impl_->is_loaded) {
+        return Result<ExtendedKey>::Error("Wallet not loaded");
+    }
+
+    if (impl_->is_locked) {
+        return Result<ExtendedKey>::Error("Wallet is locked");
+    }
+
+    // BIP44 path for Lightning: m/44'/2210'/0'/2/index
+    // Where 2 is the "change" field used for Lightning Network keys
+    DerivationPath path;
+    path = path.Append(44, true);                    // Purpose (BIP44)
+    path = path.Append(impl_->config.coin_type, true); // Coin type (2210 for INTcoin)
+    path = path.Append(0, true);                     // Account 0
+    path = path.Append(2, false);                    // Lightning keys (not 0=receive, 1=change)
+    path = path.Append(index, false);                // Key index
+
+    // Derive key from master
+    auto key_result = HDKeyDerivation::DerivePath(impl_->master_key, path);
+    if (!key_result.IsOk()) {
+        return Result<ExtendedKey>::Error("Failed to derive Lightning key: " + key_result.error);
+    }
+
+    return key_result;
+}
+
 Result<uint64_t> Wallet::GetBalance() const {
     if (!impl_->is_loaded) {
         return Result<uint64_t>::Error("Wallet not loaded");

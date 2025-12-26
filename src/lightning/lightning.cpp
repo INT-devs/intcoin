@@ -3,6 +3,7 @@
 
 #include "intcoin/lightning.h"
 #include "intcoin/blockchain.h"
+#include "intcoin/wallet.h"
 #include "intcoin/util.h"
 #include "intcoin/crypto.h"
 #include <queue>
@@ -1912,8 +1913,8 @@ bool Watchtower::IsRevokedCommitment(const uint256& txid) const {
     return false;
 }
 
-LightningNetwork::LightningNetwork(Blockchain* blockchain, P2PNode* p2p)
-    : blockchain_(blockchain), p2p_(p2p), running_(false) {}
+LightningNetwork::LightningNetwork(Blockchain* blockchain, P2PNode* p2p, wallet::Wallet* wallet)
+    : blockchain_(blockchain), p2p_(p2p), wallet_(wallet), running_(false) {}
 LightningNetwork::~LightningNetwork() { Stop(); }
 Result<void> LightningNetwork::Start(const PublicKey& node_id, const SecretKey& node_key) {
     node_id_ = node_id;
@@ -1966,13 +1967,75 @@ Result<uint256> LightningNetwork::OpenChannel(const PublicKey& remote_node, uint
     channel->remote_balance = push_amount;
     channel->state = ChannelState::OPENING;
 
-    // Generate keys for the channel (simplified - should use proper key derivation)
-    PublicKey funding_pubkey = node_id_;  // TODO: Derive proper funding key
-    PublicKey revocation_basepoint = node_id_;
-    PublicKey payment_basepoint = node_id_;
-    PublicKey delayed_payment_basepoint = node_id_;
-    PublicKey htlc_basepoint = node_id_;
-    PublicKey first_per_commitment_point = node_id_;
+    // Generate keys for the channel using BIP32 derivation (m/44'/2210'/0'/2/*)
+    // Use channel count as base index for key derivation
+    uint32_t channel_index;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        channel_index = static_cast<uint32_t>(channels_.size());
+    }
+    uint32_t key_base = channel_index * 6;  // 6 keys per channel
+
+    PublicKey funding_pubkey;
+    PublicKey revocation_basepoint;
+    PublicKey payment_basepoint;
+    PublicKey delayed_payment_basepoint;
+    PublicKey htlc_basepoint;
+    PublicKey first_per_commitment_point;
+
+    if (wallet_ != nullptr) {
+        // Derive keys using HD wallet
+        auto funding_key = wallet_->DeriveLightningKey(key_base + 0);
+        auto revocation_key = wallet_->DeriveLightningKey(key_base + 1);
+        auto payment_key = wallet_->DeriveLightningKey(key_base + 2);
+        auto delayed_key = wallet_->DeriveLightningKey(key_base + 3);
+        auto htlc_key = wallet_->DeriveLightningKey(key_base + 4);
+        auto commitment_key = wallet_->DeriveLightningKey(key_base + 5);
+
+        if (funding_key.IsOk() && funding_key.value->public_key.has_value()) {
+            funding_pubkey = funding_key.value->public_key.value();
+        } else {
+            funding_pubkey = node_id_;  // Fallback to node_id
+        }
+
+        if (revocation_key.IsOk() && revocation_key.value->public_key.has_value()) {
+            revocation_basepoint = revocation_key.value->public_key.value();
+        } else {
+            revocation_basepoint = node_id_;
+        }
+
+        if (payment_key.IsOk() && payment_key.value->public_key.has_value()) {
+            payment_basepoint = payment_key.value->public_key.value();
+        } else {
+            payment_basepoint = node_id_;
+        }
+
+        if (delayed_key.IsOk() && delayed_key.value->public_key.has_value()) {
+            delayed_payment_basepoint = delayed_key.value->public_key.value();
+        } else {
+            delayed_payment_basepoint = node_id_;
+        }
+
+        if (htlc_key.IsOk() && htlc_key.value->public_key.has_value()) {
+            htlc_basepoint = htlc_key.value->public_key.value();
+        } else {
+            htlc_basepoint = node_id_;
+        }
+
+        if (commitment_key.IsOk() && commitment_key.value->public_key.has_value()) {
+            first_per_commitment_point = commitment_key.value->public_key.value();
+        } else {
+            first_per_commitment_point = node_id_;
+        }
+    } else {
+        // Fallback: use node_id if wallet not available
+        funding_pubkey = node_id_;
+        revocation_basepoint = node_id_;
+        payment_basepoint = node_id_;
+        delayed_payment_basepoint = node_id_;
+        htlc_basepoint = node_id_;
+        first_per_commitment_point = node_id_;
+    }
 
     // Create open_channel message (BOLT #2)
     OpenChannelMsg open_msg;
@@ -2282,13 +2345,45 @@ void LightningNetwork::HandleOpenChannel(const PublicKey& peer, const std::vecto
     accept_msg.minimum_depth = 3;  // Require 3 confirmations
     accept_msg.to_self_delay = channel->local_config.to_self_delay;
     accept_msg.max_accepted_htlcs = channel->local_config.max_accepted_htlcs;
-    // TODO: Set proper funding keys
-    accept_msg.funding_pubkey = node_id_;
-    accept_msg.revocation_basepoint = node_id_;
-    accept_msg.payment_basepoint = node_id_;
-    accept_msg.delayed_payment_basepoint = node_id_;
-    accept_msg.htlc_basepoint = node_id_;
-    accept_msg.first_per_commitment_point = node_id_;
+
+    // Derive keys using BIP32 (m/44'/2210'/0'/2/*)
+    uint32_t channel_index;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        channel_index = static_cast<uint32_t>(channels_.size());
+    }
+    uint32_t key_base = channel_index * 6;  // 6 keys per channel
+
+    if (wallet_ != nullptr) {
+        // Derive keys using HD wallet
+        auto funding_key = wallet_->DeriveLightningKey(key_base + 0);
+        auto revocation_key = wallet_->DeriveLightningKey(key_base + 1);
+        auto payment_key = wallet_->DeriveLightningKey(key_base + 2);
+        auto delayed_key = wallet_->DeriveLightningKey(key_base + 3);
+        auto htlc_key = wallet_->DeriveLightningKey(key_base + 4);
+        auto commitment_key = wallet_->DeriveLightningKey(key_base + 5);
+
+        accept_msg.funding_pubkey = (funding_key.IsOk() && funding_key.value->public_key.has_value())
+            ? funding_key.value->public_key.value() : node_id_;
+        accept_msg.revocation_basepoint = (revocation_key.IsOk() && revocation_key.value->public_key.has_value())
+            ? revocation_key.value->public_key.value() : node_id_;
+        accept_msg.payment_basepoint = (payment_key.IsOk() && payment_key.value->public_key.has_value())
+            ? payment_key.value->public_key.value() : node_id_;
+        accept_msg.delayed_payment_basepoint = (delayed_key.IsOk() && delayed_key.value->public_key.has_value())
+            ? delayed_key.value->public_key.value() : node_id_;
+        accept_msg.htlc_basepoint = (htlc_key.IsOk() && htlc_key.value->public_key.has_value())
+            ? htlc_key.value->public_key.value() : node_id_;
+        accept_msg.first_per_commitment_point = (commitment_key.IsOk() && commitment_key.value->public_key.has_value())
+            ? commitment_key.value->public_key.value() : node_id_;
+    } else {
+        // Fallback: use node_id if wallet not available
+        accept_msg.funding_pubkey = node_id_;
+        accept_msg.revocation_basepoint = node_id_;
+        accept_msg.payment_basepoint = node_id_;
+        accept_msg.delayed_payment_basepoint = node_id_;
+        accept_msg.htlc_basepoint = node_id_;
+        accept_msg.first_per_commitment_point = node_id_;
+    }
 
     // Send accept_channel message
     auto msg_data = accept_msg.Serialize();
@@ -3077,15 +3172,51 @@ void LightningNetwork::HandleCommitmentSigned(const PublicKey& peer, const std::
     // Increment commitment number
     channel->commitment_number++;
 
-    // Generate revocation secret for previous commitment
-    // TODO: Implement proper key derivation (BIP32)
+    // Generate revocation secret for previous commitment using BIP32
+    // Derive from path m/44'/2210'/0'/2/(channel_index * 1000 + commitment_number)
     uint256 revocation_secret;
-    revocation_secret.fill(0);  // Placeholder
-
-    // Generate next per-commitment point
-    // TODO: Implement proper key derivation
     PublicKey next_point;
-    next_point.fill(0);  // Placeholder
+
+    if (wallet_ != nullptr) {
+        // Use channel commitment number for unique per-commitment derivation
+        uint32_t channel_index;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            // Find channel index (position in channels map)
+            channel_index = 0;
+            for (const auto& [id, ch] : channels_) {
+                if (id == channel->channel_id) {
+                    break;
+                }
+                channel_index++;
+            }
+        }
+
+        // Derive revocation secret for previous commitment
+        uint32_t revocation_index = channel_index * 1000 + channel->commitment_number - 1;
+        auto revocation_key = wallet_->DeriveLightningKey(revocation_index);
+        if (revocation_key.IsOk() && revocation_key.value->private_key.has_value()) {
+            // Use private key as revocation secret
+            const auto& priv_key = revocation_key.value->private_key.value();
+            std::copy_n(priv_key.begin(), std::min(priv_key.size(), revocation_secret.size()),
+                       revocation_secret.begin());
+        } else {
+            revocation_secret.fill(0);  // Fallback
+        }
+
+        // Derive next per-commitment point
+        uint32_t next_commitment_index = channel_index * 1000 + channel->commitment_number;
+        auto next_commit_key = wallet_->DeriveLightningKey(next_commitment_index);
+        if (next_commit_key.IsOk() && next_commit_key.value->public_key.has_value()) {
+            next_point = next_commit_key.value->public_key.value();
+        } else {
+            next_point.fill(0);  // Fallback
+        }
+    } else {
+        // Fallback: use placeholder if wallet not available
+        revocation_secret.fill(0);
+        next_point.fill(0);
+    }
 
     // Send revoke_and_ack to acknowledge the new commitment
     RevokeAndAckMsg revoke_msg;

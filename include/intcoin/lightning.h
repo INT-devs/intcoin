@@ -23,6 +23,10 @@ namespace intcoin {
 class Blockchain;
 class P2PNode;
 
+namespace wallet {
+    class Wallet;
+}
+
 // ============================================================================
 // Lightning Network Constants
 // ============================================================================
@@ -729,7 +733,7 @@ private:
 
 class LightningNetwork {
 public:
-    LightningNetwork(Blockchain* blockchain, P2PNode* p2p);
+    LightningNetwork(Blockchain* blockchain, P2PNode* p2p, wallet::Wallet* wallet = nullptr);
     ~LightningNetwork();
 
     // Initialization
@@ -793,6 +797,7 @@ private:
     // Internal state
     Blockchain* blockchain_;
     P2PNode* p2p_;
+    wallet::Wallet* wallet_;
     PublicKey node_id_;
     SecretKey node_key_;
     std::string node_alias_;

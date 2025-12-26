@@ -285,6 +285,10 @@ public:
     Result<void> SetAddressLabel(const std::string& address, const std::string& label);
     Result<std::string> GetAddressLabel(const std::string& address) const;
 
+    // Lightning Network Key Derivation
+    // Derives keys using path m/44'/2210'/0'/2/index for Lightning-specific keys
+    Result<ExtendedKey> DeriveLightningKey(uint32_t index) const;
+
     // Balance
     Result<uint64_t> GetBalance() const;
     Result<uint64_t> GetUnconfirmedBalance() const;
