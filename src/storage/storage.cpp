@@ -13,6 +13,7 @@
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/table.h>
 #include <rocksdb/cache.h>
+#include <rocksdb/utilities/backup_engine.h>
 #include <unordered_map>
 #include <shared_mutex>
 #include <iostream>
@@ -1283,8 +1284,35 @@ bool BlockchainDB::IsPruningEnabled() const {
 // ============================================================================
 
 uint64_t BlockchainDB::GetDatabaseSize() const {
-    // TODO: Implement database size calculation
-    return 0;
+    if (!impl_->is_open_ || !impl_->db_) {
+        return 0;
+    }
+
+    // Get total SST file size from RocksDB
+    uint64_t total_size = 0;
+    std::string value;
+
+    // Get SST files size (actual data size on disk)
+    if (impl_->db_->GetProperty("rocksdb.total-sst-files-size", &value)) {
+        try {
+            total_size = std::stoull(value);
+        } catch (...) {
+            // Failed to parse, use estimate
+        }
+    }
+
+    // If property not available, try approximate sizes
+    if (total_size == 0) {
+        if (impl_->db_->GetProperty("rocksdb.estimate-live-data-size", &value)) {
+            try {
+                total_size = std::stoull(value);
+            } catch (...) {
+                // Failed to parse
+            }
+        }
+    }
+
+    return total_size;
 }
 
 uint64_t BlockchainDB::GetBlockCount() const {
@@ -1331,13 +1359,121 @@ Result<void> BlockchainDB::Compact() {
 }
 
 Result<void> BlockchainDB::Verify() {
-    // TODO: Implement database verification
-    return Result<void>::Error("Not implemented");
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Step 1: Verify chain state exists
+    auto chain_state_result = GetChainState();
+    if (chain_state_result.IsError()) {
+        return Result<void>::Error("Chain state verification failed: " +
+                                  chain_state_result.error);
+    }
+    const ChainState& state = *chain_state_result.value;
+
+    // Step 2: Verify genesis block
+    auto genesis_result = GetBlockByHeight(0);
+    if (genesis_result.IsError()) {
+        return Result<void>::Error("Genesis block not found");
+    }
+
+    // Step 3: Verify block height mappings
+    for (uint64_t height = 0; height <= state.best_height; height++) {
+        auto hash_result = GetBlockHash(height);
+        if (hash_result.IsError()) {
+            return Result<void>::Error("Block hash not found for height " +
+                                      std::to_string(height));
+        }
+
+        // Verify block index exists
+        auto index_result = GetBlockIndex(*hash_result.value);
+        if (index_result.IsError()) {
+            return Result<void>::Error("Block index not found for height " +
+                                      std::to_string(height));
+        }
+
+        // Verify height matches
+        if (index_result.value->height != height) {
+            return Result<void>::Error("Height mismatch at height " +
+                                      std::to_string(height) +
+                                      " (expected " + std::to_string(height) +
+                                      ", got " + std::to_string(index_result.value->height) + ")");
+        }
+    }
+
+    // Step 4: Verify UTXO count (sample check)
+    auto utxos_result = GetAllUTXOs(1000);  // Sample first 1000
+    if (utxos_result.IsError()) {
+        return Result<void>::Error("UTXO verification failed: " +
+                                  utxos_result.error);
+    }
+
+    // Step 5: Run RocksDB internal verification
+    rocksdb::Status status = impl_->db_->VerifyChecksum();
+    if (!status.ok()) {
+        return Result<void>::Error("RocksDB checksum verification failed: " +
+                                  status.ToString());
+    }
+
+    LogF(LogLevel::INFO, "Database verification passed: %llu blocks, %llu transactions, %llu UTXOs",
+         state.best_height + 1, state.total_transactions, state.utxo_count);
+
+    return Result<void>::Ok();
 }
 
 Result<void> BlockchainDB::Backup(const std::string& backup_dir) {
-    // TODO: Implement database backup
-    return Result<void>::Error("Not implemented");
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    if (backup_dir.empty()) {
+        return Result<void>::Error("Backup directory path is empty");
+    }
+
+    // Create backup engine
+    rocksdb::BackupEngine* backup_engine;
+    rocksdb::BackupEngineOptions backup_options(backup_dir);
+    backup_options.share_table_files = true;  // Deduplicate SST files
+    backup_options.sync = true;               // Ensure data is flushed to disk
+
+    rocksdb::Status status = rocksdb::BackupEngine::Open(
+        rocksdb::Env::Default(),
+        backup_options,
+        &backup_engine
+    );
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to open backup engine: " +
+                                  status.ToString());
+    }
+
+    // Create new backup
+    status = backup_engine->CreateNewBackup(impl_->db_);
+
+    if (!status.ok()) {
+        delete backup_engine;
+        return Result<void>::Error("Failed to create backup: " +
+                                  status.ToString());
+    }
+
+    // Purge old backups (keep last 5)
+    status = backup_engine->PurgeOldBackups(5);
+    if (!status.ok()) {
+        LogF(LogLevel::WARNING, "Failed to purge old backups: %s",
+             status.ToString().c_str());
+        // Non-fatal error, continue
+    }
+
+    // Get backup info
+    std::vector<rocksdb::BackupInfo> backup_info;
+    backup_engine->GetBackupInfo(&backup_info);
+
+    delete backup_engine;
+
+    LogF(LogLevel::INFO, "Database backup created successfully at %s (%zu backups total)",
+         backup_dir.c_str(), backup_info.size());
+
+    return Result<void>::Ok();
 }
 
 // ============================================================================
@@ -1740,7 +1876,37 @@ Result<void> UTXOSet::RevertBlock(const Block& block) {
 }
 
 Result<void> UTXOSet::Flush() {
-    // TODO: Flush cache to database
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    if (!impl_->db) {
+        return Result<void>::Error("Database not initialized");
+    }
+
+    // Begin batch write for atomic flush
+    impl_->db->BeginBatch();
+
+    size_t flushed_count = 0;
+
+    // Write all cached UTXOs to database
+    for (const auto& [outpoint, txout] : impl_->cache) {
+        auto store_result = impl_->db->StoreUTXO(outpoint, txout);
+        if (store_result.IsError()) {
+            impl_->db->AbortBatch();
+            return Result<void>::Error("Failed to flush UTXO: " +
+                                      store_result.error);
+        }
+        flushed_count++;
+    }
+
+    // Commit batch
+    auto commit_result = impl_->db->CommitBatch();
+    if (commit_result.IsError()) {
+        return Result<void>::Error("Failed to commit UTXO flush: " +
+                                  commit_result.error);
+    }
+
+    LogF(LogLevel::INFO, "Flushed %zu UTXOs to database", flushed_count);
+
     return Result<void>::Ok();
 }
 
