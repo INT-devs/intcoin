@@ -131,6 +131,11 @@ public:
     /// @return Multisig script: <M> <pubkey1> ... <pubkeyN> <N> OP_CHECKMULTISIG
     static Script CreateMultisig(uint8_t m, const std::vector<PublicKey>& pubkeys);
 
+    /// Create multisig script_sig (unlocking script)
+    /// @param signatures Signatures to include (must be in correct order)
+    /// @return Script_sig: OP_0 <sig1> <sig2> ... <sigM> (OP_0 for Bitcoin bug compatibility)
+    static Script CreateMultisigScriptSig(const std::vector<Signature>& signatures);
+
     /// Check if this is a P2PKH script
     bool IsP2PKH() const;
 

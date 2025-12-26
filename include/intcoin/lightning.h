@@ -853,6 +853,29 @@ private:
     Result<std::shared_ptr<Channel>> FindChannelByPeer(const PublicKey& peer);
     Result<void> SendMessage(const PublicKey& peer, uint16_t type, const std::vector<uint8_t>& data);
     void UpdateStats();
+
+    // Transaction signing helpers
+    /// Sign commitment transaction funding input
+    /// @param commitment_tx The commitment transaction to sign
+    /// @param funding_scriptpubkey The 2-of-2 multisig script from the funding output
+    /// @param secret_key The secret key to sign with
+    /// @return Signature for the funding input
+    Result<Signature> SignCommitmentTransaction(
+        const Transaction& commitment_tx,
+        const Script& funding_scriptpubkey,
+        const SecretKey& secret_key
+    );
+
+    /// Assemble fully signed commitment transaction from two signatures
+    /// @param commitment_tx The commitment transaction (unsigned)
+    /// @param sig1 First signature (local)
+    /// @param sig2 Second signature (remote)
+    /// @return Fully signed commitment transaction
+    Result<Transaction> AssembleSignedCommitmentTransaction(
+        const Transaction& commitment_tx,
+        const Signature& sig1,
+        const Signature& sig2
+    );
 };
 
 } // namespace intcoin

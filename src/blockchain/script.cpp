@@ -332,6 +332,28 @@ Script Script::CreateMultisig(uint8_t m, const std::vector<PublicKey>& pubkeys) 
     return script;
 }
 
+Script Script::CreateMultisigScriptSig(const std::vector<Signature>& signatures) {
+    // Create multisig unlocking script (script_sig)
+    // Format: OP_0 <sig1> <sig2> ... <sigM>
+    // OP_0 is required due to Bitcoin off-by-one bug (kept for compatibility)
+
+    Script script;
+
+    // Push OP_0 (dummy element for Bitcoin bug compatibility)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_0));
+
+    // Push all signatures
+    for (const auto& signature : signatures) {
+        script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+        uint16_t len = static_cast<uint16_t>(signature.size());
+        script.bytes.push_back(len & 0xFF);
+        script.bytes.push_back((len >> 8) & 0xFF);
+        script.bytes.insert(script.bytes.end(), signature.begin(), signature.end());
+    }
+
+    return script;
+}
+
 bool Script::IsP2PKH() const {
     // P2PKH pattern: OP_DUP OP_HASH <32> <32-byte hash> OP_EQUALVERIFY OP_CHECKSIG
     // Total: 38 bytes

@@ -3506,4 +3506,52 @@ void LightningNetwork::UpdateStats() {
     stats_ = Stats{}; stats_.num_channels = channels_.size();
 }
 
+// ============================================================================
+// Transaction Signing Helpers
+// ============================================================================
+
+Result<Signature> LightningNetwork::SignCommitmentTransaction(
+    const Transaction& commitment_tx,
+    const Script& funding_scriptpubkey,
+    const SecretKey& secret_key)
+{
+    // Get signing hash for input 0 (the funding input)
+    if (commitment_tx.inputs.empty()) {
+        return Result<Signature>::Error("Commitment transaction has no inputs");
+    }
+
+    // Generate signing hash using SIGHASH_ALL
+    uint256 signing_hash = commitment_tx.GetHashForSigning(SIGHASH_ALL, 0, funding_scriptpubkey);
+
+    // Sign with Dilithium3
+    auto sig_result = DilithiumCrypto::SignHash(signing_hash, secret_key);
+    if (!sig_result.IsOk()) {
+        return Result<Signature>::Error("Failed to sign commitment transaction: " + sig_result.error);
+    }
+
+    return Result<Signature>::Ok(sig_result.GetValue());
+}
+
+Result<Transaction> LightningNetwork::AssembleSignedCommitmentTransaction(
+    const Transaction& commitment_tx,
+    const Signature& sig1,
+    const Signature& sig2)
+{
+    // Create a copy of the transaction
+    Transaction signed_tx = commitment_tx;
+
+    if (signed_tx.inputs.empty()) {
+        return Result<Transaction>::Error("Commitment transaction has no inputs");
+    }
+
+    // Create multisig script_sig with both signatures
+    std::vector<Signature> signatures = {sig1, sig2};
+    Script multisig_script_sig = Script::CreateMultisigScriptSig(signatures);
+
+    // Set the script_sig on the funding input (input 0)
+    signed_tx.inputs[0].script_sig = multisig_script_sig;
+
+    return Result<Transaction>::Ok(signed_tx);
+}
+
 } // namespace intcoin
