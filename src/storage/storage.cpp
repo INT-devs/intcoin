@@ -84,6 +84,50 @@ Result<ChainState> ChainState::Deserialize(const std::vector<uint8_t>& data) {
 }
 
 // ============================================================================
+// SpentOutput Serialization
+// ============================================================================
+
+std::vector<uint8_t> SpentOutput::Serialize() const {
+    std::vector<uint8_t> result;
+
+    // Serialize outpoint
+    auto outpoint_data = outpoint.Serialize();
+    result.insert(result.end(), outpoint_data.begin(), outpoint_data.end());
+
+    // Serialize output
+    auto output_data = output.Serialize();
+    result.insert(result.end(), output_data.begin(), output_data.end());
+
+    return result;
+}
+
+Result<SpentOutput> SpentOutput::Deserialize(const std::vector<uint8_t>& data) {
+    size_t pos = 0;
+    SpentOutput spent;
+
+    // Deserialize outpoint
+    std::vector<uint8_t> outpoint_data(data.begin(), data.end());
+    auto outpoint_result = OutPoint::Deserialize(outpoint_data);
+    if (outpoint_result.IsError()) {
+        return Result<SpentOutput>::Error("Failed to deserialize outpoint: " +
+                                         outpoint_result.error);
+    }
+    spent.outpoint = *outpoint_result.value;
+    pos += outpoint_result.value->Serialize().size();
+
+    // Deserialize output
+    std::vector<uint8_t> output_data(data.begin() + pos, data.end());
+    auto output_result = TxOut::Deserialize(output_data);
+    if (output_result.IsError()) {
+        return Result<SpentOutput>::Error("Failed to deserialize output: " +
+                                         output_result.error);
+    }
+    spent.output = *output_result.value;
+
+    return Result<SpentOutput>::Ok(std::move(spent));
+}
+
+// ============================================================================
 // BlockIndex Serialization
 // ============================================================================
 
@@ -686,6 +730,122 @@ Result<std::vector<std::pair<OutPoint, TxOut>>> BlockchainDB::GetAllUTXOs(size_t
     }
 
     return Result<std::vector<std::pair<OutPoint, TxOut>>>::Ok(std::move(utxos));
+}
+
+// ============================================================================
+// Spent Outputs Operations (for reorganization)
+// ============================================================================
+
+Result<void> BlockchainDB::StoreSpentOutputs(const uint256& block_hash,
+                                             const std::vector<SpentOutput>& spent_outputs) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Build database key: PREFIX_SPENT_OUTPUTS + block_hash
+    std::string key;
+    key.push_back(db::PREFIX_SPENT_OUTPUTS);
+    key.append(reinterpret_cast<const char*>(block_hash.data()), block_hash.size());
+
+    // Serialize vector of spent outputs
+    std::vector<uint8_t> value_data;
+
+    // Serialize count
+    SerializeUint64(value_data, static_cast<uint64_t>(spent_outputs.size()));
+
+    // Serialize each spent output
+    for (const SpentOutput& spent : spent_outputs) {
+        auto spent_data = spent.Serialize();
+        value_data.insert(value_data.end(), spent_data.begin(), spent_data.end());
+    }
+
+    // Write to database
+    rocksdb::WriteOptions write_options;
+    std::string value_str(value_data.begin(), value_data.end());
+    rocksdb::Status status = impl_->db_->Put(write_options, key, value_str);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to store spent outputs: " +
+                                  status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<std::vector<SpentOutput>> BlockchainDB::GetSpentOutputs(const uint256& block_hash) const {
+    if (!impl_->is_open_) {
+        return Result<std::vector<SpentOutput>>::Error("Database not open");
+    }
+
+    // Build database key: PREFIX_SPENT_OUTPUTS + block_hash
+    std::string key;
+    key.push_back(db::PREFIX_SPENT_OUTPUTS);
+    key.append(reinterpret_cast<const char*>(block_hash.data()), block_hash.size());
+
+    // Read from database
+    rocksdb::ReadOptions read_options;
+    std::string value_str;
+    rocksdb::Status status = impl_->db_->Get(read_options, key, &value_str);
+
+    if (!status.ok()) {
+        if (status.IsNotFound()) {
+            // No spent outputs for this block (coinbase-only block or not found)
+            return Result<std::vector<SpentOutput>>::Ok(std::vector<SpentOutput>());
+        }
+        return Result<std::vector<SpentOutput>>::Error("Failed to read spent outputs: " +
+                                                       status.ToString());
+    }
+
+    // Deserialize vector of spent outputs
+    std::vector<uint8_t> value_data(value_str.begin(), value_str.end());
+    size_t pos = 0;
+
+    // Deserialize count
+    auto count_result = DeserializeUint64(value_data, pos);
+    if (count_result.IsError()) {
+        return Result<std::vector<SpentOutput>>::Error("Failed to deserialize count: " +
+                                                       count_result.error);
+    }
+    uint64_t count = *count_result.value;
+
+    // Deserialize each spent output
+    std::vector<SpentOutput> spent_outputs;
+    spent_outputs.reserve(count);
+
+    for (uint64_t i = 0; i < count; i++) {
+        std::vector<uint8_t> spent_data(value_data.begin() + pos, value_data.end());
+        auto spent_result = SpentOutput::Deserialize(spent_data);
+        if (spent_result.IsError()) {
+            return Result<std::vector<SpentOutput>>::Error("Failed to deserialize spent output: " +
+                                                           spent_result.error);
+        }
+        spent_outputs.push_back(*spent_result.value);
+        pos += spent_result.value->Serialize().size();
+    }
+
+    return Result<std::vector<SpentOutput>>::Ok(std::move(spent_outputs));
+}
+
+Result<void> BlockchainDB::DeleteSpentOutputs(const uint256& block_hash) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Build database key: PREFIX_SPENT_OUTPUTS + block_hash
+    std::string key;
+    key.push_back(db::PREFIX_SPENT_OUTPUTS);
+    key.append(reinterpret_cast<const char*>(block_hash.data()), block_hash.size());
+
+    // Delete from database
+    rocksdb::WriteOptions write_options;
+    rocksdb::Status status = impl_->db_->Delete(write_options, key);
+
+    if (!status.ok() && !status.IsNotFound()) {
+        return Result<void>::Error("Failed to delete spent outputs: " +
+                                  status.ToString());
+    }
+
+    return Result<void>::Ok();
 }
 
 // ============================================================================

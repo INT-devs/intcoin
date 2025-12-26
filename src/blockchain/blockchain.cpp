@@ -114,15 +114,14 @@ public:
             }
         }
 
-        // TODO: Store spent outputs in database for potential reorganization
-        // Temporarily disabled pending StoreSpentOutputs implementation
-        // if (!spent_outputs.empty()) {
-        //     uint256 block_hash = block.GetHash();
-        //     auto store_spent_result = db_->StoreSpentOutputs(block_hash, spent_outputs);
-        //     if (store_spent_result.IsError()) {
-        //         return store_spent_result;
-        //     }
-        // }
+        // Store spent outputs in database for potential reorganization
+        if (!spent_outputs.empty()) {
+            uint256 block_hash = block.GetHash();
+            auto store_spent_result = db_->StoreSpentOutputs(block_hash, spent_outputs);
+            if (store_spent_result.IsError()) {
+                return store_spent_result;
+            }
+        }
 
         // Add new outputs
         for (const auto& tx : block.transactions) {
