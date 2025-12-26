@@ -1,8 +1,10 @@
 # INTcoin Core
 
-**Version 1.0.0-beta** | **License: MIT** | **Status: Release Candidate - Mainnet Launch Q1 2026**
+**Version 1.0.0-beta** | **Release: January 6, 2026** | **License: MIT** | **Status: Production Beta**
 
 A next-generation cryptocurrency built on post-quantum cryptography (Dilithium3) with full Lightning Network support, designed to secure value in the quantum computing era.
+
+> **Note**: v1.0.0-beta supersedes v1.0.0-alpha. Official release date: January 6, 2026.
 
 ---
 

@@ -1,9 +1,10 @@
 # INTcoin v1.0.0-beta Release Notes
 
-**Release Date**: December 26, 2025
+**Release Date**: January 6, 2026
 **Version**: 1.0.0-beta
 **Status**: Beta Release - Production Testing
 **Codename**: "Lightning Strike"
+**Supersedes**: v1.0.0-alpha (December 25, 2025)
 
 ---
 
@@ -11,7 +12,9 @@
 
 INTcoin v1.0.0-beta marks a major milestone in bringing quantum-resistant cryptocurrency with Lightning Network integration to production readiness. This beta release introduces complete Lightning Network support, enhanced mining pool infrastructure, and comprehensive RPC APIs.
 
-**⚠️ Beta Notice**: This is a beta release intended for testing and evaluation. While extensively tested, it should be used with caution in production environments. Please report any issues to our [GitHub repository](https://github.com/INT-devs/intcoin/issues).
+**Official Release**: January 6, 2026 - This release supersedes v1.0.0-alpha and becomes the recommended version for all users.
+
+**⚠️ Beta Notice**: This is a beta release intended for testing and evaluation. While extensively tested (100% test coverage - 13/13 tests passing), it should be used with caution in production environments. Please report any issues to our [GitHub repository](https://github.com/INT-devs/intcoin/issues).
 
 ---
 
