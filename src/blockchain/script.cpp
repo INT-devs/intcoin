@@ -47,6 +47,67 @@ Script Script::CreateOpReturn(const std::vector<uint8_t>& data) {
     return script;
 }
 
+Script Script::CreateToLocalScript(const PublicKey& revocation_pubkey,
+                                     const PublicKey& local_delayed_pubkey,
+                                     uint16_t to_self_delay) {
+    // BOLT #3 to_local script:
+    // OP_IF
+    //     <revocation_pubkey>
+    // OP_ELSE
+    //     <to_self_delay> OP_CHECKSEQUENCEVERIFY OP_DROP
+    //     <local_delayed_pubkey>
+    // OP_ENDIF
+    // OP_CHECKSIG
+
+    Script script;
+
+    // OP_IF
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_IF));
+
+    // Revocation path: <revocation_pubkey>
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t rev_len = static_cast<uint16_t>(revocation_pubkey.size());
+    script.bytes.push_back(rev_len & 0xFF);
+    script.bytes.push_back((rev_len >> 8) & 0xFF);
+    script.bytes.insert(script.bytes.end(), revocation_pubkey.begin(), revocation_pubkey.end());
+
+    // OP_ELSE
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ELSE));
+
+    // Delayed path: <to_self_delay> OP_CHECKSEQUENCEVERIFY OP_DROP <local_delayed_pubkey>
+    // Push to_self_delay (2 bytes for values up to 65535)
+    script.bytes.push_back(2);  // Push 2 bytes
+    script.bytes.push_back(to_self_delay & 0xFF);
+    script.bytes.push_back((to_self_delay >> 8) & 0xFF);
+
+    // OP_CHECKSEQUENCEVERIFY
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKSEQUENCEVERIFY));
+
+    // OP_DROP (remove CSV delay from stack)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_DROP));
+
+    // Push local_delayed_pubkey
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t local_len = static_cast<uint16_t>(local_delayed_pubkey.size());
+    script.bytes.push_back(local_len & 0xFF);
+    script.bytes.push_back((local_len >> 8) & 0xFF);
+    script.bytes.insert(script.bytes.end(), local_delayed_pubkey.begin(), local_delayed_pubkey.end());
+
+    // OP_ENDIF
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ENDIF));
+
+    // OP_CHECKSIG
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKSIG));
+
+    return script;
+}
+
+Script Script::CreateToRemoteScript(const PublicKey& remote_pubkey) {
+    // BOLT #3 to_remote script (simple P2PK for remote party)
+    // This is just: <remote_pubkey> OP_CHECKSIG
+    return CreateP2PK(remote_pubkey);
+}
+
 bool Script::IsP2PKH() const {
     // P2PKH pattern: OP_DUP OP_HASH <32> <32-byte hash> OP_EQUALVERIFY OP_CHECKSIG
     // Total: 38 bytes

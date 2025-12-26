@@ -920,21 +920,25 @@ Result<CommitmentTransaction> CommitmentTransaction::Build(
     tx.inputs.push_back(input);
 
     // Output 1: to_local (delayed with revocation)
-    // Script: OP_IF <revocationpubkey> OP_ELSE <to_self_delay> OP_CSV OP_DROP <local_delayedpubkey> OP_ENDIF OP_CHECKSIG
-    // Note: Full BOLT #3 script construction requires additional opcodes not yet implemented
-    // For now, use placeholder script that will be replaced with proper construction
+    // BOLT #3 to_local script with CSV delay and revocation path
     if (to_local_amount >= config.dust_limit) {
         TxOut to_local_output;
         to_local_output.value = to_local_amount;
 
-        // Placeholder for to_local script
-        // TODO: Implement full BOLT #3 to_local script with:
-        //   - Revocation key path (immediate spend by counterparty if revoked)
-        //   - CSV delay path (spend by us after delay)
-        std::vector<uint8_t> to_local_bytes;
-        to_local_bytes.push_back(static_cast<uint8_t>(OpCode::OP_DROP));  // Placeholder
-        to_local_bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKSIG));
-        to_local_output.script_pubkey = Script(to_local_bytes);
+        // Generate proper BOLT #3 to_local script
+        // NOTE: Using placeholder keys for now - proper key derivation will be
+        // implemented in Phase 1.3 (Commitment Transaction Signing)
+        PublicKey revocation_pubkey;  // TODO: Derive from revocation basepoint
+        PublicKey local_delayed_pubkey;  // TODO: Derive from local delayed basepoint
+        revocation_pubkey.fill(0x01);  // Placeholder
+        local_delayed_pubkey.fill(0x02);  // Placeholder
+
+        // Create BOLT #3 compliant to_local script with CSV delay
+        to_local_output.script_pubkey = Script::CreateToLocalScript(
+            revocation_pubkey,
+            local_delayed_pubkey,
+            static_cast<uint16_t>(config.to_self_delay)
+        );
 
         tx.outputs.push_back(to_local_output);
     }
@@ -944,12 +948,12 @@ Result<CommitmentTransaction> CommitmentTransaction::Build(
         TxOut to_remote_output;
         to_remote_output.value = to_remote_amount;
 
-        // Placeholder for to_remote script (simple P2PKH-like)
-        // TODO: Use actual remote payment pubkey
-        std::vector<uint8_t> to_remote_bytes;
-        to_remote_bytes.push_back(static_cast<uint8_t>(OpCode::OP_DUP));
-        to_remote_bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKSIG));
-        to_remote_output.script_pubkey = Script(to_remote_bytes);
+        // Generate proper BOLT #3 to_remote script (simple P2PK)
+        // NOTE: Using placeholder key - will be replaced with actual remote pubkey
+        PublicKey remote_pubkey;  // TODO: Use actual remote payment pubkey
+        remote_pubkey.fill(0x03);  // Placeholder
+
+        to_remote_output.script_pubkey = Script::CreateToRemoteScript(remote_pubkey);
 
         tx.outputs.push_back(to_remote_output);
     }
