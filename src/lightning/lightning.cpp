@@ -3059,7 +3059,7 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
         UpdateFailHTLCMsg fail_msg;
         fail_msg.channel_id = htlc_msg.channel_id;
         fail_msg.id = htlc_msg.id;
-        fail_msg.reason = std::vector<uint8_t>(32, 0);  // TODO: Proper error encoding
+        fail_msg.reason = EncodeFailureMessage(lightning::INVALID_ONION_HMAC);
 
         auto fail_data = fail_msg.Serialize();
         SendMessage(peer, lightning::MSG_UPDATE_FAIL_HTLC, fail_data);
@@ -3075,7 +3075,7 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
         UpdateFailHTLCMsg fail_msg;
         fail_msg.channel_id = htlc_msg.channel_id;
         fail_msg.id = htlc_msg.id;
-        fail_msg.reason = std::vector<uint8_t>(32, 0);
+        fail_msg.reason = EncodeFailureMessage(lightning::INVALID_ONION_KEY);
 
         auto fail_data = fail_msg.Serialize();
         SendMessage(peer, lightning::MSG_UPDATE_FAIL_HTLC, fail_data);
@@ -3088,22 +3088,55 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
     bool is_final_recipient = (next_hop.channel_id.empty() || next_hop.node_id == node_id_);
 
     if (is_final_recipient) {
-        // We are the final recipient - check if we have a pending invoice for this payment
+        // We are the final recipient - verify payment details against invoice
         {
             std::lock_guard<std::mutex> lock(mutex_);
 
-            // For now, just track that we received a payment
-            // In a full implementation, we would check against pending invoices
+            // BOLT #4: Verify payment details
+            // In production, this should look up the invoice by payment_hash
+            // and verify: amount, expiry, and other details
 
-            // If we have the preimage (from an invoice we created), fulfill it
-            // For this simplified version, we'll accept all payments and generate preimages
-            // In production, you'd look up the invoice and verify the amount
+            // Basic validation: Check if payment amount is reasonable
+            const uint64_t MIN_PAYMENT = 1000;  // 0.001 INTS minimum
+            const uint64_t MAX_PAYMENT = 100000000000;  // 100,000 INTS maximum
+
+            uint64_t amount_ints = htlc_msg.amount_mints / 1000;
+            if (amount_ints < MIN_PAYMENT) {
+                // Payment amount too small
+                UpdateFailHTLCMsg fail_msg;
+                fail_msg.channel_id = htlc_msg.channel_id;
+                fail_msg.id = htlc_msg.id;
+                fail_msg.reason = EncodeFailureMessage(lightning::AMOUNT_BELOW_MINIMUM);
+
+                auto fail_data = fail_msg.Serialize();
+                SendMessage(peer, lightning::MSG_UPDATE_FAIL_HTLC, fail_data);
+                return;
+            }
+
+            if (amount_ints > MAX_PAYMENT) {
+                // Payment amount unreasonably large
+                UpdateFailHTLCMsg fail_msg;
+                fail_msg.channel_id = htlc_msg.channel_id;
+                fail_msg.id = htlc_msg.id;
+                fail_msg.reason = EncodeFailureMessage(lightning::FINAL_INCORRECT_HTLC_AMOUNT);
+
+                auto fail_data = fail_msg.Serialize();
+                SendMessage(peer, lightning::MSG_UPDATE_FAIL_HTLC, fail_data);
+                return;
+            }
+
+            // TODO: Full invoice verification when invoice database is implemented:
+            // 1. Look up invoice by payment_hash: auto invoice_it = invoices_.find(htlc_msg.payment_hash);
+            // 2. Verify invoice exists: if (invoice_it == invoices_.end()) -> fail with UNKNOWN_PAYMENT_HASH
+            // 3. Verify amount matches: if (amount_ints != invoice.amount) -> fail with FINAL_INCORRECT_HTLC_AMOUNT
+            // 4. Check expiry: if (now > invoice.created_at + invoice.expiry) -> fail with EXPIRY_TOO_SOON
+            // 5. Verify CLTV: if (htlc_msg.cltv_expiry < min_final_cltv) -> fail with FINAL_INCORRECT_CLTV_EXPIRY
+
+            // For now, we accept valid-looking payments
+            // In production with invoice storage, we'd only fulfill if we have a matching invoice
 
             stats_.num_payments_received++;
         }
-
-        // TODO: In production, verify payment details against invoice
-        // For now, we'll auto-fulfill after some processing
 
     } else {
         // We are an intermediate node - forward the HTLC to the next hop
@@ -3118,7 +3151,7 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
                 UpdateFailHTLCMsg fail_msg;
                 fail_msg.channel_id = htlc_msg.channel_id;
                 fail_msg.id = htlc_msg.id;
-                fail_msg.reason = std::vector<uint8_t>(32, 0);  // TODO: Encode UNKNOWN_NEXT_PEER
+                fail_msg.reason = EncodeFailureMessage(lightning::UNKNOWN_NEXT_PEER);
 
                 auto fail_data = fail_msg.Serialize();
                 SendMessage(peer, lightning::MSG_UPDATE_FAIL_HTLC, fail_data);
@@ -3132,7 +3165,7 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
             UpdateFailHTLCMsg fail_msg;
             fail_msg.channel_id = htlc_msg.channel_id;
             fail_msg.id = htlc_msg.id;
-            fail_msg.reason = std::vector<uint8_t>(32, 0);
+            fail_msg.reason = EncodeFailureMessage(lightning::TEMPORARY_CHANNEL_FAILURE);
 
             auto fail_data = fail_msg.Serialize();
             SendMessage(peer, lightning::MSG_UPDATE_FAIL_HTLC, fail_data);
@@ -3145,7 +3178,7 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
             UpdateFailHTLCMsg fail_msg;
             fail_msg.channel_id = htlc_msg.channel_id;
             fail_msg.id = htlc_msg.id;
-            fail_msg.reason = std::vector<uint8_t>(32, 0);  // TODO: Encode TEMPORARY_CHANNEL_FAILURE
+            fail_msg.reason = EncodeFailureMessage(lightning::TEMPORARY_CHANNEL_FAILURE);
 
             auto fail_data = fail_msg.Serialize();
             SendMessage(peer, lightning::MSG_UPDATE_FAIL_HTLC, fail_data);
@@ -3170,7 +3203,7 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
             UpdateFailHTLCMsg fail_msg;
             fail_msg.channel_id = htlc_msg.channel_id;
             fail_msg.id = htlc_msg.id;
-            fail_msg.reason = std::vector<uint8_t>(32, 0);
+            fail_msg.reason = EncodeFailureMessage(lightning::TEMPORARY_NODE_FAILURE);
 
             auto fail_data = fail_msg.Serialize();
             SendMessage(peer, lightning::MSG_UPDATE_FAIL_HTLC, fail_data);
@@ -3898,6 +3931,37 @@ uint64_t LightningNetwork::CalculateTransactionFee(size_t tx_size, uint32_t feer
     }
 
     return fee;
+}
+
+// ============================================================================
+// BOLT #4 Error Encoding
+// ============================================================================
+
+std::vector<uint8_t> LightningNetwork::EncodeFailureMessage(
+    uint16_t failure_code,
+    const std::vector<uint8_t>& failure_data)
+{
+    // BOLT #4: Failure message format
+    // - 2 bytes: failure_code (big-endian)
+    // - variable: failure_data (optional, depends on failure type)
+
+    std::vector<uint8_t> encoded;
+
+    // Encode failure code (2 bytes, big-endian)
+    encoded.push_back((failure_code >> 8) & 0xFF);  // High byte
+    encoded.push_back(failure_code & 0xFF);          // Low byte
+
+    // Append failure-specific data if provided
+    if (!failure_data.empty()) {
+        encoded.insert(encoded.end(), failure_data.begin(), failure_data.end());
+    }
+
+    // Note: In a full BOLT #4 implementation, this would be:
+    // 1. HMAC-authenticated with a shared secret
+    // 2. Onion-encrypted back through the route
+    // For now, we're using a simplified version with just the failure code
+
+    return encoded;
 }
 
 } // namespace intcoin

@@ -75,6 +75,28 @@ namespace lightning {
     constexpr uint16_t MSG_CHANNEL_ANNOUNCEMENT = 256;
     constexpr uint16_t MSG_NODE_ANNOUNCEMENT = 257;
     constexpr uint16_t MSG_CHANNEL_UPDATE = 258;
+
+    // BOLT #4 Failure Codes
+    // Permanent failures (0x4000 bit not set, 0x2000 bit not set)
+    constexpr uint16_t INVALID_REALM = 0x0001;
+    constexpr uint16_t TEMPORARY_NODE_FAILURE = 0x2002;
+    constexpr uint16_t PERMANENT_NODE_FAILURE = 0x4002;
+    constexpr uint16_t REQUIRED_NODE_FEATURE_MISSING = 0x4003;
+    constexpr uint16_t INVALID_ONION_VERSION = 0x8002;
+    constexpr uint16_t INVALID_ONION_HMAC = 0x8003;
+    constexpr uint16_t INVALID_ONION_KEY = 0x8004;
+    constexpr uint16_t TEMPORARY_CHANNEL_FAILURE = 0x1007;
+    constexpr uint16_t PERMANENT_CHANNEL_FAILURE = 0x4007;
+    constexpr uint16_t REQUIRED_CHANNEL_FEATURE_MISSING = 0x4009;
+    constexpr uint16_t UNKNOWN_NEXT_PEER = 0x400a;
+    constexpr uint16_t AMOUNT_BELOW_MINIMUM = 0x400b;
+    constexpr uint16_t FEE_INSUFFICIENT = 0x400c;
+    constexpr uint16_t INCORRECT_CLTV_EXPIRY = 0x400d;
+    constexpr uint16_t EXPIRY_TOO_SOON = 0x400e;
+    constexpr uint16_t CHANNEL_DISABLED = 0x4010;
+    constexpr uint16_t EXPIRY_TOO_FAR = 0x4011;
+    constexpr uint16_t FINAL_INCORRECT_CLTV_EXPIRY = 0x4012;
+    constexpr uint16_t FINAL_INCORRECT_HTLC_AMOUNT = 0x4013;
 }
 
 // ============================================================================
@@ -877,6 +899,14 @@ private:
     Result<std::shared_ptr<Channel>> FindChannelByPeer(const PublicKey& peer);
     Result<void> SendMessage(const PublicKey& peer, uint16_t type, const std::vector<uint8_t>& data);
     void UpdateStats();
+
+    // BOLT #4 Error encoding
+    /// Encode a failure message according to BOLT #4 spec
+    /// @param failure_code The BOLT #4 failure code
+    /// @param failure_data Optional failure-specific data (default empty)
+    /// @return Encoded error reason for update_fail_htlc message
+    static std::vector<uint8_t> EncodeFailureMessage(uint16_t failure_code,
+                                                      const std::vector<uint8_t>& failure_data = {});
 
     // Transaction signing helpers
     /// Sign commitment transaction funding input
