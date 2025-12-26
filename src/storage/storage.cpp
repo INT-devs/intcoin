@@ -748,15 +748,182 @@ Result<void> BlockchainDB::UpdateBestBlock(const uint256& hash, uint64_t height)
 // Address Index Operations
 // ============================================================================
 
+// Helper: Extract address from script
+static std::string ExtractAddressFromScript(const Script& script) {
+    // Try P2PKH (most common)
+    if (script.IsP2PKH()) {
+        auto hash_opt = script.GetP2PKHHash();
+        if (hash_opt.has_value()) {
+            // Encode pubkey hash as Bech32 address
+            auto result = AddressEncoder::EncodeAddress(hash_opt.value());
+            if (result.IsOk()) {
+                return result.value.value();
+            }
+        }
+    }
+
+    // Try P2PK
+    if (script.IsP2PK()) {
+        auto pubkey_opt = script.GetP2PKPublicKey();
+        if (pubkey_opt.has_value()) {
+            // Hash the public key and encode as Bech32 address
+            const PublicKey& pubkey = pubkey_opt.value();
+            std::vector<uint8_t> pubkey_vec(pubkey.begin(), pubkey.end());
+            uint256 pubkey_hash = SHA3::Hash(pubkey_vec);
+            auto result = AddressEncoder::EncodeAddress(pubkey_hash);
+            if (result.IsOk()) {
+                return result.value.value();
+            }
+        }
+    }
+
+    // Unknown script type - return empty string
+    return "";
+}
+
+// Helper: Serialize vector of uint256 hashes
+static std::vector<uint8_t> SerializeTxHashVector(const std::vector<uint256>& hashes) {
+    std::vector<uint8_t> result;
+
+    // Serialize count (8 bytes)
+    SerializeUint64(result, static_cast<uint64_t>(hashes.size()));
+
+    // Serialize each hash (32 bytes each)
+    for (const uint256& hash : hashes) {
+        SerializeUint256(result, hash);
+    }
+
+    return result;
+}
+
+// Helper: Deserialize vector of uint256 hashes
+static Result<std::vector<uint256>> DeserializeTxHashVector(
+    const std::vector<uint8_t>& data) {
+    size_t pos = 0;
+    std::vector<uint256> hashes;
+
+    // Deserialize count
+    auto count_result = DeserializeUint64(data, pos);
+    if (count_result.IsError()) {
+        return Result<std::vector<uint256>>::Error("Failed to deserialize count: " +
+                                                   count_result.error);
+    }
+    uint64_t count = *count_result.value;
+
+    // Deserialize each hash
+    hashes.reserve(count);
+    for (uint64_t i = 0; i < count; i++) {
+        auto hash_result = DeserializeUint256(data, pos);
+        if (hash_result.IsError()) {
+            return Result<std::vector<uint256>>::Error("Failed to deserialize hash: " +
+                                                       hash_result.error);
+        }
+        hashes.push_back(*hash_result.value);
+    }
+
+    return Result<std::vector<uint256>>::Ok(std::move(hashes));
+}
+
 Result<void> BlockchainDB::IndexTransaction(const Transaction& tx) {
-    // TODO: Implement transaction indexing
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Get transaction hash
+    uint256 tx_hash = tx.GetHash();
+
+    // Extract addresses from all outputs
+    for (const TxOut& output : tx.outputs) {
+        std::string address = ExtractAddressFromScript(output.script_pubkey);
+        if (address.empty()) {
+            continue;  // Skip outputs with unknown script types
+        }
+
+        // Build database key: PREFIX_ADDRESS_INDEX + address
+        std::string key;
+        key.push_back(db::PREFIX_ADDRESS_INDEX);
+        key.append(address);
+
+        // Read existing transaction hashes for this address
+        std::vector<uint256> tx_hashes;
+        rocksdb::ReadOptions read_options;
+        std::string value_str;
+        rocksdb::Status status = impl_->db_->Get(read_options, key, &value_str);
+
+        if (status.ok()) {
+            // Deserialize existing hashes
+            std::vector<uint8_t> value_data(value_str.begin(), value_str.end());
+            auto result = DeserializeTxHashVector(value_data);
+            if (result.IsOk()) {
+                tx_hashes = std::move(*result.value);
+            }
+        }
+        // If key doesn't exist, tx_hashes remains empty (new address)
+
+        // Check if transaction already indexed (prevent duplicates)
+        bool already_indexed = false;
+        for (const uint256& existing_hash : tx_hashes) {
+            if (existing_hash == tx_hash) {
+                already_indexed = true;
+                break;
+            }
+        }
+
+        if (!already_indexed) {
+            // Add new transaction hash
+            tx_hashes.push_back(tx_hash);
+
+            // Serialize updated list
+            std::vector<uint8_t> value_data = SerializeTxHashVector(tx_hashes);
+
+            // Write back to database
+            rocksdb::WriteOptions write_options;
+            std::string value_str_new(value_data.begin(), value_data.end());
+            status = impl_->db_->Put(write_options, key, value_str_new);
+            if (!status.ok()) {
+                return Result<void>::Error("Failed to update address index: " +
+                                          status.ToString());
+            }
+        }
+    }
+
     return Result<void>::Ok();
 }
 
 Result<std::vector<uint256>> BlockchainDB::GetTransactionsForAddress(
     const std::string& address) const {
-    // TODO: Implement address transaction lookup
-    return Result<std::vector<uint256>>::Error("Not implemented");
+    if (!impl_->is_open_) {
+        return Result<std::vector<uint256>>::Error("Database not open");
+    }
+
+    // Build database key: PREFIX_ADDRESS_INDEX + address
+    std::string key;
+    key.push_back(db::PREFIX_ADDRESS_INDEX);
+    key.append(address);
+
+    // Read transaction hashes
+    rocksdb::ReadOptions read_options;
+    std::string value_str;
+    rocksdb::Status status = impl_->db_->Get(read_options, key, &value_str);
+
+    if (!status.ok()) {
+        if (status.IsNotFound()) {
+            // Address has no transactions - return empty vector
+            return Result<std::vector<uint256>>::Ok(std::vector<uint256>());
+        }
+        return Result<std::vector<uint256>>::Error("Failed to read address index: " +
+                                                   status.ToString());
+    }
+
+    // Deserialize transaction hashes
+    std::vector<uint8_t> value_data(value_str.begin(), value_str.end());
+    auto result = DeserializeTxHashVector(value_data);
+    if (result.IsError()) {
+        return Result<std::vector<uint256>>::Error("Failed to deserialize tx hashes: " +
+                                                   result.error);
+    }
+
+    return Result<std::vector<uint256>>::Ok(std::move(*result.value));
 }
 
 // ============================================================================
