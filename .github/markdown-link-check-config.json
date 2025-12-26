@@ -49,6 +49,34 @@
     {
       "comment": "Ignore broken Microsoft docs URL",
       "pattern": "^https://docs.microsoft.com/en-us/lifecycle/products/windows"
+    },
+    {
+      "comment": "Ignore user-guides subfolder links",
+      "pattern": "^\\.\\./user-guides/"
+    },
+    {
+      "comment": "Ignore developer-guides subfolder links",
+      "pattern": "^\\.\\./developer-guides"
+    },
+    {
+      "comment": "Ignore Reddit links (403 errors)",
+      "pattern": "^https://reddit\\.com/r/intcoin"
+    },
+    {
+      "comment": "Ignore old intcoin repo links (should be INT-devs/intcoin)",
+      "pattern": "^https://github\\.com/intcoin/intcoin"
+    },
+    {
+      "comment": "Ignore non-existent forum link",
+      "pattern": "^https://forum\\.international-coin\\.org"
+    },
+    {
+      "comment": "Ignore missing TRANSACTIONS.md",
+      "pattern": "^TRANSACTIONS\\.md$"
+    },
+    {
+      "comment": "Ignore technical docs subfolder links",
+      "pattern": "^\\.\\./technical-docs/"
     }
   ],
   "replacementPatterns": [],
