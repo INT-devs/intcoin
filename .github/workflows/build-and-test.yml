@@ -91,7 +91,7 @@ jobs:
       run: ctest --output-on-failure -C $BUILD_TYPE
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: intcoin-ubuntu-22.04
         path: |
@@ -106,8 +106,8 @@ jobs:
   # macOS Build
   # ============================================================================
   build-macos:
-    name: macOS 13
-    runs-on: macos-13
+    name: macOS Latest
+    runs-on: macos-latest
 
     steps:
     - name: Checkout code
@@ -172,9 +172,9 @@ jobs:
       run: ctest --output-on-failure -C $BUILD_TYPE
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: intcoin-macos-13
+        name: intcoin-macos-latest
         path: |
           build/bin/intcoind
           build/bin/intcoin-cli
@@ -269,7 +269,7 @@ jobs:
       run: ctest --output-on-failure -C Release
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: intcoin-windows-2022
         path: |
@@ -320,14 +320,14 @@ jobs:
 
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
 
     - name: Create release archives
       run: |
         cd intcoin-ubuntu-22.04
         tar -czf ../intcoin-${{ github.ref_name }}-ubuntu-22.04.tar.gz *
-        cd ../intcoin-macos-13
-        tar -czf ../intcoin-${{ github.ref_name }}-macos-13.tar.gz *
+        cd ../intcoin-macos-latest
+        tar -czf ../intcoin-${{ github.ref_name }}-macos-latest.tar.gz *
         cd ../intcoin-windows-2022
         zip -r ../intcoin-${{ github.ref_name }}-windows-2022.zip *
         cd ..
@@ -337,7 +337,7 @@ jobs:
       with:
         files: |
           intcoin-${{ github.ref_name }}-ubuntu-22.04.tar.gz
-          intcoin-${{ github.ref_name }}-macos-13.tar.gz
+          intcoin-${{ github.ref_name }}-macos-latest.tar.gz
           intcoin-${{ github.ref_name }}-windows-2022.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
