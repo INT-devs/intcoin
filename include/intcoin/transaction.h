@@ -171,13 +171,22 @@ public:
     uint256 GetHash() const;
 
     /// Calculate transaction hash without signature (default: SIGHASH_ALL)
-    uint256 GetHashForSigning(uint8_t sighash_type = SIGHASH_ALL, size_t input_index = 0) const;
+    /// @param sighash_type SIGHASH type (ALL, NONE, SINGLE, ANYONECANPAY)
+    /// @param input_index Index of input being signed
+    /// @param prev_scriptpubkey Previous output's script_pubkey (required for proper signing)
+    uint256 GetHashForSigning(uint8_t sighash_type, size_t input_index, const Script& prev_scriptpubkey) const;
 
     /// Sign transaction with private key (default: SIGHASH_ALL)
-    Result<void> Sign(const SecretKey& secret_key, uint8_t sighash_type = SIGHASH_ALL);
+    /// @param secret_key Secret key to sign with
+    /// @param sighash_type SIGHASH type
+    /// @param prev_scriptpubkey Previous output's script_pubkey (for input 0)
+    Result<void> Sign(const SecretKey& secret_key, uint8_t sighash_type, const Script& prev_scriptpubkey);
 
     /// Verify transaction signature (default: SIGHASH_ALL)
-    Result<void> VerifySignature(const PublicKey& public_key, uint8_t sighash_type = SIGHASH_ALL) const;
+    /// @param public_key Public key to verify with
+    /// @param sighash_type SIGHASH type
+    /// @param prev_scriptpubkey Previous output's script_pubkey (for input 0)
+    Result<void> VerifySignature(const PublicKey& public_key, uint8_t sighash_type, const Script& prev_scriptpubkey) const;
 
     /// Check if this is a coinbase transaction
     bool IsCoinbase() const;
@@ -226,7 +235,9 @@ public:
     TransactionBuilder& SetLocktime(uint64_t locktime);
 
     /// Build and sign transaction
-    Result<Transaction> Build(const SecretKey& secret_key);
+    /// @param secret_key Secret key to sign with
+    /// @param prev_scriptpubkey Previous output's script_pubkey (for input 0)
+    Result<Transaction> Build(const SecretKey& secret_key, const Script& prev_scriptpubkey);
 
 private:
     Transaction tx_;

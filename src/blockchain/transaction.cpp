@@ -182,7 +182,7 @@ uint256 Transaction::GetHash() const {
     return hash;
 }
 
-uint256 Transaction::GetHashForSigning(uint8_t sighash_type, size_t input_index) const {
+uint256 Transaction::GetHashForSigning(uint8_t sighash_type, size_t input_index, const Script& prev_scriptpubkey) const {
     // Create a copy of the transaction for signing
     std::vector<uint8_t> signing_data;
 
@@ -198,7 +198,10 @@ uint256 Transaction::GetHashForSigning(uint8_t sighash_type, size_t input_index)
         // ANYONECANPAY: Only serialize the input being signed
         SerializeUint64(signing_data, 1);
         if (input_index < inputs.size()) {
-            auto input_bytes = inputs[input_index].Serialize();
+            // For the input being signed, replace script_sig with prev_scriptpubkey
+            TxIn input = inputs[input_index];
+            input.script_sig = prev_scriptpubkey;
+            auto input_bytes = input.Serialize();
             signing_data.insert(signing_data.end(), input_bytes.begin(), input_bytes.end());
         }
     } else {
@@ -209,6 +212,9 @@ uint256 Transaction::GetHashForSigning(uint8_t sighash_type, size_t input_index)
             if (i != input_index) {
                 // Clear script_sig for inputs other than the one being signed
                 input.script_sig = Script(std::vector<uint8_t>());
+            } else {
+                // For the input being signed, replace script_sig with prev_scriptpubkey
+                input.script_sig = prev_scriptpubkey;
             }
             auto input_bytes = input.Serialize();
             signing_data.insert(signing_data.end(), input_bytes.begin(), input_bytes.end());
@@ -265,9 +271,9 @@ uint256 Transaction::GetHashForSigning(uint8_t sighash_type, size_t input_index)
     return SHA3::Hash(signing_data);
 }
 
-Result<void> Transaction::Sign(const SecretKey& secret_key, uint8_t sighash_type) {
+Result<void> Transaction::Sign(const SecretKey& secret_key, uint8_t sighash_type, const Script& prev_scriptpubkey) {
     // Get the hash to sign (SIGHASH_ALL by default, signs entire transaction)
-    uint256 hash = GetHashForSigning(sighash_type, 0);
+    uint256 hash = GetHashForSigning(sighash_type, 0, prev_scriptpubkey);
 
     // Sign the hash using Dilithium3
     auto sign_result = DilithiumCrypto::SignHash(hash, secret_key);
@@ -284,9 +290,9 @@ Result<void> Transaction::Sign(const SecretKey& secret_key, uint8_t sighash_type
     return Result<void>::Ok();
 }
 
-Result<void> Transaction::VerifySignature(const PublicKey& public_key, uint8_t sighash_type) const {
+Result<void> Transaction::VerifySignature(const PublicKey& public_key, uint8_t sighash_type, const Script& prev_scriptpubkey) const {
     // Get the hash that was signed
-    uint256 hash = GetHashForSigning(sighash_type, 0);
+    uint256 hash = GetHashForSigning(sighash_type, 0, prev_scriptpubkey);
 
     // Verify the signature using Dilithium3
     auto verify_result = DilithiumCrypto::VerifyHash(hash, signature, public_key);
@@ -484,9 +490,9 @@ TransactionBuilder& TransactionBuilder::SetLocktime(uint64_t locktime) {
     return *this;
 }
 
-Result<Transaction> TransactionBuilder::Build(const SecretKey& secret_key) {
+Result<Transaction> TransactionBuilder::Build(const SecretKey& secret_key, const Script& prev_scriptpubkey) {
     // Sign transaction
-    auto result = tx_.Sign(secret_key);
+    auto result = tx_.Sign(secret_key, SIGHASH_ALL, prev_scriptpubkey);
     if (result.IsError()) {
         return Result<Transaction>::Error(result.error);
     }

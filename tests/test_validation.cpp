@@ -95,7 +95,9 @@ Transaction CreateValidTransaction(const uint256& prev_tx, uint32_t prev_index, 
     tx.outputs.push_back(output);
 
     // Sign the transaction
-    uint256 sig_hash = tx.GetHashForSigning(SIGHASH_ALL, 0);
+    // The previous output has a P2PKH script with the same pubkey hash
+    Script prev_scriptpubkey = Script::CreateP2PKH(pubkey_hash);
+    uint256 sig_hash = tx.GetHashForSigning(SIGHASH_ALL, 0, prev_scriptpubkey);
     auto sig_result = DilithiumCrypto::SignHash(sig_hash, g_test_keypair.secret_key);
     assert(sig_result.IsOk());
 

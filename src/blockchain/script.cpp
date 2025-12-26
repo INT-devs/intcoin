@@ -229,11 +229,11 @@ private:
     std::vector<std::vector<uint8_t>> stack;
     const Transaction* tx;
     size_t input_index;
+    const Script* script_pubkey;  // Previous output's script_pubkey (for signature verification)
 
 public:
-    ScriptVM(const Transaction* transaction, size_t input_idx)
-        : tx(transaction), input_index(input_idx) {
-        (void)input_index;  // Reserved for future use in script validation
+    ScriptVM(const Transaction* transaction, size_t input_idx, const Script* prev_script_pubkey)
+        : tx(transaction), input_index(input_idx), script_pubkey(prev_script_pubkey) {
     }
 
     /// Execute a script on this VM
@@ -279,10 +279,13 @@ public:
                 pc++;
             }
             // OP_CHECKSIG: Verify Dilithium signature
+            // Stack before: [signature, pubkey]
+            // Stack after: [1] or [0] (verification result)
             else if (opcode == static_cast<uint8_t>(OpCode::OP_CHECKSIG)) {
                 if (stack.size() < 2) {
                     return ScriptExecutionResult::Error("OP_CHECKSIG: stack underflow");
                 }
+                // Pop in correct order: pubkey is on top, signature below
                 auto pubkey_bytes = stack.back();
                 stack.pop_back();
                 auto signature_bytes = stack.back();
@@ -293,6 +296,8 @@ public:
                     stack.push_back({0});  // Push false
                 } else if (signature_bytes.size() != 3309) {  // Dilithium3 signature size
                     stack.push_back({0});  // Push false
+                } else if (!script_pubkey) {
+                    return ScriptExecutionResult::Error("OP_CHECKSIG: no script_pubkey provided");
                 } else {
                     // Copy vectors to arrays
                     PublicKey pubkey;
@@ -300,8 +305,9 @@ public:
                     std::copy(pubkey_bytes.begin(), pubkey_bytes.end(), pubkey.begin());
                     std::copy(signature_bytes.begin(), signature_bytes.end(), signature.begin());
 
-                    // Get transaction hash for signing (proper SIGHASH_ALL verification)
-                    uint256 tx_hash = tx->GetHashForSigning(SIGHASH_ALL, input_index);
+                    // Get transaction hash for signing with the previous output's script_pubkey
+                    // This ensures the same hash is used during both signing and verification
+                    uint256 tx_hash = tx->GetHashForSigning(SIGHASH_ALL, input_index, *script_pubkey);
 
                     auto result = DilithiumCrypto::VerifyHash(tx_hash, signature, pubkey);
                     stack.push_back(result.IsOk() ? std::vector<uint8_t>{1} : std::vector<uint8_t>{0});
@@ -399,8 +405,8 @@ ScriptExecutionResult ExecuteScript(const Script& script_sig,
                                    const Script& script_pubkey,
                                    const class Transaction& tx,
                                    size_t input_index) {
-    // Create VM with transaction context
-    ScriptVM vm(&tx, input_index);
+    // Create VM with transaction context and prev_scriptpubkey for signature verification
+    ScriptVM vm(&tx, input_index, &script_pubkey);
 
     // Phase 1: Execute script_sig (unlocking script)
     auto result = vm.Execute(script_sig);
