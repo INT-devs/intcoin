@@ -2,9 +2,9 @@
 
 Thank you for your interest in contributing to INTcoin! This document provides guidelines and instructions for contributing to the project.
 
-**Project Status**: 97% Complete (Phases 1-10)
-**Last Updated**: December 9, 2025
-**Test Status**: 12/12 test suites passing (100%)
+**Project Status**: v1.0.0-beta - RELEASE READY
+**Last Updated**: December 26, 2025
+**Test Status**: 13/13 test suites passing (100%)
 
 ---
 
@@ -31,7 +31,7 @@ Thank you for your interest in contributing to INTcoin! This document provides g
 
 ### Reporting Issues
 
-Found a bug or have a feature request? Please open an issue on GitLab:
+Found a bug or have a feature request? Please open an issue on GitHub:
 
 1. **Search existing issues** first to avoid duplicates
 2. **Use the issue templates** if available
@@ -40,13 +40,13 @@ Found a bug or have a feature request? Please open an issue on GitLab:
    - For features: clear description, use case, and benefits
 4. **Be responsive** to follow-up questions
 
-**Security Issues**: Please report security vulnerabilities privately to Neil Adamson at [security@international-coin.org](mailto:security@international-coin.org). PGP fingerprint: `4E5A A9F8 A4C2 F245 E3FC  9381 BCFB 6274 A3AF EEE9`. See [SECURITY.md](SECURITY.md) for details.
+**Security Issues**: Please report security vulnerabilities privately to team@international-coin.org. See [SECURITY.md](SECURITY.md) for details.
 
 ### Suggesting Enhancements
 
 We welcome suggestions for new features and improvements:
 
-1. **Open a GitLab issue** with the `enhancement` label
+1. **Open a GitHub issue** with the `enhancement` label
 2. **Explain the problem** you're trying to solve
 3. **Describe your proposed solution**
 4. **Discuss alternatives** you've considered
@@ -59,13 +59,13 @@ Ready to contribute code? Follow these steps:
 #### 1. Fork and Clone
 
 ```bash
-# Fork the repository on GitLab
+# Fork the repository on GitHub
 # Clone your fork
-git clone https://gitlab.com/YOUR_USERNAME/crypto.git
-cd crypto
+git clone https://github.com/YOUR_USERNAME/intcoin.git
+cd intcoin
 
 # Add upstream remote
-git remote add upstream https://gitlab.com/intcoin/crypto.git
+git remote add upstream https://github.com/INT-devs/intcoin.git
 ```
 
 #### 2. Create a Branch
@@ -94,7 +94,7 @@ mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make -j$(nproc)
 
-# Run all tests (12/12 suites passing)
+# Run all tests (13/13 suites passing - 100%)
 ctest --output-on-failure
 
 # Run specific test suites
@@ -103,23 +103,24 @@ ctest --output-on-failure
 ./tests/test_bech32          # Address encoding/decoding
 ./tests/test_serialization   # Block/transaction serialization
 ./tests/test_storage         # RocksDB integration
-./tests/test_validation      # Block/transaction validation
+./tests/test_validation      # Block/transaction validation (P2PKH signing FIXED)
 ./tests/test_genesis         # Genesis block verification
 ./tests/test_network         # P2P protocol and mempool
 ./tests/test_ml              # Machine learning (anomaly detection)
 ./tests/test_wallet          # HD wallet, BIP39, UTXO management
 ./tests/test_fuzz            # Fuzzing tests (~3,500 iterations)
 ./tests/test_integration     # End-to-end integration tests
+./tests/test_lightning       # Lightning Network (10/10 subtests)
 ```
 
-#### 5. Submit a Merge Request
+#### 5. Submit a Pull Request
 
 ```bash
 # Push your branch
 git push origin feature/your-feature-name
 
-# Go to GitLab and create a Merge Request
-# Fill out the MR template
+# Go to GitHub and create a Pull Request
+# Fill out the PR template
 # Link related issues
 ```
 
@@ -427,11 +428,13 @@ Community expertise needed on `help-wanted` issues:
 
 ### Communication Channels
 
-- **GitLab Issues**: Technical discussions, bug reports, feature requests
-- **Email**: [team@international-coin.org](mailto:team@international-coin.org)
-- **Discord**: https://discord.gg/7p4VmS2z
-- **Telegram**: https://t.me/INTcoin_official
-- **X (Twitter)**: https://x.com/INTcoin_team
+- **GitHub Issues**: https://github.com/INT-devs/intcoin/issues
+- **GitHub Discussions**: https://github.com/INT-devs/intcoin/discussions
+- **Discord**: https://discord.gg/jCy3eNgx
+- **Reddit**: https://www.reddit.com/r/INTcoin
+- **Twitter/X**: https://x.com/INTcoin_team
+- **Email**: team@international-coin.org
+- **Wiki**: https://github.com/INT-devs/intcoin/wiki
 
 ### Getting Help
 
