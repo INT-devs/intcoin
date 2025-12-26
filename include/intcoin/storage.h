@@ -28,6 +28,7 @@ namespace db {
 constexpr char PREFIX_BLOCK = 'b';           // block_hash -> Block
 constexpr char PREFIX_BLOCK_HEIGHT = 'h';    // height -> block_hash
 constexpr char PREFIX_TX = 't';              // tx_hash -> Transaction
+constexpr char PREFIX_TX_BLOCK = 'T';        // tx_hash -> block_hash
 constexpr char PREFIX_UTXO = 'u';            // outpoint -> TxOut
 constexpr char PREFIX_ADDRESS_INDEX = 'i';   // address -> [tx_hashes]
 constexpr char PREFIX_CHAINSTATE = 'c';      // chainstate metadata
@@ -326,6 +327,22 @@ public:
     /// Get transactions for address
     Result<std::vector<uint256>> GetTransactionsForAddress(
         const std::string& address) const;
+
+    // ------------------------------------------------------------------------
+    // Transaction-to-Block Mapping
+    // ------------------------------------------------------------------------
+
+    /// Index transaction's containing block
+    /// @param tx_hash Transaction hash
+    /// @param block_hash Hash of block containing the transaction
+    /// @return Success or error
+    Result<void> IndexTransactionBlock(const uint256& tx_hash,
+                                       const uint256& block_hash);
+
+    /// Get block hash for a transaction
+    /// @param tx_hash Transaction hash
+    /// @return Block hash containing the transaction, or error if not found
+    Result<uint256> GetBlockHashForTransaction(const uint256& tx_hash) const;
 
     // ------------------------------------------------------------------------
     // Batch Operations

@@ -364,12 +364,19 @@ Result<void> Blockchain::AddBlock(const Block& block) {
         return height_result;
     }
 
-    // Store transactions
+    // Store transactions and index them to this block
     for (const auto& tx : block.transactions) {
         auto tx_result = impl_->db_->StoreTransaction(tx);
         if (tx_result.IsError()) {
             impl_->db_->AbortBatch();
             return tx_result;
+        }
+
+        // Index transaction-to-block mapping
+        auto index_result = impl_->db_->IndexTransactionBlock(tx.GetHash(), block_hash);
+        if (index_result.IsError()) {
+            impl_->db_->AbortBatch();
+            return index_result;
         }
     }
 
@@ -854,30 +861,20 @@ uint64_t Blockchain::GetTransactionConfirmations(const uint256& tx_hash) const {
 Result<Block> Blockchain::GetTransactionBlock(const uint256& tx_hash) const {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
 
-    // Get transaction from database
-    auto tx_result = impl_->db_->GetTransaction(tx_hash);
-    if (tx_result.IsError()) {
-        return Result<Block>::Error("Transaction not found");
+    // Get block hash from transaction-to-block index
+    auto block_hash_result = impl_->db_->GetBlockHashForTransaction(tx_hash);
+    if (block_hash_result.IsError()) {
+        return Result<Block>::Error("Transaction block mapping not found: " +
+                                   block_hash_result.error);
     }
 
-    // Search for the block containing this transaction
-    uint64_t current_height = impl_->chain_state_.best_height;
-
-    // Search backwards from current height
-    for (uint64_t height = current_height; height > 0 && (current_height - height) < 1000; --height) {
-        auto block_result = impl_->db_->GetBlockByHeight(height);
-        if (block_result.IsOk()) {
-            const auto& block = block_result.value;
-            // Check if transaction is in this block
-            for (const auto& tx : block->transactions) {
-                if (tx.GetHash() == tx_hash) {
-                    return Result<Block>::Ok(*block);
-                }
-            }
-        }
+    // Get the block
+    auto block_result = impl_->db_->GetBlock(*block_hash_result.value);
+    if (block_result.IsError()) {
+        return Result<Block>::Error("Block not found: " + block_result.error);
     }
 
-    return Result<Block>::Error("Transaction block not found");
+    return Result<Block>::Ok(*block_result.value);
 }
 
 // ------------------------------------------------------------------------

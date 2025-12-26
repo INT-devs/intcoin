@@ -927,6 +927,73 @@ Result<std::vector<uint256>> BlockchainDB::GetTransactionsForAddress(
 }
 
 // ============================================================================
+// Transaction-to-Block Mapping
+// ============================================================================
+
+Result<void> BlockchainDB::IndexTransactionBlock(const uint256& tx_hash,
+                                                 const uint256& block_hash) {
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    // Build database key: PREFIX_TX_BLOCK + tx_hash
+    std::string key;
+    key.push_back(db::PREFIX_TX_BLOCK);
+    key.append(reinterpret_cast<const char*>(tx_hash.data()), tx_hash.size());
+
+    // Serialize block hash as value
+    std::vector<uint8_t> value_data;
+    SerializeUint256(value_data, block_hash);
+
+    // Write to database
+    rocksdb::WriteOptions write_options;
+    std::string value_str(value_data.begin(), value_data.end());
+    rocksdb::Status status = impl_->db_->Put(write_options, key, value_str);
+
+    if (!status.ok()) {
+        return Result<void>::Error("Failed to index transaction block: " +
+                                  status.ToString());
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<uint256> BlockchainDB::GetBlockHashForTransaction(const uint256& tx_hash) const {
+    if (!impl_->is_open_) {
+        return Result<uint256>::Error("Database not open");
+    }
+
+    // Build database key: PREFIX_TX_BLOCK + tx_hash
+    std::string key;
+    key.push_back(db::PREFIX_TX_BLOCK);
+    key.append(reinterpret_cast<const char*>(tx_hash.data()), tx_hash.size());
+
+    // Read from database
+    rocksdb::ReadOptions read_options;
+    std::string value_str;
+    rocksdb::Status status = impl_->db_->Get(read_options, key, &value_str);
+
+    if (!status.ok()) {
+        if (status.IsNotFound()) {
+            return Result<uint256>::Error("Transaction block mapping not found");
+        }
+        return Result<uint256>::Error("Failed to read transaction block mapping: " +
+                                     status.ToString());
+    }
+
+    // Deserialize block hash
+    std::vector<uint8_t> value_data(value_str.begin(), value_str.end());
+    size_t pos = 0;
+    auto result = DeserializeUint256(value_data, pos);
+    if (result.IsError()) {
+        return Result<uint256>::Error("Failed to deserialize block hash: " +
+                                     result.error);
+    }
+
+    return Result<uint256>::Ok(*result.value);
+}
+
+// ============================================================================
 // Batch Operations
 // ============================================================================
 
