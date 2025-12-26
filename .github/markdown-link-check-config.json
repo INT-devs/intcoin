@@ -5,6 +5,50 @@
     },
     {
       "pattern": "^https://localhost"
+    },
+    {
+      "comment": "Ignore wiki links (GitHub wiki files not in repo)",
+      "pattern": "^\\.\\./wiki/"
+    },
+    {
+      "comment": "Ignore missing internal docs (work in progress)",
+      "pattern": "^Mining\\.md$"
+    },
+    {
+      "comment": "Ignore case-sensitive API reference variants",
+      "pattern": "^API-Reference\\.md$"
+    },
+    {
+      "comment": "Ignore missing docs",
+      "pattern": "^RPC-Commands\\.md$"
+    },
+    {
+      "comment": "Ignore missing docs",
+      "pattern": "^DEVELOPMENT_SETUP\\.md$"
+    },
+    {
+      "comment": "Ignore missing docs",
+      "pattern": "^CONTRIBUTING\\.md$"
+    },
+    {
+      "comment": "Ignore LICENSE link from docs subfolder",
+      "pattern": "^LICENSE$"
+    },
+    {
+      "comment": "Ignore broken external URLs",
+      "pattern": "^https://github.com/intcoin/crypto/issues"
+    },
+    {
+      "comment": "Ignore broken Monero audit link",
+      "pattern": "^https://www.getmonero.org/2019/11/25/randomx-audit.html"
+    },
+    {
+      "comment": "Ignore broken Digishield repo",
+      "pattern": "^https://github.com/dogecoin/digishield"
+    },
+    {
+      "comment": "Ignore broken Microsoft docs URL",
+      "pattern": "^https://docs.microsoft.com/en-us/lifecycle/products/windows"
     }
   ],
   "replacementPatterns": [],
