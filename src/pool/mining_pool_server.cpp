@@ -13,6 +13,7 @@
 #include <thread>
 #include <iomanip>
 #include <sstream>
+#include <iostream>
 
 namespace intcoin {
 
@@ -78,7 +79,13 @@ public:
     // Statistics
     std::atomic<uint64_t> total_shares_submitted_{0};
     std::atomic<uint64_t> total_blocks_found_{0};
+    std::atomic<uint64_t> total_paid_{0};
+    std::atomic<uint64_t> pool_revenue_{0};
     std::chrono::system_clock::time_point server_start_time_;
+
+    // Payment tracking
+    std::atomic<uint64_t> next_payment_id_{1};
+    std::vector<Payment> payment_history_;
 
     // Helper methods
     uint64_t GenerateMinerId() { return next_miner_id_++; }
@@ -771,21 +778,168 @@ double MiningPoolServer::CalculateMinerHashrate(uint64_t miner_id) const {
 }
 
 // ============================================================================
-// Payout System (Stubs - to be implemented)
+// Payout System Implementation
 // ============================================================================
 
 std::map<uint64_t, uint64_t> MiningPoolServer::CalculatePPLNSPayouts(uint64_t block_reward) {
-    // TODO: Implement PPLNS payout calculation
-    return {};
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Calculate pool fee
+    uint64_t fee = static_cast<uint64_t>(block_reward * impl_->config_.pool_fee_percent / 100.0);
+    uint64_t total_payout = block_reward - fee;
+
+    // Get last N shares for PPLNS window
+    size_t n_shares = impl_->config_.pplns_window;
+    size_t total_shares = impl_->recent_shares_.size();
+
+    if (total_shares == 0) {
+        return {};  // No shares to pay out
+    }
+
+    // Determine the range of shares to consider
+    size_t start_index = (total_shares > n_shares) ? (total_shares - n_shares) : 0;
+
+    // Count shares per miner in the PPLNS window
+    std::map<uint64_t, uint64_t> miner_share_count;
+    uint64_t window_share_count = 0;
+
+    for (size_t i = start_index; i < total_shares; i++) {
+        const Share& share = impl_->recent_shares_[i];
+        if (share.valid) {
+            miner_share_count[share.miner_id]++;
+            window_share_count++;
+        }
+    }
+
+    if (window_share_count == 0) {
+        return {};  // No valid shares in window
+    }
+
+    // Calculate payout proportional to share count
+    std::map<uint64_t, uint64_t> payouts;
+    for (const auto& [miner_id, share_count] : miner_share_count) {
+        uint64_t miner_payout = (total_payout * share_count) / window_share_count;
+        payouts[miner_id] = miner_payout;
+
+        // Update miner's unpaid balance
+        auto it = impl_->miners_.find(miner_id);
+        if (it != impl_->miners_.end()) {
+            it->second.unpaid_balance += miner_payout;
+        }
+    }
+
+    // Update pool statistics
+    impl_->total_paid_ += total_payout;
+    impl_->pool_revenue_ += fee;
+
+    return payouts;
 }
 
 std::map<uint64_t, uint64_t> MiningPoolServer::CalculatePPSPayouts() {
-    // TODO: Implement PPS payout calculation
-    return {};
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Get network difficulty to calculate expected shares per block
+    double network_diff = impl_->blockchain_ ? impl_->blockchain_->GetDifficulty() : 1.0;
+    double share_diff = static_cast<double>(impl_->config_.initial_difficulty);
+    uint64_t expected_shares = static_cast<uint64_t>(network_diff / share_diff);
+
+    if (expected_shares == 0) {
+        expected_shares = 1;  // Prevent division by zero
+    }
+
+    // Get block reward (TODO: Should come from blockchain/consensus)
+    uint64_t block_reward = 50 * 1000000ULL;  // 50 INTS in base units (1 INT = 1,000,000 INTS)
+
+    // Calculate pool fee
+    uint64_t fee = static_cast<uint64_t>(block_reward * impl_->config_.pool_fee_percent / 100.0);
+    uint64_t reward_per_share = (block_reward - fee) / expected_shares;
+
+    // Calculate payout for each share submitted
+    std::map<uint64_t, uint64_t> payouts;
+
+    for (const auto& share : impl_->recent_shares_) {
+        if (share.valid) {
+            payouts[share.miner_id] += reward_per_share;
+
+            // Update miner's unpaid balance
+            auto it = impl_->miners_.find(share.miner_id);
+            if (it != impl_->miners_.end()) {
+                it->second.unpaid_balance += reward_per_share;
+            }
+        }
+    }
+
+    // Update pool statistics
+    uint64_t total_payout = 0;
+    for (const auto& [miner_id, amount] : payouts) {
+        total_payout += amount;
+    }
+    impl_->total_paid_ += total_payout;
+    impl_->pool_revenue_ += (reward_per_share * impl_->recent_shares_.size()) - total_payout;
+
+    return payouts;
 }
 
 Result<void> MiningPoolServer::ProcessPayouts() {
-    // TODO: Implement payout processing
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    std::vector<Payment> new_payments;
+    auto now = std::chrono::system_clock::now();
+
+    // Iterate through all miners to check payout eligibility
+    for (auto& [miner_id, miner] : impl_->miners_) {
+        // Check if miner has enough balance for payout
+        if (miner.unpaid_balance < impl_->config_.min_payout) {
+            continue;  // Skip miners below threshold
+        }
+
+        // Check if enough time has passed since last payout
+        auto time_since_last = std::chrono::duration_cast<std::chrono::seconds>(
+            now - miner.last_payout).count();
+
+        if (time_since_last < static_cast<int64_t>(impl_->config_.payout_interval)) {
+            continue;  // Too soon for payout
+        }
+
+        // Create payment record
+        Payment payment;
+        payment.payment_id = impl_->next_payment_id_++;
+        payment.miner_id = miner_id;
+        payment.payout_address = miner.payout_address;
+        payment.amount = miner.unpaid_balance;
+        payment.tx_hash.fill(0);  // Will be filled when transaction is created
+        payment.created_at = now;
+        payment.is_confirmed = false;
+        payment.status = "pending";
+
+        // Store payment record
+        impl_->payment_history_.push_back(payment);
+        new_payments.push_back(payment);
+
+        // Update miner balances
+        miner.paid_balance += miner.unpaid_balance;
+        miner.unpaid_balance = 0;
+        miner.last_payout = now;
+
+        // TODO: Create actual blockchain transaction to send payment
+        // This would involve:
+        // 1. Creating a transaction with outputs to miner.payout_address
+        // 2. Signing the transaction
+        // 3. Broadcasting to the network
+        // 4. Updating payment.tx_hash when confirmed
+        // 5. Setting payment.is_confirmed = true when confirmed
+    }
+
+    // Log payout processing
+    if (!new_payments.empty()) {
+        std::cout << "[Pool] Processed " << new_payments.size() << " payouts" << std::endl;
+        for (const auto& payment : new_payments) {
+            std::cout << "  Payout #" << payment.payment_id
+                      << ": " << payment.amount << " INTS to "
+                      << payment.payout_address << std::endl;
+        }
+    }
+
     return Result<void>::Ok();
 }
 
