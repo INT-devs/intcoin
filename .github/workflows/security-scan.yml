@@ -47,9 +47,31 @@ jobs:
           libboost-all-dev \
           librocksdb-dev
 
+    - name: Cache RandomX
+      id: cache-randomx
+      uses: actions/cache@v3
+      with:
+        path: ~/randomx
+        key: ${{ runner.os }}-randomx-1.2.1
+
+    - name: Build RandomX
+      if: steps.cache-randomx.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git ~/randomx-src
+        cd ~/randomx-src
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=$HOME/randomx -DCMAKE_BUILD_TYPE=Release ..
+        make -j$(nproc)
+        make install
+
     - name: Build
       run: |
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_WALLET_QT=OFF -GNinja
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_PREFIX_PATH="$HOME/randomx" \
+          -DBUILD_TESTS=OFF \
+          -DBUILD_WALLET_QT=OFF \
+          -GNinja
         cmake --build build --config Release
 
     - name: Perform CodeQL Analysis
