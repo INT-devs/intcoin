@@ -793,6 +793,18 @@ public:
     // Message handling
     void HandleMessage(const PublicKey& peer, uint16_t type, const std::vector<uint8_t>& data);
 
+    // Fee estimation helpers
+    /// Estimate fee rate from mempool statistics
+    /// @param target_conf Target confirmation blocks (default 6)
+    /// @return Fee rate in satoshis per kiloweight (sat/kw)
+    uint32_t EstimateFeeRate(uint32_t target_conf = 6);
+
+    /// Calculate transaction fee based on size and fee rate
+    /// @param tx_size Transaction size in bytes
+    /// @param feerate_per_kw Fee rate in satoshis per kiloweight
+    /// @return Estimated fee in satoshis
+    static uint64_t CalculateTransactionFee(size_t tx_size, uint32_t feerate_per_kw);
+
 private:
     // Internal state
     Blockchain* blockchain_;

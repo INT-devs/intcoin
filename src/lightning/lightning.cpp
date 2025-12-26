@@ -1842,9 +1842,28 @@ Result<Transaction> Watchtower::BuildJusticeTransaction(
     TxOut output;
     output.value = retribution.revoked_remote_balance;
 
-    // TODO: Subtract transaction fee
-    if (output.value > 10000) {  // Reserve fee
-        output.value -= 10000;
+    // Calculate and subtract transaction fee
+    // Estimate justice transaction size:
+    // - 1 input (revocation path with signature): ~3500 bytes
+    // - 1 output (P2PKH): ~35 bytes
+    // - Version, locktime, etc.: ~20 bytes
+    // Total: ~3555 bytes
+    const size_t ESTIMATED_JUSTICE_TX_SIZE = 3555;
+
+    // Use higher fee rate for justice transactions (priority broadcast)
+    const uint32_t JUSTICE_FEERATE_PER_KW = 10000;  // ~40 sat/vbyte for fast confirmation
+
+    uint64_t justice_fee = LightningNetwork::CalculateTransactionFee(
+        ESTIMATED_JUSTICE_TX_SIZE,
+        JUSTICE_FEERATE_PER_KW
+    );
+
+    // Subtract fee from output value
+    if (output.value > justice_fee) {
+        output.value -= justice_fee;
+    } else {
+        // Not enough funds to pay fee, use all available
+        output.value = 0;
     }
 
     // Create pubkey hash from destination public key using SHA3-256
@@ -2056,7 +2075,7 @@ Result<uint256> LightningNetwork::OpenChannel(const PublicKey& remote_node, uint
     open_msg.max_htlc_value_in_flight_msat = channel->local_config.max_htlc_value * 1000;
     open_msg.channel_reserve_satoshis = channel->local_config.channel_reserve;
     open_msg.htlc_minimum_msat = channel->local_config.htlc_minimum;
-    open_msg.feerate_per_kw = 1000;  // TODO: Get actual feerate from mempool
+    open_msg.feerate_per_kw = EstimateFeeRate(6);  // Estimate fee rate for 6-block confirmation
     open_msg.to_self_delay = channel->local_config.to_self_delay;
     open_msg.max_accepted_htlcs = channel->local_config.max_accepted_htlcs;
     open_msg.funding_pubkey = funding_pubkey;
@@ -2737,8 +2756,18 @@ void LightningNetwork::HandleShutdown(const PublicKey& peer, const std::vector<u
     }
 
     // Now initiate closing fee negotiation
-    // Calculate proposed closing fee (simplified)
-    uint64_t proposed_fee = 1000;  // TODO: Calculate based on feerate
+    // Estimate closing transaction size:
+    // - 1 input (2-of-2 multisig with Dilithium signatures): ~6800 bytes
+    // - 2 outputs (P2PKH): ~70 bytes each
+    // - Version, locktime, etc.: ~20 bytes
+    // Total: ~6960 bytes
+    const size_t ESTIMATED_CLOSING_TX_SIZE = 6960;
+
+    // Get current fee rate
+    uint32_t feerate_per_kw = EstimateFeeRate(3);  // 3-block target for closing
+
+    // Calculate proposed closing fee
+    uint64_t proposed_fee = CalculateTransactionFee(ESTIMATED_CLOSING_TX_SIZE, feerate_per_kw);
 
     // Create closing transaction
     Transaction closing_tx;
@@ -2756,9 +2785,24 @@ void LightningNetwork::HandleShutdown(const PublicKey& peer, const std::vector<u
     uint64_t our_amount = channel->local_balance;
     uint64_t their_amount = channel->remote_balance;
 
-    // Deduct fee proportionally or from initiator
-    if (our_amount >= proposed_fee) {
-        our_amount -= proposed_fee;
+    // Deduct fee proportionally based on channel balances
+    // Each party pays proportionally to their share
+    uint64_t total_balance = our_amount + their_amount;
+    if (total_balance > 0) {
+        uint64_t our_fee_share = (proposed_fee * our_amount) / total_balance;
+        uint64_t their_fee_share = proposed_fee - our_fee_share;
+
+        if (our_amount >= our_fee_share) {
+            our_amount -= our_fee_share;
+        } else {
+            our_amount = 0;
+        }
+
+        if (their_amount >= their_fee_share) {
+            their_amount -= their_fee_share;
+        } else {
+            their_amount = 0;
+        }
     }
 
     // Create outputs
@@ -3720,6 +3764,89 @@ Result<Transaction> LightningNetwork::AssembleSignedCommitmentTransaction(
     signed_tx.inputs[0].script_sig = multisig_script_sig;
 
     return Result<Transaction>::Ok(signed_tx);
+}
+
+// ============================================================================
+// Fee Estimation Helpers
+// ============================================================================
+
+uint32_t LightningNetwork::EstimateFeeRate(uint32_t target_conf) {
+    // Default fee rates based on confirmation target (sat/kw - satoshis per kiloweight)
+    // These are conservative estimates for INTcoin
+    const uint32_t DEFAULT_FEERATE_1_BLOCK = 5000;   // ~20 sat/vbyte equivalent
+    const uint32_t DEFAULT_FEERATE_6_BLOCKS = 2500;  // ~10 sat/vbyte equivalent
+    const uint32_t DEFAULT_FEERATE_12_BLOCKS = 1000; // ~4 sat/vbyte equivalent
+    const uint32_t MINIMUM_FEERATE = 253;            // ~1 sat/vbyte minimum
+
+    if (!blockchain_) {
+        // No blockchain access, use conservative default
+        return DEFAULT_FEERATE_6_BLOCKS;
+    }
+
+    // Try to estimate from mempool statistics
+    const auto& mempool = blockchain_->GetMempool();
+    size_t mempool_size = mempool.GetSize();
+    uint64_t total_fees = mempool.GetTotalFees();
+
+    if (mempool_size > 0) {
+        // Calculate average fee rate from mempool
+        // Estimate average tx size (~250 bytes for typical P2PKH transaction)
+        const size_t AVERAGE_TX_SIZE = 250;
+
+        // Total mempool bytes (rough estimate)
+        size_t total_bytes = mempool_size * AVERAGE_TX_SIZE;
+
+        if (total_bytes > 0) {
+            // Fee rate in sat/byte
+            uint64_t feerate_per_byte = (total_fees * 1000) / total_bytes; // Multiply by 1000 for precision
+
+            // Convert to sat/kw (1 kw = 1000 weight units, 4 weight units = 1 vbyte)
+            // So 1 kw = 250 vbytes
+            uint32_t feerate_per_kw = static_cast<uint32_t>((feerate_per_byte * 250) / 1000);
+
+            // Apply multiplier based on confirmation target
+            if (target_conf <= 1) {
+                feerate_per_kw = feerate_per_kw * 2; // Double for fast confirmation
+            } else if (target_conf >= 12) {
+                feerate_per_kw = feerate_per_kw / 2; // Half for slow confirmation
+            }
+
+            // Ensure minimum fee rate
+            if (feerate_per_kw < MINIMUM_FEERATE) {
+                feerate_per_kw = MINIMUM_FEERATE;
+            }
+
+            return feerate_per_kw;
+        }
+    }
+
+    // Mempool is empty or unavailable, use defaults based on target
+    if (target_conf <= 1) {
+        return DEFAULT_FEERATE_1_BLOCK;
+    } else if (target_conf <= 6) {
+        return DEFAULT_FEERATE_6_BLOCKS;
+    } else {
+        return DEFAULT_FEERATE_12_BLOCKS;
+    }
+}
+
+uint64_t LightningNetwork::CalculateTransactionFee(size_t tx_size, uint32_t feerate_per_kw) {
+    // Convert transaction size from bytes to weight units
+    // For non-SegWit transactions: weight = size * 4
+    // For Lightning transactions (using post-quantum signatures): weight ~= size * 4
+    uint64_t tx_weight = tx_size * 4;
+
+    // Calculate fee: fee = (weight / 1000) * feerate_per_kw
+    // This gives us fee in satoshis
+    uint64_t fee = (tx_weight * feerate_per_kw) / 1000;
+
+    // Ensure minimum fee (at least 1 satoshi per vbyte for small transactions)
+    uint64_t min_fee = tx_size;
+    if (fee < min_fee) {
+        fee = min_fee;
+    }
+
+    return fee;
 }
 
 } // namespace intcoin
