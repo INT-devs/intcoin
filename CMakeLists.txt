@@ -1,6 +1,6 @@
-# Minimum CMake 3.0, prefer latest stable 4.x series
+# Minimum CMake 3.28, prefer latest stable 4.x series
 # Note: CMake 4.2.1 is the latest stable version as of documentation
-cmake_minimum_required(VERSION 3.0...4.2.1)
+cmake_minimum_required(VERSION 3.28...4.2.1)
 
 # Set CMake policies for modern behavior
 if(${CMAKE_VERSION} VERSION_LESS 3.28)
@@ -129,7 +129,7 @@ if(RELAXED_DEPENDENCIES)
     )
     find_package(OpenSSL)
 else()
-    find_package(Boost 1.87.0 COMPONENTS
+    find_package(Boost 1.90.0 COMPONENTS
         system
         filesystem
         thread
@@ -139,11 +139,11 @@ else()
 endif()
 find_package(Threads REQUIRED)
 
-# RocksDB (9.8.4+) - Latest stable
+# RocksDB (6.11.4+)
 if(RELAXED_DEPENDENCIES)
     find_package(RocksDB)
 else()
-    find_package(RocksDB 9.8.4)
+    find_package(RocksDB 6.11.4)
 endif()
 
 # liboqs (Open Quantum Safe) - 0.12.0+ (latest stable)

@@ -31,5 +31,16 @@ Complete documentation for INTcoin - the quantum-resistant cryptocurrency.
 
 ---
 
-**Version**: 1.0.0-alpha  
-**Last Updated**: December 5, 2025
+## Community
+
+Stay connected with the INTcoin community:
+
+- **Twitter/X**: https://x.com/INTcoin_team
+- **Reddit**: https://www.reddit.com/r/INTcoin
+- **Discord**: https://discord.gg/jCy3eNgx
+- **GitHub Issues**: https://github.com/INT-devs/intcoin/issues
+
+---
+
+**Version**: 1.0.0-beta
+**Last Updated**: December 26, 2025

@@ -1,7 +1,7 @@
 # INTcoin RPC API Documentation
 
-**Version**: 1.0.0-alpha
-**Last Updated**: December 3, 2025
+**Version**: 1.0.0-beta
+**Last Updated**: December 26, 2025
 
 This document describes the JSON-RPC API for interacting with the INTcoin daemon (`intcoind`).
 
@@ -21,6 +21,10 @@ This document describes the JSON-RPC API for interacting with the INTcoin daemon
   - [Mining](#mining-methods)
   - [Raw Transactions](#raw-transaction-methods)
   - [Utility](#utility-methods)
+  - [Fee Estimation](#fee-estimation-methods)
+  - [Lightning Network](#lightning-network-methods)
+  - [Mining Pool](#mining-pool-methods)
+  - [Enhanced Blockchain](#enhanced-blockchain-methods)
 - [Examples](#examples)
 
 ---
@@ -796,6 +800,522 @@ Verify a signed message.
 
 ---
 
+### Fee Estimation Methods
+
+#### `estimatesmartfee`
+
+Estimate the fee rate needed for a transaction to be confirmed within a target number of blocks.
+
+**Parameters**:
+- `conf_target` (number): Number of blocks for confirmation (1-1000)
+- `estimate_mode` (string, optional): "ECONOMICAL" or "CONSERVATIVE" (default: "CONSERVATIVE")
+
+**Returns**: `object` - Fee estimation
+
+**Example**:
+```bash
+./intcoin-cli estimatesmartfee 6
+```
+
+```json
+{
+  "result": {
+    "feerate": 0.00001000,
+    "blocks": 6
+  }
+}
+```
+
+---
+
+#### `estimaterawfee`
+
+Estimate the fee rate for raw transactions with detailed statistics.
+
+**Parameters**:
+- `conf_target` (number): Number of blocks for confirmation
+- `threshold` (number, optional): Success probability threshold (0-1, default: 0.95)
+
+**Returns**: `object` - Detailed fee estimation with statistics
+
+---
+
+#### `estimatefee`
+
+**DEPRECATED** - Use `estimatesmartfee` instead.
+
+Estimate fee rate for transactions (legacy method for Bitcoin compatibility).
+
+**Parameters**:
+- `nblocks` (number): Number of blocks
+
+**Returns**: `number` - Fee rate in INTS/kB
+
+---
+
+### Lightning Network Methods
+
+#### `lightning_openchannel`
+
+Open a new Lightning Network payment channel with a remote node.
+
+**Parameters**:
+- `node_id` (string): Remote node public key (hex, 1952 bytes for Dilithium3)
+- `capacity` (number): Channel capacity in INTS
+- `push_amount` (number, optional): Amount to push to remote (default: 0)
+
+**Returns**: `object` - Channel information
+
+**Example**:
+```bash
+./intcoin-cli lightning_openchannel "03abc..." 10000000
+```
+
+```json
+{
+  "result": {
+    "channel_id": "a1b2c3d4...",
+    "capacity": 10000000,
+    "state": "opening"
+  }
+}
+```
+
+---
+
+#### `lightning_closechannel`
+
+Close an existing Lightning Network channel.
+
+**Parameters**:
+- `channel_id` (string): Channel ID (hex)
+- `force` (boolean, optional): Force close without cooperation (default: false)
+
+**Returns**: `object` - Closing transaction information
+
+**Example**:
+```bash
+./intcoin-cli lightning_closechannel "a1b2c3d4..." false
+```
+
+```json
+{
+  "result": {
+    "txid": "e5f6g7h8...",
+    "type": "mutual_close"
+  }
+}
+```
+
+---
+
+#### `lightning_sendpayment`
+
+Send a Lightning Network payment via invoice or directly to a node.
+
+**Parameters**:
+- `invoice_or_node_id` (string): BOLT #11 invoice or destination node public key
+- `amount` (number, optional): Amount in INTS (required if using node_id)
+
+**Returns**: `object` - Payment result
+
+**Example**:
+```bash
+# Via invoice
+./intcoin-cli lightning_sendpayment "lnint1..."
+
+# Direct payment
+./intcoin-cli lightning_sendpayment "03xyz..." 1000000
+```
+
+```json
+{
+  "result": {
+    "payment_hash": "hash123...",
+    "amount": 1000000,
+    "fee": 1000,
+    "status": "succeeded"
+  }
+}
+```
+
+---
+
+#### `lightning_createinvoice`
+
+Create a BOLT #11 Lightning invoice for receiving payments.
+
+**Parameters**:
+- `amount` (number): Amount in INTS
+- `description` (string): Payment description
+- `expiry` (number, optional): Expiry time in seconds (default: 3600)
+
+**Returns**: `object` - Invoice information
+
+**Example**:
+```bash
+./intcoin-cli lightning_createinvoice 500000 "Payment for services"
+```
+
+```json
+{
+  "result": {
+    "bolt11": "lnint1...",
+    "payment_hash": "hash456...",
+    "amount": 500000,
+    "description": "Payment for services",
+    "expiry": 3600
+  }
+}
+```
+
+---
+
+#### `lightning_listchannels`
+
+List all Lightning Network channels.
+
+**Parameters**: None
+
+**Returns**: `array` - List of channels
+
+**Example**:
+```bash
+./intcoin-cli lightning_listchannels
+```
+
+```json
+{
+  "result": [
+    {
+      "channel_id": "a1b2c3...",
+      "remote_node": "03def...",
+      "capacity": 10000000,
+      "local_balance": 6000000,
+      "remote_balance": 4000000,
+      "state": 2,
+      "active": true
+    }
+  ]
+}
+```
+
+---
+
+#### `lightning_getnodeinfo`
+
+Get information about the local Lightning node.
+
+**Parameters**: None
+
+**Returns**: `object` - Node information and statistics
+
+**Example**:
+```bash
+./intcoin-cli lightning_getnodeinfo
+```
+
+```json
+{
+  "result": {
+    "node_id": "03abc...",
+    "alias": "MyLightningNode",
+    "running": true,
+    "num_channels": 5,
+    "num_active_channels": 4,
+    "total_capacity": 50000000,
+    "local_balance": 30000000,
+    "remote_balance": 20000000,
+    "num_pending_htlcs": 2,
+    "num_payments_sent": 150,
+    "num_payments_received": 200,
+    "total_fees_earned": 50000,
+    "total_fees_paid": 25000
+  }
+}
+```
+
+---
+
+#### `lightning_getnetworkgraph`
+
+Get the Lightning Network graph (nodes and channels).
+
+**Parameters**: None
+
+**Returns**: `object` - Network graph information
+
+**Example**:
+```bash
+./intcoin-cli lightning_getnetworkgraph
+```
+
+```json
+{
+  "result": {
+    "num_nodes": 0,
+    "num_channels": 0,
+    "nodes": [],
+    "channels": []
+  }
+}
+```
+
+---
+
+### Mining Pool Methods
+
+#### `pool_getstats`
+
+Get comprehensive mining pool statistics.
+
+**Parameters**: None
+
+**Returns**: `object` - Pool statistics
+
+**Example**:
+```bash
+./intcoin-cli pool_getstats
+```
+
+```json
+{
+  "result": {
+    "network_height": 12345,
+    "network_difficulty": 1500000,
+    "network_hashrate": 50000000,
+    "active_miners": 25,
+    "active_workers": 100,
+    "total_connections": 100,
+    "pool_hashrate": 5000000,
+    "pool_hashrate_percentage": 10.0,
+    "shares_this_round": 1000,
+    "shares_last_hour": 5000,
+    "shares_last_day": 120000,
+    "total_shares": 10000000,
+    "blocks_found": 50,
+    "blocks_pending": 2,
+    "blocks_confirmed": 48,
+    "blocks_orphaned": 2,
+    "average_block_time": 600.0,
+    "total_paid": 50000000,
+    "total_unpaid": 500000,
+    "pool_revenue": 250000,
+    "uptime_hours": 720.5,
+    "efficiency": 98.5,
+    "luck": 105.2
+  }
+}
+```
+
+---
+
+#### `pool_getworkers`
+
+List active workers with detailed statistics.
+
+**Parameters**:
+- `miner_id` (number, optional): Filter by specific miner ID
+
+**Returns**: `array` - List of workers
+
+**Example**:
+```bash
+./intcoin-cli pool_getworkers
+./intcoin-cli pool_getworkers 42
+```
+
+```json
+{
+  "result": [
+    {
+      "worker_id": 1,
+      "miner_id": 42,
+      "worker_name": "rig1",
+      "user_agent": "randomx-miner/1.0",
+      "shares_submitted": 1000,
+      "shares_accepted": 980,
+      "shares_rejected": 15,
+      "shares_stale": 5,
+      "blocks_found": 2,
+      "current_hashrate": 50000,
+      "average_hashrate": 48000,
+      "current_difficulty": 1000,
+      "ip_address": "192.168.1.100",
+      "is_active": true
+    }
+  ]
+}
+```
+
+---
+
+#### `pool_getpayments`
+
+Get payment history with optional filtering and pagination.
+
+**Parameters**:
+- `miner_id` (number, optional): Filter by specific miner ID
+- `limit` (number, optional): Maximum number of results (default: 100)
+
+**Returns**: `array` - List of payments
+
+**Example**:
+```bash
+./intcoin-cli pool_getpayments
+./intcoin-cli pool_getpayments 42 50
+```
+
+```json
+{
+  "result": [
+    {
+      "payment_id": 1,
+      "miner_id": 42,
+      "payout_address": "int1q...",
+      "amount": 1000000,
+      "tx_hash": "abc123...",
+      "status": "confirmed",
+      "is_confirmed": true
+    }
+  ]
+}
+```
+
+---
+
+#### `pool_gettopminers`
+
+Get top miners ranked by hashrate.
+
+**Parameters**:
+- `limit` (number, optional): Maximum number of results (default: 100)
+
+**Returns**: `array` - List of top miners
+
+**Example**:
+```bash
+./intcoin-cli pool_gettopminers 10
+```
+
+```json
+{
+  "result": [
+    {
+      "miner_id": 42,
+      "username": "alice",
+      "payout_address": "int1q...",
+      "total_hashrate": 250000,
+      "total_shares_submitted": 10000,
+      "total_shares_accepted": 9800,
+      "total_blocks_found": 5,
+      "unpaid_balance": 50000,
+      "paid_balance": 5000000,
+      "active_workers": 5
+    }
+  ]
+}
+```
+
+---
+
+### Enhanced Blockchain Methods
+
+#### `getblockstats`
+
+Get comprehensive statistics for a specific block.
+
+**Parameters**:
+- `hash_or_height` (string|number): Block hash or height
+
+**Returns**: `object` - Block statistics
+
+**Example**:
+```bash
+./intcoin-cli getblockstats 100
+./intcoin-cli getblockstats "00000000009e2958..."
+```
+
+```json
+{
+  "result": {
+    "blockhash": "00000000009e2958...",
+    "time": 1609459200,
+    "txs": 150,
+    "total_out": 5000000000,
+    "total_size": 250000,
+    "avgtxsize": 1666,
+    "feerate_percentiles": [10, 25, 50, 75, 100],
+    "totalfee": 15000,
+    "avgfee": 100,
+    "avgfeerate": 60
+  }
+}
+```
+
+---
+
+#### `getrawmempool` (Enhanced)
+
+Get all transactions in the mempool with optional verbose output.
+
+**Parameters**:
+- `verbose` (boolean, optional): Return detailed transaction info (default: false)
+
+**Returns**: `array|object` - Transaction IDs or detailed transaction information
+
+**Example**:
+```bash
+# Simple (transaction IDs only)
+./intcoin-cli getrawmempool
+
+# Verbose (with details)
+./intcoin-cli getrawmempool true
+```
+
+```json
+{
+  "result": {
+    "txid1": {
+      "size": 250,
+      "fee": 1000,
+      "time": 1609459200,
+      "height": 12345
+    }
+  }
+}
+```
+
+---
+
+#### `gettxoutsetinfo`
+
+Get statistics about the UTXO set.
+
+**Parameters**: None
+
+**Returns**: `object` - UTXO set statistics
+
+**Example**:
+```bash
+./intcoin-cli gettxoutsetinfo
+```
+
+```json
+{
+  "result": {
+    "height": 12345,
+    "bestblock": "00000000009e2958...",
+    "txouts": 1500000,
+    "bogosize": 150000000,
+    "hash_serialized_2": "abc123...",
+    "total_amount": 21000000000000
+  }
+}
+```
+
+---
+
 ## Examples
 
 ### Python Example
@@ -899,6 +1419,6 @@ curl --user myuser:mypass --data-binary '{"jsonrpc":"2.0","id":"curl","method":"
 
 ---
 
-**Version**: 1.0.0-alpha
-**Last Updated**: December 3, 2025
-**Build**: Complete - 32+ RPC methods implemented
+**Version**: 1.0.0-beta
+**Last Updated**: December 26, 2025
+**Build**: Complete - 47+ RPC methods implemented (includes Lightning, Pool, and Fee Estimation)

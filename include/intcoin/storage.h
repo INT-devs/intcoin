@@ -435,6 +435,9 @@ public:
     /// Constructor
     explicit UTXOSet(std::shared_ptr<BlockchainDB> db);
 
+    /// Destructor
+    ~UTXOSet();
+
     /// Load UTXO set from database
     Result<void> Load();
 

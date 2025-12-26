@@ -1,7 +1,7 @@
 # INTcoin Mining Pool Setup Guide
 
-**Version**: 1.0.0-alpha
-**Last Updated**: December 25, 2025
+**Version**: 1.0.0-beta
+**Last Updated**: December 26, 2025
 **Status**: Complete - Production Ready
 
 This guide covers setting up and operating an INTcoin mining pool using the built-in pool server.

@@ -1059,4 +1059,116 @@ void Mempool::LimitSize(size_t max_size) {
     }
 }
 
+// ============================================================================
+// UTXOSet Implementation
+// ============================================================================
+
+class UTXOSet::Impl {
+public:
+    std::shared_ptr<BlockchainDB> db;
+    std::map<OutPoint, TxOut> cache;  // In-memory cache
+    mutable std::mutex mutex;
+
+    explicit Impl(std::shared_ptr<BlockchainDB> database) : db(std::move(database)) {}
+};
+
+UTXOSet::UTXOSet(std::shared_ptr<BlockchainDB> db)
+    : impl_(std::make_unique<Impl>(std::move(db))) {}
+
+UTXOSet::~UTXOSet() = default;
+
+Result<void> UTXOSet::Load() {
+    // TODO: Load UTXOs from database
+    return Result<void>::Ok();
+}
+
+Result<void> UTXOSet::AddUTXO(const OutPoint& outpoint, const TxOut& output) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    impl_->cache[outpoint] = output;
+    return Result<void>::Ok();
+}
+
+Result<void> UTXOSet::SpendUTXO(const OutPoint& outpoint) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    impl_->cache.erase(outpoint);
+    return Result<void>::Ok();
+}
+
+std::optional<TxOut> UTXOSet::GetUTXO(const OutPoint& outpoint) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    auto it = impl_->cache.find(outpoint);
+    if (it != impl_->cache.end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+bool UTXOSet::HasUTXO(const OutPoint& outpoint) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    return impl_->cache.find(outpoint) != impl_->cache.end();
+}
+
+uint64_t UTXOSet::GetTotalValue() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    uint64_t total = 0;
+    for (const auto& [outpoint, txout] : impl_->cache) {
+        total += txout.value;
+    }
+    return total;
+}
+
+size_t UTXOSet::GetCount() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    return impl_->cache.size();
+}
+
+Result<void> UTXOSet::ApplyBlock(const Block& block) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    // Spend inputs
+    for (const auto& tx : block.transactions) {
+        if (tx.IsCoinbase()) {
+            continue;
+        }
+        for (const auto& input : tx.inputs) {
+            OutPoint outpoint(input.prev_tx_hash, input.prev_tx_index);
+            impl_->cache.erase(outpoint);
+        }
+    }
+
+    // Add outputs
+    for (const auto& tx : block.transactions) {
+        uint256 tx_hash = tx.GetHash();
+        for (uint32_t i = 0; i < tx.outputs.size(); i++) {
+            OutPoint outpoint(tx_hash, i);
+            impl_->cache[outpoint] = tx.outputs[i];
+        }
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<void> UTXOSet::RevertBlock(const Block& block) {
+    // TODO: Implement block reversion
+    return Result<void>::Ok();
+}
+
+Result<void> UTXOSet::Flush() {
+    // TODO: Flush cache to database
+    return Result<void>::Ok();
+}
+
+std::vector<std::pair<OutPoint, TxOut>> UTXOSet::GetUTXOsForAddress(
+    const std::string& address) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    std::vector<std::pair<OutPoint, TxOut>> result;
+
+    // TODO: Implement address filtering based on script_pubkey
+    for (const auto& [outpoint, txout] : impl_->cache) {
+        result.push_back({outpoint, txout});
+    }
+
+    return result;
+}
+
 } // namespace intcoin

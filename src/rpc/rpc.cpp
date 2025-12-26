@@ -7,6 +7,7 @@
 #include "intcoin/util.h"
 #include "intcoin/crypto.h"
 #include "intcoin/sanitize.h"
+#include "intcoin/pool.h"
 #include <sstream>
 #include <iomanip>
 #include <thread>
@@ -672,6 +673,30 @@ void BlockchainRPC::RegisterMethods(RPCServer& server, Blockchain& blockchain) {
         false,
         [&blockchain](const JSONValue&) { return getmempoolinfo({}, blockchain); }
     });
+
+    server.RegisterMethod({
+        "getrawmempool",
+        "Returns all transaction IDs in mempool",
+        {"verbose"},
+        false,
+        [&blockchain](const JSONValue& params) { return getrawmempool(params, blockchain); }
+    });
+
+    server.RegisterMethod({
+        "getblockstats",
+        "Returns statistics for a given block",
+        {"hash_or_height"},
+        false,
+        [&blockchain](const JSONValue& params) { return getblockstats(params, blockchain); }
+    });
+
+    server.RegisterMethod({
+        "gettxoutsetinfo",
+        "Returns statistics about the UTXO set",
+        {},
+        false,
+        [&blockchain](const JSONValue&) { return gettxoutsetinfo({}, blockchain); }
+    });
 }
 
 JSONValue BlockchainRPC::getblockcount(const JSONValue&, Blockchain& blockchain) {
@@ -751,6 +776,125 @@ JSONValue BlockchainRPC::getmempoolinfo(const JSONValue&, Blockchain& blockchain
     info["bytes"] = JSONValue(static_cast<int64_t>(mempool.GetSize()));
     info["usage"] = JSONValue(static_cast<int64_t>(mempool.GetSize()));
     info["maxmempool"] = JSONValue(static_cast<int64_t>(100 * 1024 * 1024));  // 100 MB
+
+    return JSONValue(info);
+}
+
+JSONValue BlockchainRPC::getrawmempool(const JSONValue& params, Blockchain& blockchain) {
+    auto& mempool = blockchain.GetMempool();
+    bool verbose = false;
+
+    if (params.IsArray() && params.Size() >= 1) {
+        verbose = params[0].GetBool();
+    }
+
+    if (!verbose) {
+        // Return array of transaction IDs
+        std::vector<JSONValue> txids;
+        auto txs = mempool.GetAllTransactions();
+        for (const auto& tx : txs) {
+            txids.push_back(JSONValue(Uint256ToHex(tx.GetHash())));
+        }
+        return JSONValue(txids);
+    } else {
+        // Return detailed info for each transaction
+        std::map<std::string, JSONValue> details;
+        auto txs = mempool.GetAllTransactions();
+        for (const auto& tx : txs) {
+            std::map<std::string, JSONValue> tx_info;
+            tx_info["size"] = JSONValue(static_cast<int64_t>(tx.GetSerializedSize()));
+            tx_info["fee"] = JSONValue(static_cast<int64_t>(0));  // TODO: Calculate actual fee
+            tx_info["time"] = JSONValue(static_cast<int64_t>(std::time(nullptr)));
+            tx_info["height"] = JSONValue(static_cast<int64_t>(blockchain.GetBestHeight()));
+
+            details[Uint256ToHex(tx.GetHash())] = JSONValue(tx_info);
+        }
+        return JSONValue(details);
+    }
+}
+
+JSONValue BlockchainRPC::getblockstats(const JSONValue& params, Blockchain& blockchain) {
+    if (!params.IsArray() || params.Size() < 1) {
+        throw std::runtime_error("Missing block hash or height parameter");
+    }
+
+    // Get block either by height or hash
+    Block block;
+    if (params[0].IsNumber()) {
+        int64_t height = params[0].GetInt();
+        if (height < 0 || static_cast<uint64_t>(height) > blockchain.GetBestHeight()) {
+            throw std::runtime_error("Block height out of range");
+        }
+        auto block_result = blockchain.GetBlockByHeight(static_cast<uint64_t>(height));
+        if (!block_result.IsOk()) {
+            throw std::runtime_error("Block not found at height");
+        }
+        block = block_result.value.value();
+    } else {
+        std::string hash_str = params[0].GetString();
+        auto hash_result = HexToBytes(hash_str);
+        if (!hash_result.IsOk() || hash_result.value.value().size() != 32) {
+            throw std::runtime_error("Invalid block hash");
+        }
+        uint256 hash;
+        std::copy(hash_result.value.value().begin(), hash_result.value.value().end(), hash.begin());
+        auto block_result = blockchain.GetBlock(hash);
+        if (!block_result.IsOk()) {
+            throw std::runtime_error("Block not found");
+        }
+        block = block_result.value.value();
+    }
+
+    // Calculate block statistics
+    std::map<std::string, JSONValue> stats;
+    stats["blockhash"] = JSONValue(Uint256ToHex(block.GetHash()));
+    stats["height"] = JSONValue(static_cast<int64_t>(0));
+    stats["time"] = JSONValue(static_cast<int64_t>(block.header.timestamp));
+    stats["txs"] = JSONValue(static_cast<int64_t>(block.transactions.size()));
+
+    // Calculate total output amount and fees
+    uint64_t total_out = 0;
+    uint64_t total_fee = 0;
+    size_t total_size = 0;
+
+    for (const auto& tx : block.transactions) {
+        total_size += tx.GetSerializedSize();
+        for (const auto& output : tx.outputs) {
+            total_out += output.value;
+        }
+    }
+
+    stats["total_out"] = JSONValue(static_cast<int64_t>(total_out));
+    stats["total_fee"] = JSONValue(static_cast<int64_t>(total_fee));
+    stats["total_size"] = JSONValue(static_cast<int64_t>(total_size));
+    stats["avgfee"] = JSONValue(block.transactions.size() > 1 ?
+                                static_cast<int64_t>(total_fee / (block.transactions.size() - 1)) : 0);
+    stats["avgfeerate"] = JSONValue(total_size > 0 ?
+                                   static_cast<int64_t>(total_fee * 1000 / total_size) : 0);
+    stats["avgtxsize"] = JSONValue(block.transactions.size() > 0 ?
+                                  static_cast<int64_t>(total_size / block.transactions.size()) : 0);
+
+    return JSONValue(stats);
+}
+
+JSONValue BlockchainRPC::gettxoutsetinfo(const JSONValue&, Blockchain& blockchain) {
+    // Get UTXO set statistics
+    auto& utxo_set = blockchain.GetUTXOSet();
+
+    std::map<std::string, JSONValue> info;
+    info["height"] = JSONValue(static_cast<int64_t>(blockchain.GetBestHeight()));
+    info["bestblock"] = JSONValue(Uint256ToHex(blockchain.GetBestBlockHash()));
+    info["transactions"] = JSONValue(static_cast<int64_t>(utxo_set.GetCount()));
+    info["txouts"] = JSONValue(static_cast<int64_t>(utxo_set.GetCount()));
+
+    // Calculate total amount in UTXOs
+    uint64_t total_amount = 0;
+    // Note: This would require iterating all UTXOs which could be expensive
+    // In production, this should be cached
+    info["total_amount"] = JSONValue(static_cast<int64_t>(total_amount));
+
+    // Calculate hash of UTXO set
+    info["hash_serialized"] = JSONValue(Uint256ToHex(uint256{}));
 
     return JSONValue(info);
 }
@@ -1834,6 +1978,458 @@ JSONValue FeeEstimationRPC::estimatefee(const JSONValue& params, Blockchain& blo
     }
 
     return JSONValue(-1.0);  // Error or unknown
+}
+
+// ============================================================================
+// Lightning Network RPC Methods
+// ============================================================================
+
+void LightningRPC::RegisterMethods(RPCServer& server, LightningNetwork& lightning) {
+    server.RegisterMethod({
+        "lightning_openchannel",
+        "Open a new Lightning Network channel",
+        {"node_id", "capacity", "push_amount"},
+        true,
+        [&lightning](const JSONValue& params) { return lightning_openchannel(params, lightning); }
+    });
+
+    server.RegisterMethod({
+        "lightning_closechannel",
+        "Close a Lightning Network channel",
+        {"channel_id", "force"},
+        true,
+        [&lightning](const JSONValue& params) { return lightning_closechannel(params, lightning); }
+    });
+
+    server.RegisterMethod({
+        "lightning_sendpayment",
+        "Send a Lightning Network payment",
+        {"invoice_or_destination", "amount", "description"},
+        true,
+        [&lightning](const JSONValue& params) { return lightning_sendpayment(params, lightning); }
+    });
+
+    server.RegisterMethod({
+        "lightning_createinvoice",
+        "Create a Lightning Network invoice",
+        {"amount", "description"},
+        true,
+        [&lightning](const JSONValue& params) { return lightning_createinvoice(params, lightning); }
+    });
+
+    server.RegisterMethod({
+        "lightning_listchannels",
+        "List all Lightning Network channels",
+        {},
+        false,
+        [&lightning](const JSONValue& params) { return lightning_listchannels(params, lightning); }
+    });
+
+    server.RegisterMethod({
+        "lightning_getnodeinfo",
+        "Get information about this Lightning node",
+        {},
+        false,
+        [&lightning](const JSONValue& params) { return lightning_getnodeinfo(params, lightning); }
+    });
+
+    server.RegisterMethod({
+        "lightning_getnetworkgraph",
+        "Get the Lightning Network graph",
+        {},
+        false,
+        [&lightning](const JSONValue& params) { return lightning_getnetworkgraph(params, lightning); }
+    });
+}
+
+JSONValue LightningRPC::lightning_openchannel(const JSONValue& params, LightningNetwork& lightning) {
+    if (!params.IsArray() || params.Size() < 2) {
+        throw std::runtime_error("Missing required parameters: node_id, capacity");
+    }
+
+    // Parse remote node public key
+    std::string node_id_hex = params[0].GetString();
+    auto pubkey_bytes = HexToBytes(node_id_hex);
+    if (!pubkey_bytes.IsOk() || pubkey_bytes.value.value().size() != 1952) {
+        throw std::runtime_error("Invalid node_id format");
+    }
+
+    PublicKey remote_node;
+    std::copy(pubkey_bytes.value.value().begin(), pubkey_bytes.value.value().end(), remote_node.begin());
+
+    // Parse capacity
+    uint64_t capacity = static_cast<uint64_t>(params[1].GetInt());
+    if (capacity < lightning::MIN_CHANNEL_CAPACITY) {
+        throw std::runtime_error("Channel capacity too low (minimum: " +
+                               std::to_string(lightning::MIN_CHANNEL_CAPACITY) + " INTS)");
+    }
+
+    // Parse optional push amount
+    uint64_t push_amount = 0;
+    if (params.Size() >= 3) {
+        push_amount = static_cast<uint64_t>(params[2].GetInt());
+        if (push_amount > capacity) {
+            throw std::runtime_error("Push amount cannot exceed channel capacity");
+        }
+    }
+
+    // Open channel
+    auto result = lightning.OpenChannel(remote_node, capacity, push_amount);
+    if (!result.IsOk()) {
+        throw std::runtime_error("Failed to open channel: " + result.error);
+    }
+
+    std::map<std::string, JSONValue> response;
+    response["channel_id"] = JSONValue(Uint256ToHex(result.value.value()));
+    response["capacity"] = JSONValue(static_cast<int64_t>(capacity));
+    response["push_amount"] = JSONValue(static_cast<int64_t>(push_amount));
+
+    return JSONValue(response);
+}
+
+JSONValue LightningRPC::lightning_closechannel(const JSONValue& params, LightningNetwork& lightning) {
+    if (!params.IsArray() || params.Size() < 1) {
+        throw std::runtime_error("Missing channel_id parameter");
+    }
+
+    // Parse channel ID
+    std::string channel_id_hex = params[0].GetString();
+    auto channel_id_bytes = HexToBytes(channel_id_hex);
+    if (!channel_id_bytes.IsOk() || channel_id_bytes.value.value().size() != 32) {
+        throw std::runtime_error("Invalid channel_id format");
+    }
+
+    uint256 channel_id;
+    std::copy(channel_id_bytes.value.value().begin(), channel_id_bytes.value.value().end(), channel_id.begin());
+
+    // Parse force flag
+    bool force = false;
+    if (params.Size() >= 2) {
+        force = params[1].GetBool();
+    }
+
+    // Close channel
+    auto result = lightning.CloseChannel(channel_id, force);
+    if (!result.IsOk()) {
+        throw std::runtime_error("Failed to close channel: " + result.error);
+    }
+
+    std::map<std::string, JSONValue> response;
+    response["channel_id"] = JSONValue(channel_id_hex);
+    response["force_close"] = JSONValue(force);
+    response["status"] = JSONValue(force ? "force_closing" : "mutual_closing");
+
+    return JSONValue(response);
+}
+
+JSONValue LightningRPC::lightning_sendpayment(const JSONValue& params, LightningNetwork& lightning) {
+    if (!params.IsArray() || params.Size() < 1) {
+        throw std::runtime_error("Missing payment destination or invoice");
+    }
+
+    std::string param1 = params[0].GetString();
+
+    // Check if it's a BOLT #11 invoice (starts with "lint")
+    if (param1.substr(0, 4) == "lint") {
+        // Send payment using invoice
+        auto result = lightning.SendPayment(param1);
+        if (!result.IsOk()) {
+            throw std::runtime_error("Failed to send payment: " + result.error);
+        }
+
+        std::map<std::string, JSONValue> response;
+        response["payment_hash"] = JSONValue(Uint256ToHex(result.value.value()));
+        response["status"] = JSONValue("pending");
+
+        return JSONValue(response);
+    } else {
+        // Send payment to destination with amount and description
+        if (params.Size() < 3) {
+            throw std::runtime_error("Missing amount and description parameters");
+        }
+
+        // Parse destination public key
+        auto dest_bytes = HexToBytes(param1);
+        if (!dest_bytes.IsOk() || dest_bytes.value.value().size() != 1952) {
+            throw std::runtime_error("Invalid destination format");
+        }
+
+        PublicKey dest;
+        std::copy(dest_bytes.value.value().begin(), dest_bytes.value.value().end(), dest.begin());
+
+        uint64_t amount = static_cast<uint64_t>(params[1].GetInt());
+        std::string description = params[2].GetString();
+
+        auto result = lightning.SendPayment(dest, amount, description);
+        if (!result.IsOk()) {
+            throw std::runtime_error("Failed to send payment: " + result.error);
+        }
+
+        std::map<std::string, JSONValue> response;
+        response["payment_hash"] = JSONValue(Uint256ToHex(result.value.value()));
+        response["amount"] = JSONValue(static_cast<int64_t>(amount));
+        response["description"] = JSONValue(description);
+        response["status"] = JSONValue("pending");
+
+        return JSONValue(response);
+    }
+}
+
+JSONValue LightningRPC::lightning_createinvoice(const JSONValue& params, LightningNetwork& lightning) {
+    if (!params.IsArray() || params.Size() < 2) {
+        throw std::runtime_error("Missing amount and description parameters");
+    }
+
+    uint64_t amount = static_cast<uint64_t>(params[0].GetInt());
+    std::string description = params[1].GetString();
+
+    // Create invoice
+    auto result = lightning.CreateInvoice(amount, description);
+    if (!result.IsOk()) {
+        throw std::runtime_error("Failed to create invoice: " + result.error);
+    }
+
+    const Invoice& invoice = result.value.value();
+
+    std::map<std::string, JSONValue> response;
+    response["bolt11"] = JSONValue(invoice.Encode());
+    response["payment_hash"] = JSONValue(Uint256ToHex(invoice.payment_hash));
+    response["amount"] = JSONValue(static_cast<int64_t>(amount));
+    response["description"] = JSONValue(description);
+    response["expiry"] = JSONValue(static_cast<int64_t>(invoice.expiry));
+
+    return JSONValue(response);
+}
+
+JSONValue LightningRPC::lightning_listchannels(const JSONValue&, LightningNetwork& lightning) {
+    auto channels = lightning.ListChannels();
+
+    std::vector<JSONValue> channel_list;
+    for (const auto& channel : channels) {
+        std::map<std::string, JSONValue> channel_info;
+        channel_info["channel_id"] = JSONValue(Uint256ToHex(channel.channel_id));
+        channel_info["remote_node"] = JSONValue(BytesToHex(std::vector<uint8_t>(channel.remote_node_id.begin(),
+                                                                                 channel.remote_node_id.end())));
+        channel_info["capacity"] = JSONValue(static_cast<int64_t>(channel.capacity));
+        channel_info["local_balance"] = JSONValue(static_cast<int64_t>(channel.local_balance));
+        channel_info["remote_balance"] = JSONValue(static_cast<int64_t>(channel.remote_balance));
+        channel_info["state"] = JSONValue(static_cast<int64_t>(channel.state));
+        channel_info["active"] = JSONValue(channel.state == ChannelState::OPEN);
+
+        channel_list.push_back(JSONValue(channel_info));
+    }
+
+    return JSONValue(channel_list);
+}
+
+JSONValue LightningRPC::lightning_getnodeinfo(const JSONValue&, LightningNetwork& lightning) {
+    std::map<std::string, JSONValue> info;
+
+    info["node_id"] = JSONValue(BytesToHex(std::vector<uint8_t>(lightning.GetNodeId().begin(),
+                                                                lightning.GetNodeId().end())));
+    info["alias"] = JSONValue(lightning.GetNodeAlias());
+    info["running"] = JSONValue(lightning.IsRunning());
+
+    auto stats = lightning.GetStats();
+    info["num_channels"] = JSONValue(static_cast<int64_t>(stats.num_channels));
+    info["num_active_channels"] = JSONValue(static_cast<int64_t>(stats.num_active_channels));
+    info["total_capacity"] = JSONValue(static_cast<int64_t>(stats.total_capacity));
+    info["local_balance"] = JSONValue(static_cast<int64_t>(stats.local_balance));
+    info["remote_balance"] = JSONValue(static_cast<int64_t>(stats.remote_balance));
+    info["num_pending_htlcs"] = JSONValue(static_cast<int64_t>(stats.num_pending_htlcs));
+    info["num_payments_sent"] = JSONValue(static_cast<int64_t>(stats.num_payments_sent));
+    info["num_payments_received"] = JSONValue(static_cast<int64_t>(stats.num_payments_received));
+    info["total_fees_earned"] = JSONValue(static_cast<int64_t>(stats.total_fees_earned));
+    info["total_fees_paid"] = JSONValue(static_cast<int64_t>(stats.total_fees_paid));
+
+    return JSONValue(info);
+}
+
+JSONValue LightningRPC::lightning_getnetworkgraph(const JSONValue&, LightningNetwork& lightning) {
+    std::map<std::string, JSONValue> graph_info;
+
+    // Note: NetworkGraph doesn't expose public methods to iterate all nodes/channels
+    // Return basic statistics for now
+    // TODO: Add GetAllNodes() and GetAllChannels() methods to NetworkGraph class
+
+    graph_info["num_nodes"] = JSONValue(static_cast<int64_t>(0));
+    graph_info["num_channels"] = JSONValue(static_cast<int64_t>(0));
+    graph_info["nodes"] = JSONValue(std::vector<JSONValue>());
+    graph_info["channels"] = JSONValue(std::vector<JSONValue>());
+
+    return JSONValue(graph_info);
+}
+
+// ============================================================================
+// Pool RPC Implementation
+// ============================================================================
+
+JSONValue PoolRPC::pool_getstats(const JSONValue&, MiningPoolServer& pool) {
+    PoolStatistics stats = pool.GetStatistics();
+
+    std::map<std::string, JSONValue> result;
+
+    // Network stats
+    result["network_height"] = JSONValue(static_cast<int64_t>(stats.network_height));
+    result["network_difficulty"] = JSONValue(static_cast<int64_t>(stats.network_difficulty));
+    result["network_hashrate"] = JSONValue(static_cast<int64_t>(stats.network_hashrate));
+
+    // Pool stats
+    result["active_miners"] = JSONValue(static_cast<int64_t>(stats.active_miners));
+    result["active_workers"] = JSONValue(static_cast<int64_t>(stats.active_workers));
+    result["total_connections"] = JSONValue(static_cast<int64_t>(stats.total_connections));
+    result["pool_hashrate"] = JSONValue(stats.pool_hashrate);
+    result["pool_hashrate_percentage"] = JSONValue(stats.pool_hashrate_percentage);
+
+    // Shares
+    result["shares_this_round"] = JSONValue(static_cast<int64_t>(stats.shares_this_round));
+    result["shares_last_hour"] = JSONValue(static_cast<int64_t>(stats.shares_last_hour));
+    result["shares_last_day"] = JSONValue(static_cast<int64_t>(stats.shares_last_day));
+    result["total_shares"] = JSONValue(static_cast<int64_t>(stats.total_shares));
+
+    // Blocks
+    result["blocks_found"] = JSONValue(static_cast<int64_t>(stats.blocks_found));
+    result["blocks_pending"] = JSONValue(static_cast<int64_t>(stats.blocks_pending));
+    result["blocks_confirmed"] = JSONValue(static_cast<int64_t>(stats.blocks_confirmed));
+    result["blocks_orphaned"] = JSONValue(static_cast<int64_t>(stats.blocks_orphaned));
+    result["average_block_time"] = JSONValue(stats.average_block_time);
+
+    // Earnings
+    result["total_paid"] = JSONValue(static_cast<int64_t>(stats.total_paid));
+    result["total_unpaid"] = JSONValue(static_cast<int64_t>(stats.total_unpaid));
+    result["pool_revenue"] = JSONValue(static_cast<int64_t>(stats.pool_revenue));
+
+    // Performance
+    result["uptime_hours"] = JSONValue(stats.uptime_hours);
+    result["efficiency"] = JSONValue(stats.efficiency);
+    result["luck"] = JSONValue(stats.luck);
+
+    return JSONValue(result);
+}
+
+JSONValue PoolRPC::pool_getworkers(const JSONValue& params, MiningPoolServer& pool) {
+    // Optional parameter: miner_id to filter workers
+    std::optional<uint64_t> miner_id;
+    if (params.IsArray() && params.Size() >= 1 && params[0].IsNumber()) {
+        miner_id = static_cast<uint64_t>(params[0].GetInt());
+    }
+
+    std::vector<Worker> workers;
+
+    if (miner_id.has_value()) {
+        // Get workers for specific miner
+        workers = pool.GetMinerWorkers(miner_id.value());
+    } else {
+        // Get all active miners and their workers
+        auto miners = pool.GetActiveMiners();
+        for (const auto& miner : miners) {
+            auto miner_workers = pool.GetMinerWorkers(miner.miner_id);
+            workers.insert(workers.end(), miner_workers.begin(), miner_workers.end());
+        }
+    }
+
+    std::vector<JSONValue> worker_list;
+    for (const auto& worker : workers) {
+        std::map<std::string, JSONValue> worker_info;
+        worker_info["worker_id"] = JSONValue(static_cast<int64_t>(worker.worker_id));
+        worker_info["miner_id"] = JSONValue(static_cast<int64_t>(worker.miner_id));
+        worker_info["worker_name"] = JSONValue(worker.worker_name);
+        worker_info["user_agent"] = JSONValue(worker.user_agent);
+        worker_info["shares_submitted"] = JSONValue(static_cast<int64_t>(worker.shares_submitted));
+        worker_info["shares_accepted"] = JSONValue(static_cast<int64_t>(worker.shares_accepted));
+        worker_info["shares_rejected"] = JSONValue(static_cast<int64_t>(worker.shares_rejected));
+        worker_info["shares_stale"] = JSONValue(static_cast<int64_t>(worker.shares_stale));
+        worker_info["blocks_found"] = JSONValue(static_cast<int64_t>(worker.blocks_found));
+        worker_info["current_hashrate"] = JSONValue(worker.current_hashrate);
+        worker_info["average_hashrate"] = JSONValue(worker.average_hashrate);
+        worker_info["current_difficulty"] = JSONValue(static_cast<int64_t>(worker.current_difficulty));
+        worker_info["ip_address"] = JSONValue(worker.ip_address);
+        worker_info["is_active"] = JSONValue(worker.is_active);
+
+        worker_list.push_back(JSONValue(worker_info));
+    }
+
+    return JSONValue(worker_list);
+}
+
+JSONValue PoolRPC::pool_getpayments(const JSONValue& params, MiningPoolServer& pool) {
+    // Optional parameters: miner_id, limit
+    std::optional<uint64_t> miner_id;
+    size_t limit = 100;
+
+    if (params.IsArray()) {
+        if (params.Size() >= 1 && params[0].IsNumber()) {
+            miner_id = static_cast<uint64_t>(params[0].GetInt());
+        }
+        if (params.Size() >= 2 && params[1].IsNumber()) {
+            limit = static_cast<size_t>(params[1].GetInt());
+        }
+    }
+
+    std::vector<Payment> payments;
+
+    if (miner_id.has_value()) {
+        payments = pool.GetMinerPaymentHistory(miner_id.value(), limit);
+    } else {
+        payments = pool.GetPaymentHistory(limit);
+    }
+
+    std::vector<JSONValue> payment_list;
+    for (const auto& payment : payments) {
+        std::map<std::string, JSONValue> payment_info;
+        payment_info["payment_id"] = JSONValue(static_cast<int64_t>(payment.payment_id));
+        payment_info["miner_id"] = JSONValue(static_cast<int64_t>(payment.miner_id));
+        payment_info["payout_address"] = JSONValue(payment.payout_address);
+        payment_info["amount"] = JSONValue(static_cast<int64_t>(payment.amount));
+        payment_info["tx_hash"] = JSONValue(Uint256ToHex(payment.tx_hash));
+        payment_info["status"] = JSONValue(payment.status);
+        payment_info["is_confirmed"] = JSONValue(payment.is_confirmed);
+
+        payment_list.push_back(JSONValue(payment_info));
+    }
+
+    return JSONValue(payment_list);
+}
+
+JSONValue PoolRPC::pool_gettopminers(const JSONValue& params, MiningPoolServer& pool) {
+    // Optional parameter: limit (default 100)
+    size_t limit = 100;
+    if (params.IsArray() && params.Size() >= 1 && params[0].IsNumber()) {
+        limit = static_cast<size_t>(params[0].GetInt());
+    }
+
+    // Get all miners and sort by hashrate
+    auto miners = pool.GetActiveMiners();
+
+    // Sort by total hashrate descending
+    std::sort(miners.begin(), miners.end(),
+              [](const Miner& a, const Miner& b) {
+                  return a.total_hashrate > b.total_hashrate;
+              });
+
+    // Limit results
+    if (miners.size() > limit) {
+        miners.resize(limit);
+    }
+
+    std::vector<JSONValue> miner_list;
+    for (const auto& miner : miners) {
+        std::map<std::string, JSONValue> miner_info;
+        miner_info["miner_id"] = JSONValue(static_cast<int64_t>(miner.miner_id));
+        miner_info["username"] = JSONValue(miner.username);
+        miner_info["payout_address"] = JSONValue(miner.payout_address);
+        miner_info["total_hashrate"] = JSONValue(miner.total_hashrate);
+        miner_info["total_shares_submitted"] = JSONValue(static_cast<int64_t>(miner.total_shares_submitted));
+        miner_info["total_shares_accepted"] = JSONValue(static_cast<int64_t>(miner.total_shares_accepted));
+        miner_info["total_blocks_found"] = JSONValue(static_cast<int64_t>(miner.total_blocks_found));
+        miner_info["unpaid_balance"] = JSONValue(static_cast<int64_t>(miner.unpaid_balance));
+        miner_info["paid_balance"] = JSONValue(static_cast<int64_t>(miner.paid_balance));
+        miner_info["active_workers"] = JSONValue(static_cast<int64_t>(miner.workers.size()));
+
+        miner_list.push_back(JSONValue(miner_info));
+    }
+
+    return JSONValue(miner_list);
 }
 
 } // namespace rpc

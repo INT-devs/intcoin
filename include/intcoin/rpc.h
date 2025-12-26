@@ -9,6 +9,8 @@
 #include "types.h"
 #include "blockchain.h"
 #include "network.h"
+#include "lightning.h"
+#include "pool.h"
 #include <string>
 #include <map>
 #include <vector>
@@ -246,6 +248,8 @@ public:
     static JSONValue getdifficulty(const JSONValue& params, Blockchain& blockchain);
     static JSONValue getmempoolinfo(const JSONValue& params, Blockchain& blockchain);
     static JSONValue getrawmempool(const JSONValue& params, Blockchain& blockchain);
+    static JSONValue getblockstats(const JSONValue& params, Blockchain& blockchain);
+    static JSONValue gettxoutsetinfo(const JSONValue& params, Blockchain& blockchain);
 };
 
 class NetworkRPC {
@@ -307,6 +311,31 @@ public:
     static JSONValue estimatesmartfee(const JSONValue& params, Blockchain& blockchain);
     static JSONValue estimaterawfee(const JSONValue& params, Blockchain& blockchain);
     static JSONValue estimatefee(const JSONValue& params, Blockchain& blockchain);  // Deprecated, for compatibility
+};
+
+class LightningRPC {
+public:
+    static void RegisterMethods(RPCServer& server, class LightningNetwork& lightning);
+
+    // Lightning Network methods
+    static JSONValue lightning_openchannel(const JSONValue& params, class LightningNetwork& lightning);
+    static JSONValue lightning_closechannel(const JSONValue& params, class LightningNetwork& lightning);
+    static JSONValue lightning_sendpayment(const JSONValue& params, class LightningNetwork& lightning);
+    static JSONValue lightning_createinvoice(const JSONValue& params, class LightningNetwork& lightning);
+    static JSONValue lightning_listchannels(const JSONValue& params, class LightningNetwork& lightning);
+    static JSONValue lightning_getnodeinfo(const JSONValue& params, class LightningNetwork& lightning);
+    static JSONValue lightning_getnetworkgraph(const JSONValue& params, class LightningNetwork& lightning);
+};
+
+class PoolRPC {
+public:
+    static void RegisterMethods(RPCServer& server, MiningPoolServer& pool);
+
+    // Mining pool methods
+    static JSONValue pool_getstats(const JSONValue& params, MiningPoolServer& pool);
+    static JSONValue pool_getworkers(const JSONValue& params, MiningPoolServer& pool);
+    static JSONValue pool_getpayments(const JSONValue& params, MiningPoolServer& pool);
+    static JSONValue pool_gettopminers(const JSONValue& params, MiningPoolServer& pool);
 };
 
 // ============================================================================

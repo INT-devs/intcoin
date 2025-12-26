@@ -320,10 +320,13 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## Community
 
+Stay connected with the INTcoin community:
+
 - **Website**: https://international-coin.org
 - **Repository**: https://gitlab.com/intcoin/crypto
-- **Discord**: https://discord.gg/intcoin
-- **Twitter**: @intcoin_crypto
+- **Twitter/X**: https://x.com/INTcoin_team
+- **Reddit**: https://www.reddit.com/r/INTcoin
+- **Discord**: https://discord.gg/jCy3eNgx
 - **Email**: team@international-coin.org
 
 ---
