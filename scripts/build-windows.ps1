@@ -22,6 +22,28 @@ Write-Info "INTcoin Windows Build Script"
 Write-Info "========================================="
 Write-Info ""
 
+# Check Windows version (enforce Windows 10 22H2+ or Windows 11+)
+$osVersion = [System.Environment]::OSVersion.Version
+$osBuild = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").CurrentBuild
+
+Write-Info "Detected Windows version: $($osVersion.Major).$($osVersion.Minor) (Build $osBuild)"
+
+if ($osVersion.Major -lt 10) {
+    Write-Error "ERROR: Windows $($osVersion.Major) is not supported (end-of-life)"
+    Write-Error "Minimum required: Windows 10 22H2 (Build 19045) or Windows 11"
+    exit 1
+}
+
+if ($osVersion.Major -eq 10 -and $osBuild -lt 19045) {
+    Write-Error "ERROR: Windows 10 Build $osBuild is not supported (end-of-life)"
+    Write-Error "Minimum required: Windows 10 22H2 (Build 19045) or Windows 11"
+    Write-Error "Your Windows 10 version is outdated. Please update to 22H2 or upgrade to Windows 11."
+    exit 1
+}
+
+Write-Success "✓ Windows version check passed"
+Write-Info ""
+
 # Get script directory and project root
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = $ScriptDir

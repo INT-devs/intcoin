@@ -27,7 +27,15 @@ if [ ! -f /bin/freebsd-version ]; then
 fi
 
 FREEBSD_VERSION=$(/bin/freebsd-version | cut -d'-' -f1)
+FREEBSD_MAJOR=$(echo "$FREEBSD_VERSION" | cut -d'.' -f1)
+
 info "Detected: FreeBSD $FREEBSD_VERSION"
+
+# Enforce FreeBSD 13+ only (do not support out-of-date operating systems)
+if [ "$FREEBSD_MAJOR" -lt 13 ]; then
+    error "FreeBSD $FREEBSD_VERSION is not supported. Minimum required: FreeBSD 13.0+"
+fi
+
 printf "\n"
 
 # Check if running as root

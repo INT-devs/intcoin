@@ -28,7 +28,7 @@ Complete guide for building INTcoin on all supported platforms.
 
 | Component | Requirement |
 |-----------|-------------|
-| **OS** | macOS 10.15+, Linux 4.x+, FreeBSD 12+, Windows 10+ |
+| **OS** | macOS 12.0+ (Monterey), Linux 5.x+, FreeBSD 13+, Windows 10 22H2+/Windows 11+ |
 | **Architecture** | 64-bit (x86_64 or ARM64) |
 | **CMake** | 3.28 or higher (latest stable from Kitware) |
 | **Compiler** | GCC 13+, Clang 16+, MSVC 2022+, Apple Clang 15+ |
@@ -72,6 +72,14 @@ Complete guide for building INTcoin on all supported platforms.
 ---
 
 ## macOS Build
+
+**Supported Versions**:
+- macOS 12 (Monterey) or later
+- macOS 13 (Ventura)
+- macOS 14 (Sonoma)
+- macOS 15 (Sequoia)
+
+**Note**: macOS 11 (Big Sur) and earlier are end-of-life and not supported.
 
 ### Install Dependencies
 
@@ -737,8 +745,10 @@ INTcoin provides automated installation scripts that handle all dependency insta
 **Script**: `scripts/build-windows.ps1`
 
 **Supported Versions**:
-- Windows 10 (64-bit)
+- Windows 10 22H2 or later (64-bit)
 - Windows 11 (64-bit)
+
+**Note**: Windows 10 versions older than 22H2 and Windows 7/8/8.1 are end-of-life and not supported.
 
 **Prerequisites**:
 - Visual Studio 2022 with C++ workload
@@ -796,11 +806,13 @@ Compress-Archive -Path 'dist-windows\*' -DestinationPath 'intcoin-windows-x64.zi
 **Script**: `scripts/install-linux.sh`
 
 **Supported Distributions**:
-- Ubuntu 20.04, 22.04, 24.04
-- Debian 11, 12
-- Fedora (latest)
-- CentOS/RHEL 8+
-- Arch Linux/Manjaro
+- Ubuntu 20.04 LTS, 22.04 LTS, 24.04 LTS
+- Debian 11 (Bullseye), 12 (Bookworm)
+- Fedora 38+
+- CentOS/RHEL 8+, Rocky Linux 8+, AlmaLinux 8+
+- Arch Linux/Manjaro (rolling release)
+
+**Note**: CentOS 7, Ubuntu 18.04, and Debian 10 are end-of-life and not supported.
 
 **Features**:
 - Installs latest CMake 3.28+ from Kitware repositories
@@ -839,9 +851,10 @@ sudo systemctl status intcoind  # Check status
 **Script**: `scripts/install-freebsd.sh`
 
 **Supported Versions**:
-- FreeBSD 12.x
 - FreeBSD 13.x
 - FreeBSD 14.x
+
+**Note**: FreeBSD 12.x is end-of-life and no longer supported.
 
 **Features**:
 - Installs dependencies via pkg

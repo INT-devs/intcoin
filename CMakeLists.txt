@@ -24,6 +24,44 @@ if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR "INTcoin requires a 64-bit system")
 endif()
 
+# Enforce minimum OS versions (do not support EOL operating systems)
+if(APPLE)
+    # macOS 12+ (Monterey) only
+    # Note: CMAKE_HOST_SYSTEM_VERSION gives Darwin kernel version
+    # Darwin 21.x = macOS 12, Darwin 22.x = macOS 13, Darwin 23.x = macOS 14, Darwin 24-25.x = macOS 15
+    string(REGEX MATCH "^[0-9]+" DARWIN_VERSION "${CMAKE_HOST_SYSTEM_VERSION}")
+
+    if(DARWIN_VERSION LESS 21)
+        message(FATAL_ERROR "macOS version is end-of-life and not supported. Minimum required: macOS 12 (Monterey)")
+    endif()
+
+    # Map Darwin version to macOS version for display
+    if(DARWIN_VERSION EQUAL 21)
+        set(MACOS_NAME "macOS 12 (Monterey)")
+    elseif(DARWIN_VERSION EQUAL 22)
+        set(MACOS_NAME "macOS 13 (Ventura)")
+    elseif(DARWIN_VERSION EQUAL 23)
+        set(MACOS_NAME "macOS 14 (Sonoma)")
+    elseif(DARWIN_VERSION GREATER_EQUAL 24)
+        set(MACOS_NAME "macOS 15+ (Sequoia or later)")
+    endif()
+
+    message(STATUS "Darwin kernel: ${DARWIN_VERSION} → ${MACOS_NAME}")
+elseif(WIN32)
+    # Windows 10 22H2+ (Build 19045) or Windows 11
+    execute_process(
+        COMMAND cmd /c ver
+        OUTPUT_VARIABLE WIN_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    message(STATUS "Windows version: ${WIN_VERSION}")
+    message(STATUS "Note: Ensure you are running Windows 10 22H2 (Build 19045) or Windows 11")
+elseif(UNIX AND NOT APPLE)
+    # Linux/BSD version checks handled by install scripts
+    message(STATUS "Platform: ${CMAKE_SYSTEM_NAME}")
+    message(STATUS "Note: Ensure your distribution is supported (see docs/BUILDING.md)")
+endif()
+
 # ============================================================================
 # C++ Standard Configuration
 # ============================================================================

@@ -31,6 +31,37 @@ else
 fi
 
 info "Detected: $PRETTY_NAME"
+
+# Enforce minimum OS versions (do not support out-of-date operating systems)
+case $DISTRO in
+    ubuntu)
+        # Ubuntu 20.04+ only
+        VERSION_NUM=$(echo "$VERSION" | cut -d'.' -f1)
+        if [ "$VERSION_NUM" -lt 20 ]; then
+            error "Ubuntu $VERSION is not supported. Minimum required: Ubuntu 20.04 LTS"
+        fi
+        ;;
+    debian)
+        # Debian 11+ only
+        if [ "$VERSION_ID" -lt 11 ]; then
+            error "Debian $VERSION is not supported. Minimum required: Debian 11 (Bullseye)"
+        fi
+        ;;
+    fedora)
+        # Fedora 38+ only (Fedora has short support cycles)
+        if [ "$VERSION_ID" -lt 38 ]; then
+            error "Fedora $VERSION_ID is end-of-life and not supported. Minimum required: Fedora 38"
+        fi
+        ;;
+    centos|rhel)
+        # CentOS/RHEL 8+ only
+        VERSION_NUM=$(echo "$VERSION" | cut -d'.' -f1)
+        if [ "$VERSION_NUM" -lt 8 ]; then
+            error "$DISTRO $VERSION is not supported. Minimum required: version 8"
+        fi
+        ;;
+esac
+
 echo ""
 
 # Check if running as root
