@@ -45,7 +45,31 @@ jobs:
           ninja-build \
           libssl-dev \
           libboost-all-dev \
-          librocksdb-dev
+          libgflags-dev \
+          libsnappy-dev \
+          zlib1g-dev \
+          libbz2-dev \
+          liblz4-dev \
+          libzstd-dev
+
+    - name: Cache RocksDB
+      id: cache-rocksdb
+      uses: actions/cache@v3
+      with:
+        path: ~/rocksdb
+        key: ${{ runner.os }}-rocksdb-10.7.5
+
+    - name: Build RocksDB
+      if: steps.cache-rocksdb.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch v10.7.5 https://github.com/facebook/rocksdb.git ~/rocksdb-src
+        cd ~/rocksdb-src
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_INSTALL_PREFIX=$HOME/rocksdb -DCMAKE_BUILD_TYPE=Release \
+          -DWITH_TESTS=OFF -DWITH_BENCHMARK_TOOLS=OFF -DWITH_TOOLS=OFF \
+          -DPORTABLE=ON -DWITH_GFLAGS=OFF ..
+        ninja
+        ninja install
 
     - name: Cache liboqs
       id: cache-liboqs
@@ -85,7 +109,7 @@ jobs:
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_PREFIX_PATH="$HOME/liboqs;$HOME/randomx" \
+          -DCMAKE_PREFIX_PATH="$HOME/rocksdb;$HOME/liboqs;$HOME/randomx" \
           -DWARNINGS_AS_ERRORS=OFF \
           -DBUILD_TESTS=OFF \
           -DBUILD_WALLET_QT=OFF \
