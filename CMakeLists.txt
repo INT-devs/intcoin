@@ -89,6 +89,7 @@ option(ENABLE_LIGHTNING "Enable Lightning Network" OFF)  # Deferred
 option(ENABLE_TOR "Enable Tor support" OFF)
 option(ENABLE_I2P "Enable I2P support" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
+option(RELAXED_DEPENDENCIES "Allow older dependency versions for CI builds" OFF)
 
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -119,18 +120,31 @@ endif()
 
 # Find dependencies (currently optional for initial build)
 # Updated to latest stable versions as of December 2024
-find_package(Boost 1.87.0 COMPONENTS
-    system
-    filesystem
-    thread
-    program_options
-)
-
-find_package(OpenSSL 3.4.0)
+if(RELAXED_DEPENDENCIES)
+    find_package(Boost COMPONENTS
+        system
+        filesystem
+        thread
+        program_options
+    )
+    find_package(OpenSSL)
+else()
+    find_package(Boost 1.87.0 COMPONENTS
+        system
+        filesystem
+        thread
+        program_options
+    )
+    find_package(OpenSSL 3.4.0)
+endif()
 find_package(Threads REQUIRED)
 
 # RocksDB (9.8.4+) - Latest stable
-find_package(RocksDB 9.8.4)
+if(RELAXED_DEPENDENCIES)
+    find_package(RocksDB)
+else()
+    find_package(RocksDB 9.8.4)
+endif()
 
 # liboqs (Open Quantum Safe) - 0.12.0+ (latest stable)
 find_library(OQS_LIB oqs)
