@@ -1836,10 +1836,8 @@ Result<Transaction> Watchtower::BuildJusticeTransaction(
         output.value -= 10000;
     }
 
-    // Create pubkey hash from destination public key
-    // TODO: Use proper hashing (SHA3-256)
-    uint256 pubkey_hash;
-    std::copy(destination.begin(), destination.begin() + 32, pubkey_hash.begin());
+    // Create pubkey hash from destination public key using SHA3-256
+    uint256 pubkey_hash = SHA3::Hash(destination.data(), destination.size());
 
     output.script_pubkey = Script::CreateP2PKH(pubkey_hash);
     justice_tx.outputs.push_back(output);
