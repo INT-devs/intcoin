@@ -1202,8 +1202,76 @@ void BlockchainDB::EnablePruning(uint64_t target_size_gb) {
 }
 
 Result<void> BlockchainDB::PruneBlocks(uint64_t keep_blocks) {
-    // TODO: Implement block pruning
-    return Result<void>::Error("Not implemented");
+    if (!impl_->is_open_) {
+        return Result<void>::Error("Database not open");
+    }
+
+    if (!impl_->pruning_enabled_) {
+        return Result<void>::Error("Pruning not enabled");
+    }
+
+    // Get current best height
+    auto chain_state_result = GetChainState();
+    if (chain_state_result.IsError()) {
+        return Result<void>::Error("Failed to get chain state: " +
+                                  chain_state_result.error);
+    }
+    uint64_t best_height = chain_state_result.value->best_height;
+
+    // Calculate prune height (don't prune the most recent keep_blocks)
+    if (best_height <= keep_blocks) {
+        // Chain too short to prune
+        return Result<void>::Ok();
+    }
+    uint64_t prune_height = best_height - keep_blocks;
+
+    // Prune blocks from height 1 up to prune_height
+    // Note: We keep genesis block (height 0) forever
+    BeginBatch();
+
+    uint64_t blocks_pruned = 0;
+    for (uint64_t height = 1; height <= prune_height; height++) {
+        // Get block hash for this height
+        auto hash_result = GetBlockHash(height);
+        if (hash_result.IsError()) {
+            continue;  // Skip if block hash not found
+        }
+        uint256 block_hash = *hash_result.value;
+
+        // Delete block data (but keep block index for headers)
+        auto delete_result = DeleteBlock(block_hash);
+        if (delete_result.IsError()) {
+            AbortBatch();
+            return Result<void>::Error("Failed to delete block at height " +
+                                      std::to_string(height) + ": " +
+                                      delete_result.error);
+        }
+
+        // Delete spent outputs for this block (no longer needed for pruned blocks)
+        auto delete_spent_result = DeleteSpentOutputs(block_hash);
+        if (delete_spent_result.IsError()) {
+            // Non-fatal error (spent outputs may not exist for coinbase-only blocks)
+            // Continue pruning
+        }
+
+        // Delete transactions in this block (they're in the pruned block)
+        // Note: We keep the block index for SPV/headers verification
+        // UTXO set is maintained separately and not pruned
+
+        blocks_pruned++;
+    }
+
+    auto commit_result = CommitBatch();
+    if (commit_result.IsError()) {
+        return Result<void>::Error("Failed to commit pruning batch: " +
+                                  commit_result.error);
+    }
+
+    // Log pruning statistics
+    LogF(LogLevel::INFO, "Pruned %llu blocks (kept last %llu blocks)",
+         blocks_pruned, keep_blocks);
+
+    return Result<void>::Ok();
 }
 
 bool BlockchainDB::IsPruningEnabled() const {
