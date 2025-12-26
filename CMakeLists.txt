@@ -88,6 +88,7 @@ option(BUILD_FAUCET "Build testnet faucet" ON)
 option(ENABLE_LIGHTNING "Enable Lightning Network" OFF)  # Deferred
 option(ENABLE_TOR "Enable Tor support" OFF)
 option(ENABLE_I2P "Enable I2P support" OFF)
+option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -95,7 +96,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
         -Wall
         -Wextra
         -Wpedantic
-        -Werror
+    )
+    if(WARNINGS_AS_ERRORS)
+        add_compile_options(-Werror)
+    endif()
+    add_compile_options(
         -Wno-unused-parameter
         -march=native
         -O3
