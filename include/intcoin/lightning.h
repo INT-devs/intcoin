@@ -87,6 +87,233 @@ enum class ChannelState {
 };
 
 // ============================================================================
+// BOLT #2 Channel Establishment Messages
+// ============================================================================
+
+// open_channel message (BOLT #2)
+struct OpenChannelMsg {
+    uint256 chain_hash;
+    uint256 temporary_channel_id;
+    uint64_t funding_satoshis;
+    uint64_t push_msat;
+    uint64_t dust_limit_satoshis;
+    uint64_t max_htlc_value_in_flight_msat;
+    uint64_t channel_reserve_satoshis;
+    uint64_t htlc_minimum_msat;
+    uint32_t feerate_per_kw;
+    uint16_t to_self_delay;
+    uint16_t max_accepted_htlcs;
+    PublicKey funding_pubkey;
+    PublicKey revocation_basepoint;
+    PublicKey payment_basepoint;
+    PublicKey delayed_payment_basepoint;
+    PublicKey htlc_basepoint;
+    PublicKey first_per_commitment_point;
+    uint8_t channel_flags;
+
+    OpenChannelMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<OpenChannelMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// accept_channel message (BOLT #2)
+struct AcceptChannelMsg {
+    uint256 temporary_channel_id;
+    uint64_t dust_limit_satoshis;
+    uint64_t max_htlc_value_in_flight_msat;
+    uint64_t channel_reserve_satoshis;
+    uint64_t htlc_minimum_msat;
+    uint32_t minimum_depth;
+    uint16_t to_self_delay;
+    uint16_t max_accepted_htlcs;
+    PublicKey funding_pubkey;
+    PublicKey revocation_basepoint;
+    PublicKey payment_basepoint;
+    PublicKey delayed_payment_basepoint;
+    PublicKey htlc_basepoint;
+    PublicKey first_per_commitment_point;
+
+    AcceptChannelMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<AcceptChannelMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// funding_created message (BOLT #2)
+struct FundingCreatedMsg {
+    uint256 temporary_channel_id;
+    uint256 funding_txid;
+    uint16_t funding_output_index;
+    Signature signature;
+
+    FundingCreatedMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<FundingCreatedMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// funding_signed message (BOLT #2)
+struct FundingSignedMsg {
+    uint256 channel_id;
+    Signature signature;
+
+    FundingSignedMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<FundingSignedMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// funding_locked message (BOLT #2)
+struct FundingLockedMsg {
+    uint256 channel_id;
+    PublicKey next_per_commitment_point;
+
+    FundingLockedMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<FundingLockedMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// shutdown message (BOLT #2) - Initiate channel close
+struct ShutdownMsg {
+    uint256 channel_id;
+    Script scriptpubkey;  // Closing transaction output script
+
+    ShutdownMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<ShutdownMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// closing_signed message (BOLT #2) - Negotiate closing transaction
+struct ClosingSignedMsg {
+    uint256 channel_id;
+    uint64_t fee_satoshis;  // Proposed closing fee
+    Signature signature;     // Signature for closing transaction
+
+    ClosingSignedMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<ClosingSignedMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// ============================================================================
+// BOLT #2 HTLC Update Messages
+// ============================================================================
+
+// update_add_htlc message (BOLT #2) - Add HTLC to commitment
+struct UpdateAddHTLCMsg {
+    uint256 channel_id;
+    uint64_t id;                        // HTLC ID
+    uint64_t amount_msat;               // Amount in millisatoshis
+    uint256 payment_hash;               // Hash of payment preimage
+    uint32_t cltv_expiry;              // CLTV expiry block height
+    std::vector<uint8_t> onion_routing_packet;  // Encrypted routing info (1366 bytes)
+
+    UpdateAddHTLCMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<UpdateAddHTLCMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// update_fulfill_htlc message (BOLT #2) - Fulfill HTLC with preimage
+struct UpdateFulfillHTLCMsg {
+    uint256 channel_id;
+    uint64_t id;                        // HTLC ID to fulfill
+    uint256 payment_preimage;           // Preimage that hashes to payment_hash
+
+    UpdateFulfillHTLCMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<UpdateFulfillHTLCMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// update_fail_htlc message (BOLT #2) - Fail/cancel HTLC
+struct UpdateFailHTLCMsg {
+    uint256 channel_id;
+    uint64_t id;                        // HTLC ID to fail
+    std::vector<uint8_t> reason;        // Encrypted failure reason
+
+    UpdateFailHTLCMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<UpdateFailHTLCMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// ============================================================================
+// BOLT #2 Commitment Signature Exchange Messages
+// ============================================================================
+
+// commitment_signed message (BOLT #2) - Commit HTLC updates
+struct CommitmentSignedMsg {
+    uint256 channel_id;
+    Signature signature;                        // Signature for commitment transaction
+    std::vector<Signature> htlc_signatures;     // Signatures for HTLC outputs
+
+    CommitmentSignedMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<CommitmentSignedMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// revoke_and_ack message (BOLT #2) - Revoke old commitment and ack new one
+struct RevokeAndAckMsg {
+    uint256 channel_id;
+    uint256 per_commitment_secret;              // Secret for previous commitment
+    PublicKey next_per_commitment_point;        // Public key for next commitment
+
+    RevokeAndAckMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<RevokeAndAckMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// ============================================================================
+// BOLT #7 Routing Gossip Messages
+// ============================================================================
+
+// channel_announcement message (BOLT #7) - Announce a new public channel
+struct ChannelAnnouncementMsg {
+    Signature node_signature_1;         // Signature from node1
+    Signature node_signature_2;         // Signature from node2
+    Signature bitcoin_signature_1;      // Bitcoin key signature 1
+    Signature bitcoin_signature_2;      // Bitcoin key signature 2
+    std::vector<uint8_t> features;      // Channel feature flags
+    uint256 chain_hash;                 // Blockchain identifier (genesis hash)
+    uint64_t short_channel_id;          // Short channel ID (block:tx:output format)
+    PublicKey node_id_1;                // First node public key
+    PublicKey node_id_2;                // Second node public key
+    PublicKey bitcoin_key_1;            // First Bitcoin key
+    PublicKey bitcoin_key_2;            // Second Bitcoin key
+
+    ChannelAnnouncementMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<ChannelAnnouncementMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// node_announcement message (BOLT #7) - Announce node information
+struct NodeAnnouncementMsg {
+    Signature signature;                // Node signature
+    std::vector<uint8_t> features;      // Node feature flags
+    uint32_t timestamp;                 // Announcement timestamp
+    PublicKey node_id;                  // Node public key
+    std::array<uint8_t, 3> rgb_color;   // Node RGB color
+    std::string alias;                  // Node alias (32 bytes max)
+    std::vector<uint8_t> addresses;     // Node network addresses
+
+    NodeAnnouncementMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<NodeAnnouncementMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// channel_update message (BOLT #7) - Update channel parameters
+struct ChannelUpdateMsg {
+    Signature signature;                // Signature of the node
+    uint256 chain_hash;                 // Blockchain identifier
+    uint64_t short_channel_id;          // Short channel ID
+    uint32_t timestamp;                 // Update timestamp
+    uint8_t message_flags;              // Message flags
+    uint8_t channel_flags;              // Channel flags (direction bit)
+    uint16_t cltv_expiry_delta;        // CLTV expiry delta
+    uint64_t htlc_minimum_msat;        // Minimum HTLC amount
+    uint32_t fee_base_msat;            // Base fee in millisatoshi
+    uint32_t fee_proportional_millionths;  // Proportional fee
+
+    ChannelUpdateMsg();
+    std::vector<uint8_t> Serialize() const;
+    static Result<ChannelUpdateMsg> Deserialize(const std::vector<uint8_t>& data);
+};
+
+// ============================================================================
 // HTLC (Hash Time-Locked Contract)
 // ============================================================================
 
@@ -373,14 +600,52 @@ struct OnionPacket {
 };
 
 // ============================================================================
-// Watchtower (for monitoring force-close)
+// Watchtower (BOLT #13 - for monitoring force-close and breaches)
 // ============================================================================
 
+// Encrypted blob containing justice transaction data
+struct EncryptedBlob {
+    std::vector<uint8_t> encrypted_data;    // AES-256 encrypted justice tx
+    std::vector<uint8_t> hint;              // Hint for matching (first 16 bytes of commitment txid)
+    uint32_t sequence_number;               // Commitment transaction sequence
+
+    EncryptedBlob();
+
+    // Encrypt justice transaction data
+    static Result<EncryptedBlob> Encrypt(
+        const std::vector<uint8_t>& justice_tx_data,
+        const uint256& encryption_key,
+        const uint256& commitment_txid,
+        uint32_t sequence
+    );
+
+    // Decrypt to recover justice transaction
+    Result<std::vector<uint8_t>> Decrypt(const uint256& encryption_key) const;
+};
+
+// Breach retribution data - what to do if peer broadcasts revoked commitment
+struct BreachRetribution {
+    uint256 channel_id;
+    uint256 revoked_commitment_txid;        // Transaction ID of revoked commitment
+    uint256 commitment_secret;              // Per-commitment secret for this state
+    uint64_t revoked_local_balance;         // Local balance in revoked state
+    uint64_t revoked_remote_balance;        // Remote balance in revoked state
+    std::vector<HTLC> revoked_htlcs;        // HTLCs in revoked state
+    Transaction justice_tx;                 // Pre-built penalty transaction
+    uint32_t to_self_delay;                 // CSV delay for to_self output
+    PublicKey revocation_pubkey;            // Public key for claiming revoked output
+
+    BreachRetribution();
+};
+
+// Watchtower task - tracks a specific channel state to watch for
 struct WatchtowerTask {
     uint256 channel_id;
     uint256 revoked_commitment_txid;
-    Transaction penalty_tx;
+    EncryptedBlob encrypted_justice;        // Encrypted justice transaction
     uint32_t watch_until_height;
+    std::chrono::system_clock::time_point created_at;
+    bool is_active;
 
     WatchtowerTask();
 };
@@ -388,23 +653,72 @@ struct WatchtowerTask {
 class Watchtower {
 public:
     Watchtower(Blockchain* blockchain);
+    ~Watchtower();
 
-    // Add channel to watch
-    void WatchChannel(const uint256& channel_id, const WatchtowerTask& task);
+    // Start/stop watchtower monitoring
+    Result<void> Start();
+    void Stop();
+    bool IsRunning() const;
+
+    // Client interface - upload encrypted justice transaction
+    Result<void> UploadBlob(
+        const uint256& channel_id,
+        const EncryptedBlob& blob,
+        uint32_t watch_until_height
+    );
+
+    // Add breach retribution data for a channel
+    void WatchChannel(const uint256& channel_id, const BreachRetribution& retribution);
 
     // Remove channel from watch
     void UnwatchChannel(const uint256& channel_id);
 
-    // Check for breaches
+    // Check all monitored channels for breaches
     void CheckForBreaches();
+
+    // Detect if a specific transaction is a revoked commitment
+    Result<BreachRetribution> DetectBreach(const Transaction& tx) const;
+
+    // Build justice (penalty) transaction for a breach
+    static Result<Transaction> BuildJusticeTransaction(
+        const BreachRetribution& retribution,
+        const Transaction& breach_tx,
+        const PublicKey& destination
+    );
 
     // Broadcast penalty transaction
     Result<void> BroadcastPenalty(const uint256& channel_id);
 
+    // Get watchtower statistics
+    struct Stats {
+        uint64_t channels_watched;
+        uint64_t breaches_detected;
+        uint64_t penalties_broadcast;
+        uint64_t blobs_stored;
+    };
+    Stats GetStatistics() const;
+
 private:
     Blockchain* blockchain_;
-    std::map<uint256, std::vector<WatchtowerTask>> tasks_;
+
+    // Channel breach monitoring
+    std::map<uint256, BreachRetribution> breach_data_;          // channel_id -> retribution data
+    std::map<uint256, std::vector<WatchtowerTask>> tasks_;      // channel_id -> watch tasks
+    std::map<uint256, EncryptedBlob> encrypted_blobs_;          // hint -> encrypted blob
+
+    // Statistics
+    Stats stats_;
+
+    // Monitoring thread
+    std::atomic<bool> running_;
+    std::thread monitor_thread_;
+
+    // Thread safety
     mutable std::mutex mutex_;
+
+    // Internal helpers
+    void MonitoringLoop();
+    bool IsRevokedCommitment(const uint256& txid) const;
 };
 
 // ============================================================================
@@ -495,8 +809,13 @@ private:
     struct PendingPayment {
         uint256 payment_hash;
         uint256 preimage;
+        PublicKey destination;
+        uint64_t amount;
+        uint64_t total_amount;          // Amount + fees
+        uint64_t total_fees;
         PaymentRoute route;
         std::chrono::system_clock::time_point created_at;
+        std::string status;             // "pending", "succeeded", "failed"
     };
     std::map<uint256, PendingPayment> pending_payments_;
 
@@ -512,11 +831,16 @@ private:
     void HandleFundingCreated(const PublicKey& peer, const std::vector<uint8_t>& data);
     void HandleFundingSigned(const PublicKey& peer, const std::vector<uint8_t>& data);
     void HandleFundingLocked(const PublicKey& peer, const std::vector<uint8_t>& data);
+    void HandleShutdown(const PublicKey& peer, const std::vector<uint8_t>& data);
+    void HandleClosingSigned(const PublicKey& peer, const std::vector<uint8_t>& data);
     void HandleUpdateAddHTLC(const PublicKey& peer, const std::vector<uint8_t>& data);
     void HandleUpdateFulfillHTLC(const PublicKey& peer, const std::vector<uint8_t>& data);
     void HandleUpdateFailHTLC(const PublicKey& peer, const std::vector<uint8_t>& data);
     void HandleCommitmentSigned(const PublicKey& peer, const std::vector<uint8_t>& data);
     void HandleRevokeAndAck(const PublicKey& peer, const std::vector<uint8_t>& data);
+    void HandleChannelAnnouncement(const PublicKey& peer, const std::vector<uint8_t>& data);
+    void HandleNodeAnnouncement(const PublicKey& peer, const std::vector<uint8_t>& data);
+    void HandleChannelUpdate(const PublicKey& peer, const std::vector<uint8_t>& data);
 
     // Internal helpers
     Result<std::shared_ptr<Channel>> FindChannelByPeer(const PublicKey& peer);

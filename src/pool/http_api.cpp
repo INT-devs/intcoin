@@ -389,9 +389,27 @@ private:
      * Returns recent payments to miners
      */
     rpc::JSONValue GetRecentPayments(int limit) {
-        // TODO: Implement payment tracking
-        std::vector<rpc::JSONValue> payments;
-        return rpc::JSONValue(payments);
+        auto payments = pool_.GetPaymentHistory(limit);
+
+        std::vector<rpc::JSONValue> payment_array;
+
+        for (const auto& payment : payments) {
+            std::map<std::string, rpc::JSONValue> payment_obj;
+            payment_obj["payment_id"] = rpc::JSONValue(static_cast<int64_t>(payment.payment_id));
+            payment_obj["miner_id"] = rpc::JSONValue(static_cast<int64_t>(payment.miner_id));
+            payment_obj["address"] = rpc::JSONValue(payment.payout_address);
+            payment_obj["amount"] = rpc::JSONValue(static_cast<int64_t>(payment.amount));
+            payment_obj["tx_hash"] = rpc::JSONValue(ToHex(payment.tx_hash));
+            payment_obj["timestamp"] = rpc::JSONValue(static_cast<int64_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    payment.created_at.time_since_epoch()).count()));
+            payment_obj["is_confirmed"] = rpc::JSONValue(payment.is_confirmed);
+            payment_obj["status"] = rpc::JSONValue(payment.status);
+
+            payment_array.push_back(rpc::JSONValue(payment_obj));
+        }
+
+        return rpc::JSONValue(payment_array);
     }
 
     /**

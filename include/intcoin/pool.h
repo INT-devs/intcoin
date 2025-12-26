@@ -97,6 +97,18 @@ struct Work {
     bool clean_jobs;                  // Should miners abandon previous work
 };
 
+struct Payment {
+    uint64_t payment_id;
+    uint64_t miner_id;
+    std::string payout_address;
+    uint64_t amount;                  // Amount in base units (INTS)
+    uint256 tx_hash;                  // Transaction hash
+    std::chrono::system_clock::time_point created_at;
+    std::chrono::system_clock::time_point confirmed_at;
+    bool is_confirmed;
+    std::string status;               // "pending", "confirmed", "failed"
+};
+
 // ============================================================================
 // Miner and Worker
 // ============================================================================
@@ -417,6 +429,12 @@ public:
 
     /// Get miner estimated earnings
     uint64_t GetMinerEstimatedEarnings(uint64_t miner_id) const;
+
+    /// Get payment history
+    std::vector<Payment> GetPaymentHistory(size_t limit = 100) const;
+
+    /// Get payment history for specific miner
+    std::vector<Payment> GetMinerPaymentHistory(uint64_t miner_id, size_t limit = 100) const;
 
     // ------------------------------------------------------------------------
     // Statistics

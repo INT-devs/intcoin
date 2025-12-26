@@ -9,6 +9,7 @@
 #include "intcoin/util.h"
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <memory>
 
 // Forward declarations of server classes and factory functions
@@ -523,6 +524,7 @@ public:
         , next_worker_id_(1)
         , next_share_id_(1)
         , next_round_id_(1)
+        , next_payment_id_(1)
         , vardiff_(config.target_share_time, config.vardiff_retarget_time, config.vardiff_variance)
         , stratum_server_(nullptr)
         , http_api_server_(nullptr)
@@ -560,6 +562,10 @@ public:
     RoundStatistics current_round_;
     std::vector<RoundStatistics> round_history_;
     std::atomic<uint64_t> next_round_id_;
+
+    // Payment tracking
+    std::vector<Payment> payment_history_;
+    std::atomic<uint64_t> next_payment_id_;
 
     // Current work
     std::optional<Work> current_work_;
@@ -1252,8 +1258,62 @@ std::map<uint64_t, uint64_t> MiningPoolServer::CalculatePPSPayouts() {
 }
 
 Result<void> MiningPoolServer::ProcessPayouts() {
-    // TODO: Implement payout processing with transaction creation
-    return Result<void>::Error("Payout processing not yet implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    std::vector<Payment> new_payments;
+    auto now = std::chrono::system_clock::now();
+
+    // Iterate through all miners to check payout eligibility
+    for (auto& [miner_id, miner] : impl_->miners_) {
+        // Check if miner has enough balance for payout
+        if (miner.unpaid_balance < impl_->config_.min_payout) {
+            continue;  // Skip miners below threshold
+        }
+
+        // Check if enough time has passed since last payout
+        auto time_since_last = std::chrono::duration_cast<std::chrono::seconds>(
+            now - miner.last_payout).count();
+
+        if (time_since_last < static_cast<int64_t>(impl_->config_.payout_interval)) {
+            continue;  // Too soon for payout
+        }
+
+        // Create payment record
+        Payment payment;
+        payment.payment_id = impl_->next_payment_id_++;
+        payment.miner_id = miner_id;
+        payment.payout_address = miner.payout_address;
+        payment.amount = miner.unpaid_balance;
+        payment.tx_hash.fill(0);  // Will be filled when transaction is created
+        payment.created_at = now;
+        payment.is_confirmed = false;
+        payment.status = "pending";
+
+        // Store payment record
+        impl_->payment_history_.push_back(payment);
+        new_payments.push_back(payment);
+
+        // Update miner balances
+        miner.unpaid_balance = 0;
+        miner.last_payout = now;
+
+        // Call payout callback if registered
+        if (impl_->payout_callback_) {
+            (*impl_->payout_callback_)(miner_id, payment.amount);
+        }
+    }
+
+    // Log payout processing
+    if (!new_payments.empty()) {
+        std::cout << "[Pool] Processed " << new_payments.size() << " payouts" << std::endl;
+        for (const auto& payment : new_payments) {
+            std::cout << "  Payout #" << payment.payment_id
+                      << ": " << payment.amount << " INTS to "
+                      << payment.payout_address << std::endl;
+        }
+    }
+
+    return Result<void>::Ok();
 }
 
 uint64_t MiningPoolServer::GetMinerBalance(uint64_t miner_id) const {
@@ -1266,6 +1326,41 @@ uint64_t MiningPoolServer::GetMinerEstimatedEarnings(uint64_t miner_id) const {
     auto miner = GetMiner(miner_id);
     if (!miner.has_value()) return 0;
     return miner->estimated_earnings;
+}
+
+std::vector<Payment> MiningPoolServer::GetPaymentHistory(size_t limit) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    std::vector<Payment> result;
+    size_t count = std::min(limit, impl_->payment_history_.size());
+
+    // Get most recent payments (from end of vector)
+    if (count > 0) {
+        auto start = impl_->payment_history_.end() - count;
+        result.assign(start, impl_->payment_history_.end());
+
+        // Reverse to get newest first
+        std::reverse(result.begin(), result.end());
+    }
+
+    return result;
+}
+
+std::vector<Payment> MiningPoolServer::GetMinerPaymentHistory(uint64_t miner_id, size_t limit) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    std::vector<Payment> result;
+
+    // Filter payments for specific miner
+    for (auto it = impl_->payment_history_.rbegin();
+         it != impl_->payment_history_.rend() && result.size() < limit;
+         ++it) {
+        if (it->miner_id == miner_id) {
+            result.push_back(*it);
+        }
+    }
+
+    return result;
 }
 
 PoolStatistics MiningPoolServer::GetStatistics() const {
