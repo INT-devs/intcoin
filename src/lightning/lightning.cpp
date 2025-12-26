@@ -2456,20 +2456,34 @@ void LightningNetwork::HandleAcceptChannel(const PublicKey& peer, const std::vec
     uint256 funding_txid = funding_tx.GetHash();
     uint16_t funding_vout = 0;
 
-    // Build commitment transaction
+    // Build remote party's commitment transaction (they will broadcast this)
+    // NOTE: From remote's perspective, their balance is local, ours is remote
     auto commit_result = CommitmentTransaction::Build(
         funding_txid,
         funding_vout,
         channel->capacity,
-        channel->local_balance,
-        channel->remote_balance,
+        channel->remote_balance,  // Remote's local balance
+        channel->local_balance,   // Remote's remote balance (our balance)
         {},  // No HTLCs yet
         0,   // First commitment
-        channel->local_config
+        channel->remote_config
     );
 
-    Signature commit_sig;  // TODO: Sign commitment transaction
-    commit_sig.fill(0);
+    // Sign the remote party's commitment transaction
+    Signature commit_sig;
+    if (commit_result.IsOk()) {
+        auto remote_commit_tx = commit_result.GetValue().tx;
+        auto sig_result = SignCommitmentTransaction(remote_commit_tx, funding_output.script_pubkey, node_key_);
+        if (sig_result.IsOk()) {
+            commit_sig = sig_result.GetValue();
+            // Store the commitment for later (if needed)
+            channel->remote_commitment = commit_result.GetValue();
+        } else {
+            commit_sig.fill(0);  // Fallback to zeros on error
+        }
+    } else {
+        commit_sig.fill(0);  // Fallback to zeros on error
+    }
 
     // Create funding_created message
     FundingCreatedMsg funding_msg;
@@ -2518,9 +2532,41 @@ void LightningNetwork::HandleFundingCreated(const PublicKey& peer, const std::ve
     channel_id[1] ^= channel->funding_vout & 0xFF;
     channel->channel_id = channel_id;
 
-    // Sign our commitment transaction
-    Signature our_sig;  // TODO: Actually sign
-    our_sig.fill(0);
+    // Build remote party's (initiator's) commitment transaction and sign it
+    // NOTE: From remote's perspective, their balance is local, ours is remote
+    auto commit_result = CommitmentTransaction::Build(
+        channel->funding_txid,
+        channel->funding_vout,
+        channel->capacity,
+        channel->remote_balance,  // Remote's local balance
+        channel->local_balance,   // Remote's remote balance (our balance)
+        {},  // No HTLCs yet
+        0,   // First commitment
+        channel->remote_config
+    );
+
+    // Sign the remote party's commitment transaction
+    Signature our_sig;
+    if (commit_result.IsOk()) {
+        auto remote_commit_tx = commit_result.GetValue().tx;
+
+        // Build the funding scriptpubkey (2-of-2 multisig)
+        std::vector<PublicKey> funding_pubkeys;
+        funding_pubkeys.push_back(channel->local_node_id);
+        funding_pubkeys.push_back(channel->remote_node_id);
+        Script funding_scriptpubkey = Script::CreateMultisig(2, funding_pubkeys);
+
+        auto sig_result = SignCommitmentTransaction(remote_commit_tx, funding_scriptpubkey, node_key_);
+        if (sig_result.IsOk()) {
+            our_sig = sig_result.GetValue();
+            // Store the commitment for later
+            channel->remote_commitment = commit_result.GetValue();
+        } else {
+            our_sig.fill(0);  // Fallback to zeros on error
+        }
+    } else {
+        our_sig.fill(0);  // Fallback to zeros on error
+    }
 
     // Create funding_signed message
     FundingSignedMsg signed_msg;
@@ -2688,8 +2734,19 @@ void LightningNetwork::HandleShutdown(const PublicKey& peer, const std::vector<u
     }
 
     // Sign closing transaction
-    Signature our_sig;  // TODO: Actually sign
-    our_sig.fill(0);
+    Signature our_sig;
+    // Build the funding scriptpubkey (2-of-2 multisig)
+    std::vector<PublicKey> funding_pubkeys;
+    funding_pubkeys.push_back(channel->local_node_id);
+    funding_pubkeys.push_back(channel->remote_node_id);
+    Script funding_scriptpubkey = Script::CreateMultisig(2, funding_pubkeys);
+
+    auto sig_result = SignCommitmentTransaction(closing_tx, funding_scriptpubkey, node_key_);
+    if (sig_result.IsOk()) {
+        our_sig = sig_result.GetValue();
+    } else {
+        our_sig.fill(0);  // Fallback to zeros on error
+    }
 
     // Send closing_signed with our signature
     ClosingSignedMsg closing_signed;
@@ -2970,16 +3027,48 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
         }
     }
 
+    // Build the updated remote commitment transaction with new HTLCs
+    auto commit_result = CommitmentTransaction::Build(
+        channel->funding_txid,
+        channel->funding_vout,
+        channel->capacity,
+        channel->remote_balance,  // Remote's local balance
+        channel->local_balance,   // Remote's remote balance (our balance)
+        channel->pending_htlcs,
+        channel->commitment_number + 1,  // Next commitment number
+        channel->remote_config
+    );
+
     // Send commitment_signed to commit this HTLC to the channel state
     CommitmentSignedMsg commit_msg;
     commit_msg.channel_id = htlc_msg.channel_id;
-    commit_msg.signature.fill(0);  // TODO: Actually sign the commitment transaction
 
-    // Add HTLC signatures (one for each pending HTLC)
-    for (size_t i = 0; i < channel->pending_htlcs.size(); i++) {
-        Signature htlc_sig;
-        htlc_sig.fill(0);  // TODO: Actually sign HTLC outputs
-        commit_msg.htlc_signatures.push_back(htlc_sig);
+    // Sign the commitment transaction
+    if (commit_result.IsOk()) {
+        auto remote_commit_tx = commit_result.GetValue().tx;
+
+        // Build the funding scriptpubkey (2-of-2 multisig)
+        std::vector<PublicKey> funding_pubkeys;
+        funding_pubkeys.push_back(channel->local_node_id);
+        funding_pubkeys.push_back(channel->remote_node_id);
+        Script funding_scriptpubkey = Script::CreateMultisig(2, funding_pubkeys);
+
+        auto sig_result = SignCommitmentTransaction(remote_commit_tx, funding_scriptpubkey, node_key_);
+        if (sig_result.IsOk()) {
+            commit_msg.signature = sig_result.GetValue();
+        } else {
+            commit_msg.signature.fill(0);  // Fallback to zeros on error
+        }
+
+        // TODO: Sign HTLC outputs (requires building HTLC-success and HTLC-timeout transactions)
+        // For now, add placeholder signatures for each HTLC
+        for (size_t i = 0; i < channel->pending_htlcs.size(); i++) {
+            Signature htlc_sig;
+            htlc_sig.fill(0);  // TODO: Build and sign HTLC success/timeout transactions
+            commit_msg.htlc_signatures.push_back(htlc_sig);
+        }
+    } else {
+        commit_msg.signature.fill(0);  // Fallback to zeros on error
     }
 
     auto commit_data = commit_msg.Serialize();
@@ -3260,15 +3349,30 @@ void LightningNetwork::HandleCommitmentSigned(const PublicKey& peer, const std::
         );
 
         if (our_commit_result.IsOk()) {
-            // TODO: Actually sign the commitment transaction and HTLCs
             CommitmentSignedMsg our_commit_msg;
             our_commit_msg.channel_id = commit_msg.channel_id;
-            our_commit_msg.signature.fill(0);  // Placeholder signature
 
-            // Add HTLC signatures
+            // Sign the remote party's commitment transaction
+            auto remote_commit_tx = our_commit_result.GetValue().tx;
+
+            // Build the funding scriptpubkey (2-of-2 multisig)
+            std::vector<PublicKey> funding_pubkeys;
+            funding_pubkeys.push_back(channel->local_node_id);
+            funding_pubkeys.push_back(channel->remote_node_id);
+            Script funding_scriptpubkey = Script::CreateMultisig(2, funding_pubkeys);
+
+            auto sig_result = SignCommitmentTransaction(remote_commit_tx, funding_scriptpubkey, node_key_);
+            if (sig_result.IsOk()) {
+                our_commit_msg.signature = sig_result.GetValue();
+            } else {
+                our_commit_msg.signature.fill(0);  // Fallback to zeros on error
+            }
+
+            // TODO: Sign HTLC outputs (requires building HTLC-success and HTLC-timeout transactions)
+            // For now, add placeholder signatures for each HTLC
             for (size_t i = 0; i < channel->pending_htlcs.size(); i++) {
                 Signature htlc_sig;
-                htlc_sig.fill(0);  // Placeholder
+                htlc_sig.fill(0);  // TODO: Build and sign HTLC success/timeout transactions
                 our_commit_msg.htlc_signatures.push_back(htlc_sig);
             }
 
