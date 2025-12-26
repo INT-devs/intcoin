@@ -280,6 +280,58 @@ Script Script::CreateReceivedHTLCScript(const PublicKey& revocation_pubkey,
     return script;
 }
 
+Script Script::CreateMultisig(uint8_t m, const std::vector<PublicKey>& pubkeys) {
+    // Create M-of-N multisig script
+    // Format: <M> <pubkey1> <pubkey2> ... <pubkeyN> <N> OP_CHECKMULTISIG
+    // For Lightning funding: 2-of-2 multisig
+
+    if (m == 0 || m > pubkeys.size()) {
+        // Invalid M value - return empty script
+        return Script();
+    }
+
+    if (pubkeys.size() > 20) {
+        // Too many keys (Bitcoin limit is 20)
+        return Script();
+    }
+
+    Script script;
+
+    // Push M (required signatures)
+    if (m == 1) {
+        script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_1));
+    } else if (m == 2) {
+        script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_2));
+    } else {
+        // For M > 2, push as small integer (OP_1 = 0x51, so OP_3 = 0x53, etc.)
+        script.bytes.push_back(0x50 + m);  // OP_1 through OP_16
+    }
+
+    // Push all public keys
+    for (const auto& pubkey : pubkeys) {
+        script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+        uint16_t len = static_cast<uint16_t>(pubkey.size());
+        script.bytes.push_back(len & 0xFF);
+        script.bytes.push_back((len >> 8) & 0xFF);
+        script.bytes.insert(script.bytes.end(), pubkey.begin(), pubkey.end());
+    }
+
+    // Push N (total public keys)
+    uint8_t n = static_cast<uint8_t>(pubkeys.size());
+    if (n == 1) {
+        script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_1));
+    } else if (n == 2) {
+        script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_2));
+    } else {
+        script.bytes.push_back(0x50 + n);  // OP_1 through OP_16
+    }
+
+    // OP_CHECKMULTISIG
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKMULTISIG));
+
+    return script;
+}
+
 bool Script::IsP2PKH() const {
     // P2PKH pattern: OP_DUP OP_HASH <32> <32-byte hash> OP_EQUALVERIFY OP_CHECKSIG
     // Total: 38 bytes
@@ -483,6 +535,106 @@ public:
 
                     auto result = DilithiumCrypto::VerifyHash(tx_hash, signature, pubkey);
                     stack.push_back(result.IsOk() ? std::vector<uint8_t>{1} : std::vector<uint8_t>{0});
+                }
+                pc++;
+            }
+            // OP_CHECKMULTISIG: Verify M-of-N multisig
+            // Stack before: [0 sig1 sig2 ... sigM M pubkey1 ... pubkeyN N]
+            // Stack after: [1] or [0] (verification result)
+            // Note: Extra OP_0 is required due to Bitcoin bug kept for compatibility
+            else if (opcode == static_cast<uint8_t>(OpCode::OP_CHECKMULTISIG)) {
+                if (stack.empty()) {
+                    return ScriptExecutionResult::Error("OP_CHECKMULTISIG: stack underflow (N)");
+                }
+
+                // Pop N (number of public keys)
+                auto n_bytes = stack.back();
+                stack.pop_back();
+                if (n_bytes.empty() || n_bytes.size() > 1) {
+                    return ScriptExecutionResult::Error("OP_CHECKMULTISIG: invalid N");
+                }
+                uint8_t n = n_bytes[0];
+                if (n > 0x51) n -= 0x50;  // Convert OP_1..OP_16 to 1..16
+
+                // Pop N public keys
+                if (stack.size() < n) {
+                    return ScriptExecutionResult::Error("OP_CHECKMULTISIG: not enough pubkeys on stack");
+                }
+                std::vector<std::vector<uint8_t>> pubkeys;
+                for (uint8_t i = 0; i < n; i++) {
+                    pubkeys.push_back(stack.back());
+                    stack.pop_back();
+                }
+                std::reverse(pubkeys.begin(), pubkeys.end());  // Stack is LIFO
+
+                // Pop M (required signatures)
+                if (stack.empty()) {
+                    return ScriptExecutionResult::Error("OP_CHECKMULTISIG: stack underflow (M)");
+                }
+                auto m_bytes = stack.back();
+                stack.pop_back();
+                if (m_bytes.empty() || m_bytes.size() > 1) {
+                    return ScriptExecutionResult::Error("OP_CHECKMULTISIG: invalid M");
+                }
+                uint8_t m = m_bytes[0];
+                if (m > 0x51) m -= 0x50;  // Convert OP_1..OP_16 to 1..16
+
+                if (m > n) {
+                    stack.push_back({0});  // Invalid: M > N
+                    pc++;
+                    continue;
+                }
+
+                // Pop M signatures
+                if (stack.size() < m) {
+                    return ScriptExecutionResult::Error("OP_CHECKMULTISIG: not enough sigs on stack");
+                }
+                std::vector<std::vector<uint8_t>> sigs;
+                for (uint8_t i = 0; i < m; i++) {
+                    sigs.push_back(stack.back());
+                    stack.pop_back();
+                }
+                std::reverse(sigs.begin(), sigs.end());  // Stack is LIFO
+
+                // Pop dummy element (Bitcoin bug compatibility)
+                if (stack.empty()) {
+                    return ScriptExecutionResult::Error("OP_CHECKMULTISIG: missing dummy element");
+                }
+                stack.pop_back();  // Remove OP_0 dummy
+
+                // Verify signatures
+                // Each signature must match one of the public keys, in order
+                size_t sig_idx = 0;
+                size_t pubkey_idx = 0;
+
+                while (sig_idx < sigs.size() && pubkey_idx < pubkeys.size()) {
+                    if (sigs[sig_idx].size() != 3309 || pubkeys[pubkey_idx].size() != 1952) {
+                        pubkey_idx++;
+                        continue;
+                    }
+
+                    // Try to verify signature with current pubkey
+                    PublicKey pubkey;
+                    Signature signature;
+                    std::copy(pubkeys[pubkey_idx].begin(), pubkeys[pubkey_idx].end(), pubkey.begin());
+                    std::copy(sigs[sig_idx].begin(), sigs[sig_idx].end(), signature.begin());
+
+                    uint256 tx_hash = tx->GetHashForSigning(SIGHASH_ALL, input_index, *script_pubkey);
+                    auto result = DilithiumCrypto::VerifyHash(tx_hash, signature, pubkey);
+
+                    if (result.IsOk()) {
+                        // Signature verified with this pubkey, move to next sig
+                        sig_idx++;
+                    }
+                    // Move to next pubkey regardless
+                    pubkey_idx++;
+                }
+
+                // All signatures must have been verified
+                if (sig_idx == sigs.size()) {
+                    stack.push_back({1});  // All signatures valid
+                } else {
+                    stack.push_back({0});  // Not all signatures verified
                 }
                 pc++;
             }

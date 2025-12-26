@@ -2440,8 +2440,17 @@ void LightningNetwork::HandleAcceptChannel(const PublicKey& peer, const std::vec
     // Create output with channel capacity (2-of-2 multisig)
     TxOut funding_output;
     funding_output.value = channel->capacity;
-    // TODO: Create proper 2-of-2 multisig script using both funding pubkeys
-    funding_output.script_pubkey = Script();  // Placeholder
+
+    // Create proper 2-of-2 multisig script using both funding pubkeys (BOLT #3)
+    // Format: 2 <local_funding_pubkey> <remote_funding_pubkey> 2 OP_CHECKMULTISIG
+    // NOTE: Using node IDs as placeholder funding pubkeys for now
+    // TODO: Store actual funding_pubkey from open_channel/accept_channel messages
+    // and use those instead of node IDs (requires Channel struct update)
+    std::vector<PublicKey> funding_pubkeys;
+    funding_pubkeys.push_back(channel->local_node_id);   // Placeholder: use node ID
+    funding_pubkeys.push_back(channel->remote_node_id);  // Placeholder: use node ID
+    funding_output.script_pubkey = Script::CreateMultisig(2, funding_pubkeys);
+
     funding_tx.outputs.push_back(funding_output);
 
     uint256 funding_txid = funding_tx.GetHash();

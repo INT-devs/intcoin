@@ -125,6 +125,12 @@ public:
                                            const uint256& payment_hash,
                                            uint32_t cltv_expiry);
 
+    /// Create M-of-N multisig script
+    /// @param m Required signatures (M)
+    /// @param pubkeys Public keys (N total, must have at least M)
+    /// @return Multisig script: <M> <pubkey1> ... <pubkeyN> <N> OP_CHECKMULTISIG
+    static Script CreateMultisig(uint8_t m, const std::vector<PublicKey>& pubkeys);
+
     /// Check if this is a P2PKH script
     bool IsP2PKH() const;
 
