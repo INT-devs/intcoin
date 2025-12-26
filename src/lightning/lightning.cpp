@@ -3641,13 +3641,55 @@ void LightningNetwork::HandleChannelAnnouncement(const PublicKey& peer, const st
     }
     auto announcement = msg_result.GetValue();
 
-    // TODO: Verify signatures (BOLT #7 signature verification)
-    // In production:
-    // 1. Verify node_signature_1 from node_id_1
-    // 2. Verify node_signature_2 from node_id_2
-    // 3. Verify bitcoin_signature_1 from bitcoin_key_1
-    // 4. Verify bitcoin_signature_2 from bitcoin_key_2
-    // For now, we accept announcements (placeholder for Dilithium3 verification)
+    // BOLT #7: Verify signatures
+    // Create signing message (all fields except signatures)
+    std::vector<uint8_t> signing_msg;
+
+    // Append features
+    uint16_t features_len = static_cast<uint16_t>(announcement.features.size());
+    signing_msg.push_back((features_len >> 8) & 0xFF);
+    signing_msg.push_back(features_len & 0xFF);
+    signing_msg.insert(signing_msg.end(), announcement.features.begin(), announcement.features.end());
+
+    // Append chain_hash
+    signing_msg.insert(signing_msg.end(), announcement.chain_hash.begin(), announcement.chain_hash.end());
+
+    // Append short_channel_id (8 bytes, big-endian)
+    for (int i = 7; i >= 0; i--) {
+        signing_msg.push_back((announcement.short_channel_id >> (i * 8)) & 0xFF);
+    }
+
+    // Append node IDs and bitcoin keys
+    signing_msg.insert(signing_msg.end(), announcement.node_id_1.begin(), announcement.node_id_1.end());
+    signing_msg.insert(signing_msg.end(), announcement.node_id_2.begin(), announcement.node_id_2.end());
+    signing_msg.insert(signing_msg.end(), announcement.bitcoin_key_1.begin(), announcement.bitcoin_key_1.end());
+    signing_msg.insert(signing_msg.end(), announcement.bitcoin_key_2.begin(), announcement.bitcoin_key_2.end());
+
+    // Verify node signatures using Dilithium3
+    auto verify1 = DilithiumCrypto::Verify(signing_msg, announcement.node_signature_1, announcement.node_id_1);
+    if (!verify1.IsOk()) {
+        // Invalid signature from node 1
+        return;
+    }
+
+    auto verify2 = DilithiumCrypto::Verify(signing_msg, announcement.node_signature_2, announcement.node_id_2);
+    if (!verify2.IsOk()) {
+        // Invalid signature from node 2
+        return;
+    }
+
+    // Note: In INTcoin, bitcoin_key signatures are also Dilithium3 (for funding tx)
+    auto verify3 = DilithiumCrypto::Verify(signing_msg, announcement.bitcoin_signature_1, announcement.bitcoin_key_1);
+    if (!verify3.IsOk()) {
+        // Invalid bitcoin signature 1
+        return;
+    }
+
+    auto verify4 = DilithiumCrypto::Verify(signing_msg, announcement.bitcoin_signature_2, announcement.bitcoin_key_2);
+    if (!verify4.IsOk()) {
+        // Invalid bitcoin signature 2
+        return;
+    }
 
     // TODO: Verify channel exists on blockchain
     // In production:
@@ -3713,11 +3755,58 @@ void LightningNetwork::HandleNodeAnnouncement(const PublicKey& peer, const std::
     }
     auto announcement = msg_result.GetValue();
 
-    // TODO: Verify signature (BOLT #7)
-    // In production:
-    // 1. Verify signature is from node_id
-    // 2. Verify timestamp is not too old
-    // For now, we accept announcements (placeholder for Dilithium3 verification)
+    // BOLT #7: Verify signature
+    // Create signing message (all fields except signature)
+    std::vector<uint8_t> signing_msg;
+
+    // Append features
+    uint16_t features_len = static_cast<uint16_t>(announcement.features.size());
+    signing_msg.push_back((features_len >> 8) & 0xFF);
+    signing_msg.push_back(features_len & 0xFF);
+    signing_msg.insert(signing_msg.end(), announcement.features.begin(), announcement.features.end());
+
+    // Append timestamp (4 bytes, big-endian)
+    signing_msg.push_back((announcement.timestamp >> 24) & 0xFF);
+    signing_msg.push_back((announcement.timestamp >> 16) & 0xFF);
+    signing_msg.push_back((announcement.timestamp >> 8) & 0xFF);
+    signing_msg.push_back(announcement.timestamp & 0xFF);
+
+    // Append node_id
+    signing_msg.insert(signing_msg.end(), announcement.node_id.begin(), announcement.node_id.end());
+
+    // Append RGB color (3 bytes)
+    signing_msg.insert(signing_msg.end(), announcement.rgb_color.begin(), announcement.rgb_color.end());
+
+    // Append alias (32 bytes, padded with zeros if needed)
+    std::vector<uint8_t> alias_bytes(32, 0);
+    std::copy(announcement.alias.begin(),
+              announcement.alias.begin() + std::min(announcement.alias.size(), size_t(32)),
+              alias_bytes.begin());
+    signing_msg.insert(signing_msg.end(), alias_bytes.begin(), alias_bytes.end());
+
+    // Append addresses
+    uint16_t addr_len = static_cast<uint16_t>(announcement.addresses.size());
+    signing_msg.push_back((addr_len >> 8) & 0xFF);
+    signing_msg.push_back(addr_len & 0xFF);
+    signing_msg.insert(signing_msg.end(), announcement.addresses.begin(), announcement.addresses.end());
+
+    // Verify signature using Dilithium3
+    auto verify_result = DilithiumCrypto::Verify(signing_msg, announcement.signature, announcement.node_id);
+    if (!verify_result.IsOk()) {
+        // Invalid signature - reject announcement
+        return;
+    }
+
+    // Verify timestamp is not too old (older than 2 weeks)
+    auto now = std::chrono::system_clock::now();
+    auto announcement_time = std::chrono::system_clock::from_time_t(announcement.timestamp);
+    auto age = std::chrono::duration_cast<std::chrono::seconds>(now - announcement_time).count();
+    const uint32_t MAX_AGE_SECONDS = 14 * 24 * 60 * 60;  // 2 weeks
+
+    if (age > MAX_AGE_SECONDS) {
+        // Announcement too old - reject
+        return;
+    }
 
     // Update node in network graph
     auto node_result = network_graph_.GetNode(announcement.node_id);
@@ -3755,13 +3844,7 @@ void LightningNetwork::HandleChannelUpdate(const PublicKey& peer, const std::vec
     }
     auto update = msg_result.GetValue();
 
-    // TODO: Verify signature (BOLT #7)
-    // In production:
-    // 1. Verify signature is from one of the channel nodes
-    // 2. Verify timestamp is newer than previous update
-    // For now, we accept updates (placeholder for Dilithium3 verification)
-
-    // Find channel in network graph
+    // Find channel in network graph first (need to get node IDs for signature verification)
     uint256 channel_id;
     channel_id.fill(0);
 
@@ -3772,10 +3855,70 @@ void LightningNetwork::HandleChannelUpdate(const PublicKey& peer, const std::vec
 
     auto channel_result = network_graph_.GetChannel(channel_id);
     if (!channel_result.IsOk()) {
-        return;  // Channel not found
+        return;  // Channel not found - can't verify signature
     }
 
     ChannelInfo channel_info = channel_result.GetValue();
+
+    // BOLT #7: Verify signature
+    // Create signing message (all fields except signature)
+    std::vector<uint8_t> signing_msg;
+
+    // Append chain_hash
+    signing_msg.insert(signing_msg.end(), update.chain_hash.begin(), update.chain_hash.end());
+
+    // Append short_channel_id (8 bytes, big-endian)
+    for (int i = 7; i >= 0; i--) {
+        signing_msg.push_back((update.short_channel_id >> (i * 8)) & 0xFF);
+    }
+
+    // Append timestamp (4 bytes, big-endian)
+    signing_msg.push_back((update.timestamp >> 24) & 0xFF);
+    signing_msg.push_back((update.timestamp >> 16) & 0xFF);
+    signing_msg.push_back((update.timestamp >> 8) & 0xFF);
+    signing_msg.push_back(update.timestamp & 0xFF);
+
+    // Append flags
+    signing_msg.push_back(update.message_flags);
+    signing_msg.push_back(update.channel_flags);
+
+    // Append other fields (2 bytes, big-endian for cltv_expiry_delta)
+    signing_msg.push_back((update.cltv_expiry_delta >> 8) & 0xFF);
+    signing_msg.push_back(update.cltv_expiry_delta & 0xFF);
+
+    // Append htlc_minimum_mints (8 bytes, big-endian)
+    for (int i = 7; i >= 0; i--) {
+        signing_msg.push_back((update.htlc_minimum_mints >> (i * 8)) & 0xFF);
+    }
+
+    // Append fee_base_mints (4 bytes, big-endian)
+    signing_msg.push_back((update.fee_base_mints >> 24) & 0xFF);
+    signing_msg.push_back((update.fee_base_mints >> 16) & 0xFF);
+    signing_msg.push_back((update.fee_base_mints >> 8) & 0xFF);
+    signing_msg.push_back(update.fee_base_mints & 0xFF);
+
+    // Append fee_proportional_millionths (4 bytes, big-endian)
+    signing_msg.push_back((update.fee_proportional_millionths >> 24) & 0xFF);
+    signing_msg.push_back((update.fee_proportional_millionths >> 16) & 0xFF);
+    signing_msg.push_back((update.fee_proportional_millionths >> 8) & 0xFF);
+    signing_msg.push_back(update.fee_proportional_millionths & 0xFF);
+
+    // Verify signature from one of the channel nodes
+    // channel_flags bit 0 indicates direction: 0 = node1, 1 = node2
+    PublicKey signing_node = (update.channel_flags & 0x01) ? channel_info.node2 : channel_info.node1;
+
+    auto verify_result = DilithiumCrypto::Verify(signing_msg, update.signature, signing_node);
+    if (!verify_result.IsOk()) {
+        // Invalid signature - reject update
+        return;
+    }
+
+    // Verify timestamp is newer than previous update
+    auto update_time = std::chrono::system_clock::from_time_t(update.timestamp);
+    if (update_time <= channel_info.last_update) {
+        // Update is not newer than current - reject
+        return;
+    }
 
     // Update channel parameters based on message
     channel_info.base_fee = update.fee_base_mints / 1000;  // Convert msat to sat
