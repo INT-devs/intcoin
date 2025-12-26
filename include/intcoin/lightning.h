@@ -640,6 +640,7 @@ struct BreachRetribution {
     Transaction justice_tx;                 // Pre-built penalty transaction
     uint32_t to_self_delay;                 // CSV delay for to_self output
     PublicKey revocation_pubkey;            // Public key for claiming revoked output
+    SecretKey revocation_privkey;           // Private key for signing penalty transaction
 
     BreachRetribution();
 };
@@ -704,6 +705,14 @@ public:
     };
     Stats GetStatistics() const;
 
+    // Configuration
+    /// Set the destination address for penalty transaction outputs
+    /// @param destination Public key to send penalty funds to (watchtower operator reward address)
+    void SetPenaltyDestination(const PublicKey& destination);
+
+    /// Get the configured penalty destination (returns node's default if not set)
+    PublicKey GetPenaltyDestination() const;
+
 private:
     Blockchain* blockchain_;
 
@@ -711,6 +720,9 @@ private:
     std::map<uint256, BreachRetribution> breach_data_;          // channel_id -> retribution data
     std::map<uint256, std::vector<WatchtowerTask>> tasks_;      // channel_id -> watch tasks
     std::map<uint256, EncryptedBlob> encrypted_blobs_;          // hint -> encrypted blob
+
+    // Configuration
+    PublicKey penalty_destination_;                             // Destination for penalty outputs
 
     // Statistics
     Stats stats_;

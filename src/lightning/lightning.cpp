@@ -1645,7 +1645,10 @@ Result<std::vector<uint8_t>> EncryptedBlob::Decrypt(const uint256& encryption_ke
 BreachRetribution::BreachRetribution()
     : revoked_local_balance(0)
     , revoked_remote_balance(0)
-    , to_self_delay(0) {}
+    , to_self_delay(0)
+{
+    revocation_privkey.fill(0);
+}
 
 WatchtowerTask::WatchtowerTask()
     : watch_until_height(0)
@@ -1659,6 +1662,9 @@ Watchtower::Watchtower(Blockchain* blockchain)
     stats_.breaches_detected = 0;
     stats_.penalties_broadcast = 0;
     stats_.blobs_stored = 0;
+
+    // Initialize penalty destination to zero (must be configured)
+    penalty_destination_.fill(0);
 }
 
 Watchtower::~Watchtower() {
@@ -1769,9 +1775,8 @@ void Watchtower::CheckForBreaches() {
                     auto retribution = breach_result.GetValue();
 
                     // Build and broadcast justice transaction
-                    // Use a placeholder destination (watchtower operator's key)
-                    PublicKey destination;
-                    destination.fill(0);  // TODO: Configure watchtower operator destination
+                    // Get configured penalty destination (watchtower operator's reward address)
+                    PublicKey destination = GetPenaltyDestination();
 
                     auto justice_result = BuildJusticeTransaction(
                         retribution, tx, destination);
@@ -1832,10 +1837,6 @@ Result<Transaction> Watchtower::BuildJusticeTransaction(
     input.prev_tx_index = 1;  // Assume to_remote is output 1 (simplified)
     input.sequence = 0xFFFFFFFF;
 
-    // TODO: Create proper unlocking script with revocation signature
-    // For now, placeholder
-    input.script_sig = Script();
-
     justice_tx.inputs.push_back(input);
 
     // Output: Send all funds to destination (watchtower operator or victim)
@@ -1872,6 +1873,47 @@ Result<Transaction> Watchtower::BuildJusticeTransaction(
     output.script_pubkey = Script::CreateP2PKH(pubkey_hash);
     justice_tx.outputs.push_back(output);
 
+    // Sign the justice transaction with revocation private key
+    // Get the scriptPubKey of the output being spent from the breach transaction
+    if (input.prev_tx_index >= breach_tx.outputs.size()) {
+        return Result<Transaction>::Error("Invalid output index in breach transaction");
+    }
+
+    const Script& prev_scriptpubkey = breach_tx.outputs[input.prev_tx_index].script_pubkey;
+
+    // Generate signing hash using SIGHASH_ALL
+    uint256 signing_hash = justice_tx.GetHashForSigning(SIGHASH_ALL, 0, prev_scriptpubkey);
+
+    // Sign with revocation private key (Dilithium3)
+    auto sig_result = DilithiumCrypto::SignHash(signing_hash, retribution.revocation_privkey);
+    if (!sig_result.IsOk()) {
+        return Result<Transaction>::Error("Failed to sign justice transaction: " + sig_result.error);
+    }
+
+    Signature revocation_sig = sig_result.GetValue();
+
+    // Create unlocking script: <signature> <pubkey> (P2PKH format)
+    Script script_sig;
+
+    // Push signature
+    script_sig.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t sig_len = static_cast<uint16_t>(revocation_sig.size());
+    script_sig.bytes.push_back(sig_len & 0xFF);
+    script_sig.bytes.push_back((sig_len >> 8) & 0xFF);
+    script_sig.bytes.insert(script_sig.bytes.end(), revocation_sig.begin(), revocation_sig.end());
+
+    // Push public key
+    script_sig.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t pubkey_len = static_cast<uint16_t>(retribution.revocation_pubkey.size());
+    script_sig.bytes.push_back(pubkey_len & 0xFF);
+    script_sig.bytes.push_back((pubkey_len >> 8) & 0xFF);
+    script_sig.bytes.insert(script_sig.bytes.end(),
+                            retribution.revocation_pubkey.begin(),
+                            retribution.revocation_pubkey.end());
+
+    // Set the script_sig on the input
+    justice_tx.inputs[0].script_sig = script_sig;
+
     return Result<Transaction>::Ok(justice_tx);
 }
 
@@ -1893,9 +1935,8 @@ Result<void> Watchtower::BroadcastPenalty(const uint256& channel_id) {
 
     auto breach_tx = tx_result.GetValue();
 
-    // Build justice transaction
-    PublicKey destination;
-    destination.fill(0);  // TODO: Configure watchtower operator destination
+    // Build justice transaction with configured penalty destination
+    PublicKey destination = GetPenaltyDestination();
 
     auto justice_result = BuildJusticeTransaction(
         retribution, breach_tx, destination);
@@ -1918,6 +1959,16 @@ Result<void> Watchtower::BroadcastPenalty(const uint256& channel_id) {
 Watchtower::Stats Watchtower::GetStatistics() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return stats_;
+}
+
+void Watchtower::SetPenaltyDestination(const PublicKey& destination) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    penalty_destination_ = destination;
+}
+
+PublicKey Watchtower::GetPenaltyDestination() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return penalty_destination_;
 }
 
 void Watchtower::MonitoringLoop() {
