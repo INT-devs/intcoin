@@ -1621,7 +1621,53 @@ Result<void> UTXOSet::ApplyBlock(const Block& block) {
 }
 
 Result<void> UTXOSet::RevertBlock(const Block& block) {
-    // TODO: Implement block reversion
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    // Step 1: Remove outputs that were created by this block
+    for (const auto& tx : block.transactions) {
+        uint256 tx_hash = tx.GetHash();
+
+        for (uint32_t i = 0; i < tx.outputs.size(); i++) {
+            OutPoint outpoint;
+            outpoint.tx_hash = tx_hash;
+            outpoint.index = i;
+
+            // Remove from cache
+            impl_->cache.erase(outpoint);
+
+            // Remove from database
+            auto delete_result = impl_->db->DeleteUTXO(outpoint);
+            if (delete_result.IsError()) {
+                return delete_result;
+            }
+        }
+    }
+
+    // Step 2: Restore outputs that were spent by this block
+    uint256 block_hash = block.GetHash();
+    auto spent_outputs_result = impl_->db->GetSpentOutputs(block_hash);
+
+    if (spent_outputs_result.IsOk()) {
+        const auto& spent_outputs = *spent_outputs_result.value;
+
+        for (const auto& spent : spent_outputs) {
+            // Restore to cache
+            impl_->cache[spent.outpoint] = spent.output;
+
+            // Restore to database
+            auto store_result = impl_->db->StoreUTXO(spent.outpoint, spent.output);
+            if (store_result.IsError()) {
+                return store_result;
+            }
+        }
+
+        // Clean up spent outputs record from database
+        auto delete_spent_result = impl_->db->DeleteSpentOutputs(block_hash);
+        if (delete_spent_result.IsError()) {
+            return delete_spent_result;
+        }
+    }
+
     return Result<void>::Ok();
 }
 
