@@ -47,6 +47,23 @@ jobs:
           libboost-all-dev \
           librocksdb-dev
 
+    - name: Cache liboqs
+      id: cache-liboqs
+      uses: actions/cache@v3
+      with:
+        path: ~/liboqs
+        key: ${{ runner.os }}-liboqs-0.15.0
+
+    - name: Build liboqs
+      if: steps.cache-liboqs.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git ~/liboqs-src
+        cd ~/liboqs-src
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_INSTALL_PREFIX=$HOME/liboqs -DCMAKE_BUILD_TYPE=Release ..
+        ninja
+        ninja install
+
     - name: Cache RandomX
       id: cache-randomx
       uses: actions/cache@v3
@@ -68,7 +85,7 @@ jobs:
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_PREFIX_PATH="$HOME/randomx" \
+          -DCMAKE_PREFIX_PATH="$HOME/liboqs;$HOME/randomx" \
           -DWARNINGS_AS_ERRORS=OFF \
           -DBUILD_TESTS=OFF \
           -DBUILD_WALLET_QT=OFF \
