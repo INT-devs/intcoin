@@ -5,11 +5,14 @@
  */
 
 #include "intcoin/pool.h"
+#include "intcoin/consensus.h"
 #include "intcoin/util.h"
 #include <algorithm>
 #include <cmath>
 #include <random>
 #include <thread>
+#include <iomanip>
+#include <sstream>
 
 namespace intcoin {
 
@@ -809,40 +812,408 @@ uint64_t MiningPoolServer::GetMinerEstimatedEarnings(uint64_t miner_id) const {
 }
 
 // ============================================================================
-// Stratum Protocol (Stubs - to be implemented)
+// Stratum Protocol Implementation
 // ============================================================================
 
 Result<stratum::Message> MiningPoolServer::HandleStratumMessage(const std::string& json) {
-    // TODO: Parse and route Stratum message
-    return Result<stratum::Message>::Error("Not implemented");
+    // Parse the incoming JSON-RPC Stratum message
+    auto parse_result = ParseStratumMessage(json);
+    if (parse_result.IsError()) {
+        return Result<stratum::Message>::Error("Failed to parse Stratum message: " +
+                                               std::string(parse_result.error));
+    }
+
+    stratum::Message request = *parse_result.value;
+    stratum::Message response;
+    response.id = request.id;
+
+    // Route to appropriate handler based on message type
+    switch (request.type) {
+        case stratum::MessageType::SUBSCRIBE: {
+            // mining.subscribe - worker subscription
+            // Expected params: ["user_agent/version", "session_id"] (optional)
+            // For now, we'll use conn_id from request.id as the connection identifier
+            uint64_t conn_id = request.id;
+
+            auto subscribe_result = HandleSubscribe(conn_id);
+            if (subscribe_result.IsError()) {
+                response.error = subscribe_result.error;
+            } else {
+                // Format subscribe response as JSON
+                const auto& sub_resp = *subscribe_result.value;
+
+                // Build JSON array for subscriptions
+                std::string subs_json = "[";
+                for (size_t i = 0; i < sub_resp.subscriptions.size(); i++) {
+                    subs_json += "[";
+                    for (size_t j = 0; j < sub_resp.subscriptions[i].size(); j++) {
+                        subs_json += "\"" + sub_resp.subscriptions[i][j] + "\"";
+                        if (j < sub_resp.subscriptions[i].size() - 1) subs_json += ",";
+                    }
+                    subs_json += "]";
+                    if (i < sub_resp.subscriptions.size() - 1) subs_json += ",";
+                }
+                subs_json += "]";
+
+                // Format: [subscriptions, extranonce1, extranonce2_size]
+                response.result = "[" + subs_json +
+                                  ",\"" + sub_resp.extranonce1 + "\"," +
+                                  std::to_string(sub_resp.extranonce2_size) + "]";
+            }
+            break;
+        }
+
+        case stratum::MessageType::AUTHORIZE: {
+            // mining.authorize - worker authentication
+            // Expected params: ["username", "password"]
+            if (request.params.size() < 2) {
+                response.error = "mining.authorize requires username and password";
+            } else {
+                const std::string& username = request.params[0];
+                const std::string& password = request.params[1];
+                uint64_t conn_id = request.id;
+
+                auto auth_result = HandleAuthorize(conn_id, username, password);
+                if (auth_result.IsError()) {
+                    response.error = auth_result.error;
+                } else {
+                    response.result = (*auth_result.value) ? "true" : "false";
+                }
+            }
+            break;
+        }
+
+        case stratum::MessageType::SUBMIT: {
+            // mining.submit - share submission
+            // Expected params: ["worker_name", "job_id", "extranonce2", "ntime", "nonce"]
+            if (request.params.size() < 5) {
+                response.error = "mining.submit requires 5 parameters";
+            } else {
+                uint64_t conn_id = request.id;
+                const std::string& job_id = request.params[1];
+                const std::string& nonce = request.params[4];
+                // Result is typically the hash calculated from all parameters
+                // For now, use nonce as placeholder until full implementation
+                const std::string& result = request.params[4];
+
+                auto submit_result = HandleSubmit(conn_id, job_id, nonce, result);
+                if (submit_result.IsError()) {
+                    response.error = submit_result.error;
+                } else {
+                    response.result = (*submit_result.value) ? "true" : "false";
+                }
+            }
+            break;
+        }
+
+        case stratum::MessageType::GET_VERSION: {
+            // client.get_version - client version request
+            response.result = "\"INTcoin Pool Server v1.0.0\"";
+            break;
+        }
+
+        case stratum::MessageType::UNKNOWN:
+        default: {
+            // Unknown or unsupported method
+            response.error = "Unknown or unsupported method: " + request.method;
+            break;
+        }
+    }
+
+    return Result<stratum::Message>::Ok(response);
 }
 
 Result<stratum::SubscribeResponse> MiningPoolServer::HandleSubscribe(uint64_t conn_id) {
-    // TODO: Handle mining.subscribe
-    return Result<stratum::SubscribeResponse>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Generate unique extranonce1 for this connection
+    // extranonce1 should be unique per worker to prevent share collisions
+    // Format: 8 hex characters (4 bytes) derived from conn_id
+    std::ostringstream extranonce1_stream;
+    extranonce1_stream << std::hex << std::setw(8) << std::setfill('0') << conn_id;
+    std::string extranonce1 = extranonce1_stream.str();
+
+    // extranonce2_size determines how many bytes the miner can modify
+    // Standard is 4 bytes (allows 2^32 nonce space per worker)
+    size_t extranonce2_size = 4;
+
+    // Build subscription list (mining.notify, mining.set_difficulty)
+    std::vector<std::vector<std::string>> subscriptions;
+    subscriptions.push_back({"mining.notify", std::to_string(conn_id)});
+    subscriptions.push_back({"mining.set_difficulty", std::to_string(conn_id)});
+
+    stratum::SubscribeResponse response;
+    response.subscriptions = subscriptions;
+    response.extranonce1 = extranonce1;
+    response.extranonce2_size = extranonce2_size;
+
+    return Result<stratum::SubscribeResponse>::Ok(response);
 }
 
 Result<bool> MiningPoolServer::HandleAuthorize(uint64_t conn_id,
                                                 const std::string& username,
                                                 const std::string& password) {
-    // TODO: Handle mining.authorize
-    return Result<bool>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Parse username format: "wallet_address.worker_name"
+    std::string wallet_address = username;
+    std::string worker_name = "default";
+
+    size_t dot_pos = username.find('.');
+    if (dot_pos != std::string::npos) {
+        wallet_address = username.substr(0, dot_pos);
+        worker_name = username.substr(dot_pos + 1);
+    }
+
+    // Validate wallet address format (basic check)
+    if (wallet_address.empty() || wallet_address.length() < 20) {
+        return Result<bool>::Error("Invalid wallet address");
+    }
+
+    // Check if miner exists, or create new one
+    uint64_t miner_id;
+    auto username_it = impl_->username_to_id_.find(wallet_address);
+
+    if (username_it != impl_->username_to_id_.end()) {
+        // Existing miner
+        miner_id = username_it->second;
+    } else {
+        // New miner - create entry
+        miner_id = impl_->GenerateMinerId();
+        impl_->username_to_id_[wallet_address] = miner_id;
+
+        // Note: Full miner object creation would happen here if needed
+        // For now, we're using a simplified structure
+    }
+
+    // Create or update worker
+    uint64_t worker_id = impl_->GenerateWorkerId();
+
+    Worker worker;
+    worker.worker_id = worker_id;
+    worker.miner_id = miner_id;
+    worker.worker_name = worker_name;
+    worker.user_agent = "";  // Will be populated from mining.subscribe if provided
+    worker.connected_at = std::chrono::system_clock::now();
+    worker.last_activity = std::chrono::system_clock::now();
+    worker.shares_submitted = 0;
+    worker.shares_accepted = 0;
+    worker.shares_rejected = 0;
+    worker.shares_stale = 0;
+    worker.blocks_found = 0;
+    worker.current_hashrate = 0.0;
+    worker.average_hashrate = 0.0;
+    worker.current_difficulty = impl_->config_.initial_difficulty;
+    worker.is_active = true;
+
+    impl_->workers_[worker_id] = worker;
+    impl_->miner_workers_[miner_id].push_back(worker_id);
+
+    // Password is typically ignored in most Stratum implementations
+    // Could be used for additional authentication if needed
+    (void)password;
+    (void)conn_id;  // Connection tracking would be done at network layer
+
+    return Result<bool>::Ok(true);
 }
 
 Result<bool> MiningPoolServer::HandleSubmit(uint64_t conn_id,
                                              const std::string& job_id,
                                              const std::string& nonce,
                                              const std::string& result) {
-    // TODO: Handle mining.submit
-    return Result<bool>::Error("Not implemented");
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Find the worker by connection ID
+    // In a real implementation, we'd maintain a conn_id -> worker_id mapping
+    // For now, we'll use the first authorized worker (simplified)
+    Worker* worker = nullptr;
+    uint64_t worker_id = 0;
+
+    for (auto& [wid, w] : impl_->workers_) {
+        if (w.is_active) {
+            worker = &w;
+            worker_id = wid;
+            break;
+        }
+    }
+
+    if (!worker) {
+        return Result<bool>::Error("Worker not authorized");
+    }
+
+    // Update last activity
+    worker->last_activity = std::chrono::system_clock::now();
+
+    // Validate we have current work
+    if (!impl_->current_work_.has_value()) {
+        return Result<bool>::Error("No active job");
+    }
+
+    const Work& work = impl_->current_work_.value();
+    (void)work;  // Work validation would use this in full implementation
+
+    // Parse nonce from hex string
+    uint32_t nonce_value = 0;
+    try {
+        nonce_value = std::stoul(nonce, nullptr, 16);
+    } catch (...) {
+        worker->shares_rejected++;
+        return Result<bool>::Error("Invalid nonce format");
+    }
+    (void)nonce_value;  // Nonce validation would use this in full implementation
+
+    // Parse result hash from hex string
+    uint256 result_hash;
+    if (result.length() != 64) {
+        worker->shares_rejected++;
+        return Result<bool>::Error("Invalid result format");
+    }
+
+    for (size_t i = 0; i < 32; i++) {
+        std::string byte_str = result.substr(i * 2, 2);
+        result_hash[i] = static_cast<uint8_t>(std::stoul(byte_str, nullptr, 16));
+    }
+
+    // Calculate share difficulty from hash
+    // Difficulty is inverse of hash value
+    uint64_t share_difficulty = CalculateShareDifficulty(result_hash);
+
+    // Check if share meets worker's difficulty target
+    if (share_difficulty < worker->current_difficulty) {
+        worker->shares_rejected++;
+        return Result<bool>::Error("Share difficulty too low");
+    }
+
+    // Valid share! Create share record
+    Share share;
+    share.share_id = impl_->GenerateShareId();
+    share.worker_id = worker_id;
+    share.miner_id = worker->miner_id;
+    share.worker_name = worker->worker_name;
+    share.share_hash = result_hash;
+    share.difficulty = share_difficulty;
+    share.timestamp = std::chrono::system_clock::now();
+    share.valid = true;
+    share.is_block = false;  // Will check below
+
+    // Check if this share is a valid block (meets network difficulty)
+    if (impl_->blockchain_ && impl_->current_work_.has_value()) {
+        // Get network target from current work's bits field
+        const Work& current_work = *impl_->current_work_;
+        uint256 network_target = DifficultyCalculator::CompactToTarget(current_work.header.bits);
+
+        // Compare hash with network target
+        bool is_valid_block = true;
+        for (int i = 31; i >= 0; i--) {
+            if (result_hash[i] < network_target[i]) break;
+            if (result_hash[i] > network_target[i]) {
+                is_valid_block = false;
+                break;
+            }
+        }
+
+        if (is_valid_block) {
+            share.is_block = true;
+            impl_->total_blocks_found_++;
+            worker->blocks_found++;
+
+            // TODO: Submit block to blockchain
+            // impl_->blockchain_->SubmitBlock(block);
+        }
+    }
+
+    // Update worker statistics
+    worker->shares_submitted++;
+    worker->shares_accepted++;
+    worker->last_share_time = std::chrono::system_clock::now();
+
+    // Store share
+    impl_->recent_shares_.push_back(share);
+    impl_->miner_shares_[worker->miner_id].push_back(share);
+    impl_->total_shares_submitted_++;
+
+    // Update round statistics
+    impl_->current_round_.shares_submitted++;
+    if (share.is_block) {
+        // Update round with block information
+        impl_->current_round_.block_hash = share.share_hash;
+        // Block height will be set when work is created
+    }
+
+    // Check if VarDiff adjustment is needed
+    if (impl_->vardiff_manager_.ShouldAdjust(*worker)) {
+        uint64_t new_diff = impl_->vardiff_manager_.CalculateDifficulty(*worker);
+        worker->current_difficulty = new_diff;
+
+        // Send new difficulty to worker
+        SendSetDifficulty(conn_id, new_diff);
+    }
+
+    (void)job_id;  // Job ID validation would be done in full implementation
+
+    return Result<bool>::Ok(true);
 }
 
 void MiningPoolServer::SendNotify(uint64_t conn_id, const Work& work) {
-    // TODO: Send mining.notify
+    // Build Stratum mining.notify message
+    // Format: mining.notify(job_id, prevhash, coinbase1, coinbase2, merkle_branches, version, nbits, ntime, clean_jobs)
+
+    stratum::NotifyParams notify;
+
+    // Generate job ID from work
+    std::ostringstream job_id_stream;
+    job_id_stream << std::hex << work.height;
+    notify.job_id = job_id_stream.str();
+
+    // Convert previous block hash to hex string (reversed for Stratum)
+    notify.prev_hash.resize(64);
+    for (int i = 0; i < 32; i++) {
+        snprintf(&notify.prev_hash[i * 2], 3, "%02x", work.header.prev_block_hash[31 - i]);
+    }
+
+    // Coinbase transaction split (simplified)
+    // In full implementation, this would split the coinbase at the extranonce location
+    notify.coinbase1 = "";  // First part of coinbase
+    notify.coinbase2 = "";  // Second part of coinbase
+
+    // Merkle branches (for merkle root calculation)
+    notify.merkle_branches = {};  // Empty for simplified implementation
+
+    // Block version (4 bytes, hex)
+    std::ostringstream version_stream;
+    version_stream << std::hex << std::setw(8) << std::setfill('0') << work.header.version;
+    notify.version = version_stream.str();
+
+    // nBits (difficulty target, 4 bytes hex)
+    std::ostringstream nbits_stream;
+    nbits_stream << std::hex << std::setw(8) << std::setfill('0') << work.header.bits;
+    notify.nbits = nbits_stream.str();
+
+    // nTime (timestamp, 4 bytes hex)
+    std::ostringstream ntime_stream;
+    ntime_stream << std::hex << std::setw(8) << std::setfill('0')
+                 << static_cast<uint32_t>(work.header.timestamp);
+    notify.ntime = ntime_stream.str();
+
+    // clean_jobs flag (true = discard old jobs)
+    notify.clean_jobs = true;
+
+    // TODO: Actually send the JSON-RPC message over the network connection
+    // This would require network layer integration
+    // Format: {"id": null, "method": "mining.notify", "params": [...]}
+
+    (void)conn_id;  // Network sending would use conn_id
 }
 
 void MiningPoolServer::SendSetDifficulty(uint64_t conn_id, uint64_t difficulty) {
-    // TODO: Send mining.set_difficulty
+    // Build Stratum mining.set_difficulty message
+    // Format: mining.set_difficulty(difficulty)
+
+    // TODO: Actually send the JSON-RPC message over the network connection
+    // Format: {"id": null, "method": "mining.set_difficulty", "params": [difficulty]}
+
+    (void)conn_id;
+    (void)difficulty;
 }
 
 // ============================================================================
