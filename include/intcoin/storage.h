@@ -284,6 +284,11 @@ public:
     Result<std::vector<std::pair<OutPoint, TxOut>>> GetUTXOsForAddress(
         const std::string& address) const;
 
+    /// Get all UTXOs (for loading into UTXOSet cache)
+    /// @param limit Maximum number of UTXOs to load (0 = unlimited)
+    /// @return Vector of all UTXOs in database
+    Result<std::vector<std::pair<OutPoint, TxOut>>> GetAllUTXOs(size_t limit = 0) const;
+
     // ------------------------------------------------------------------------
     // Spent Output Operations (for reorganization support)
     // ------------------------------------------------------------------------

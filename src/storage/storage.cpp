@@ -626,6 +626,68 @@ Result<std::vector<std::pair<OutPoint, TxOut>>> BlockchainDB::GetUTXOsForAddress
     return Result<std::vector<std::pair<OutPoint, TxOut>>>::Error("Not implemented");
 }
 
+Result<std::vector<std::pair<OutPoint, TxOut>>> BlockchainDB::GetAllUTXOs(size_t limit) const {
+    if (!impl_->is_open_) {
+        return Result<std::vector<std::pair<OutPoint, TxOut>>>::Error("Database not open");
+    }
+
+    std::vector<std::pair<OutPoint, TxOut>> utxos;
+
+    // Create iterator for UTXO prefix
+    std::string prefix_key(1, db::PREFIX_UTXO);
+    rocksdb::ReadOptions read_options;
+    std::unique_ptr<rocksdb::Iterator> it(impl_->db_->NewIterator(read_options));
+
+    // Seek to first UTXO entry
+    it->Seek(prefix_key);
+
+    size_t count = 0;
+    while (it->Valid()) {
+        rocksdb::Slice key_slice = it->key();
+        std::string key_str = key_slice.ToString();
+
+        // Check if we're still in the UTXO prefix
+        if (key_str.empty() || key_str[0] != db::PREFIX_UTXO) {
+            break;  // Reached end of UTXO entries
+        }
+
+        // Parse OutPoint from key (skip prefix byte)
+        std::vector<uint8_t> key_data(key_str.begin() + 1, key_str.end());
+        auto outpoint_result = OutPoint::Deserialize(key_data);
+        if (outpoint_result.IsError()) {
+            it->Next();
+            continue;  // Skip invalid entries
+        }
+
+        // Parse TxOut from value
+        rocksdb::Slice value_slice = it->value();
+        std::vector<uint8_t> value_data(value_slice.data(),
+                                        value_slice.data() + value_slice.size());
+        auto txout_result = TxOut::Deserialize(value_data);
+        if (txout_result.IsError()) {
+            it->Next();
+            continue;  // Skip invalid entries
+        }
+
+        utxos.push_back({*outpoint_result.value, *txout_result.value});
+        count++;
+
+        // Check limit
+        if (limit > 0 && count >= limit) {
+            break;
+        }
+
+        it->Next();
+    }
+
+    if (!it->status().ok()) {
+        return Result<std::vector<std::pair<OutPoint, TxOut>>>::Error(
+            "Iterator error: " + it->status().ToString());
+    }
+
+    return Result<std::vector<std::pair<OutPoint, TxOut>>>::Ok(std::move(utxos));
+}
+
 // ============================================================================
 // Chain State Operations
 // ============================================================================
@@ -1078,7 +1140,23 @@ UTXOSet::UTXOSet(std::shared_ptr<BlockchainDB> db)
 UTXOSet::~UTXOSet() = default;
 
 Result<void> UTXOSet::Load() {
-    // TODO: Load UTXOs from database
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    // Get all UTXOs from database
+    auto utxos_result = impl_->db->GetAllUTXOs();
+    if (utxos_result.IsError()) {
+        return Result<void>::Error("Failed to load UTXOs: " + utxos_result.error);
+    }
+
+    // Clear existing cache
+    impl_->cache.clear();
+
+    // Load UTXOs into cache
+    const auto& utxos = *utxos_result.value;
+    for (const auto& [outpoint, txout] : utxos) {
+        impl_->cache[outpoint] = txout;
+    }
+
     return Result<void>::Ok();
 }
 
@@ -1163,9 +1241,28 @@ std::vector<std::pair<OutPoint, TxOut>> UTXOSet::GetUTXOsForAddress(
     std::lock_guard<std::mutex> lock(impl_->mutex);
     std::vector<std::pair<OutPoint, TxOut>> result;
 
-    // TODO: Implement address filtering based on script_pubkey
+    // Decode address to get pubkey hash
+    auto address_decode_result = AddressEncoder::DecodeAddress(address);
+    if (address_decode_result.IsError()) {
+        // Invalid address, return empty result
+        return result;
+    }
+    const uint256& target_pubkey_hash = *address_decode_result.value;
+
+    // Filter UTXOs by matching script_pubkey address
     for (const auto& [outpoint, txout] : impl_->cache) {
-        result.push_back({outpoint, txout});
+        // Check if this is a P2PKH script
+        if (txout.script_pubkey.IsP2PKH()) {
+            // Extract pubkey hash from script
+            auto script_hash_opt = txout.script_pubkey.GetP2PKHHash();
+            if (script_hash_opt.has_value()) {
+                // Compare with target address hash
+                if (*script_hash_opt == target_pubkey_hash) {
+                    result.push_back({outpoint, txout});
+                }
+            }
+        }
+        // TODO: Add support for P2PK and other script types
     }
 
     return result;
