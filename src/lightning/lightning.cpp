@@ -1213,6 +1213,31 @@ Result<NodeInfo> NetworkGraph::GetNode(const PublicKey& node_id) const {
 std::vector<ChannelInfo> NetworkGraph::GetNodeChannels(const PublicKey&) const {
     return std::vector<ChannelInfo>();
 }
+
+std::vector<NodeInfo> NetworkGraph::GetAllNodes() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<NodeInfo> all_nodes;
+    all_nodes.reserve(nodes_.size());
+
+    for (const auto& [node_id, node_info] : nodes_) {
+        all_nodes.push_back(node_info);
+    }
+
+    return all_nodes;
+}
+
+std::vector<ChannelInfo> NetworkGraph::GetAllChannels() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<ChannelInfo> all_channels;
+    all_channels.reserve(channels_.size());
+
+    for (const auto& [channel_id, channel_info] : channels_) {
+        all_channels.push_back(channel_info);
+    }
+
+    return all_channels;
+}
+
 // Dijkstra's algorithm for finding optimal payment route
 Result<PaymentRoute> NetworkGraph::FindRoute(const PublicKey& source, const PublicKey& dest,
                                              uint64_t amount, uint32_t max_hops) const {
@@ -3691,12 +3716,45 @@ void LightningNetwork::HandleChannelAnnouncement(const PublicKey& peer, const st
         return;
     }
 
-    // TODO: Verify channel exists on blockchain
-    // In production:
-    // 1. Decode short_channel_id (block:tx:output format)
-    // 2. Verify funding transaction exists in blockchain
-    // 3. Verify funding output amount matches channel capacity
-    // For now, we skip blockchain verification
+    // Verify channel exists on blockchain (BOLT #7)
+    // Decode short_channel_id: BlockHeight(3 bytes):TxIndex(3 bytes):OutputIndex(2 bytes)
+    uint32_t block_height = (announcement.short_channel_id >> 40) & 0xFFFFFF;
+    uint32_t tx_index = (announcement.short_channel_id >> 16) & 0xFFFFFF;
+    uint16_t output_index = announcement.short_channel_id & 0xFFFF;
+
+    uint64_t funding_amount = 0;
+    bool blockchain_verified = false;
+
+    if (blockchain_) {
+        // Get block from blockchain
+        auto block_result = blockchain_->GetBlockByHeight(block_height);
+        if (block_result.IsOk()) {
+            const Block& block = block_result.GetValue();
+
+            // Verify transaction exists in block
+            if (tx_index < block.transactions.size()) {
+                const Transaction& funding_tx = block.transactions[tx_index];
+
+                // Verify output exists
+                if (output_index < funding_tx.outputs.size()) {
+                    const TxOut& funding_output = funding_tx.outputs[output_index];
+
+                    // Get funding amount from output
+                    funding_amount = funding_output.value;
+                    blockchain_verified = true;
+
+                    // Optional: Verify output script is 2-of-2 multisig matching node keys
+                    // This would require checking the scriptPubKey format
+                }
+            }
+        }
+    }
+
+    // If blockchain verification failed, reject the announcement
+    if (!blockchain_verified) {
+        // Channel funding transaction not found on blockchain
+        return;
+    }
 
     // Add channel to network graph
     ChannelInfo channel_info;
@@ -3710,7 +3768,7 @@ void LightningNetwork::HandleChannelAnnouncement(const PublicKey& peer, const st
 
     channel_info.node1 = announcement.node_id_1;
     channel_info.node2 = announcement.node_id_2;
-    channel_info.capacity = 0;  // Will be set by blockchain verification
+    channel_info.capacity = funding_amount;  // Set from blockchain verification
     channel_info.base_fee = 0;  // Will be set by channel_update
     channel_info.fee_rate = 0;  // Will be set by channel_update
     channel_info.cltv_expiry_delta = 0;  // Will be set by channel_update

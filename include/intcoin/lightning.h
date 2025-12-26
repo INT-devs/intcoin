@@ -580,6 +580,15 @@ public:
     Result<NodeInfo> GetNode(const PublicKey& node_id) const;
     std::vector<ChannelInfo> GetNodeChannels(const PublicKey& node_id) const;
 
+    // Graph iteration
+    /// Get all nodes in the network graph
+    /// @return Vector of all nodes
+    std::vector<NodeInfo> GetAllNodes() const;
+
+    /// Get all channels in the network graph
+    /// @return Vector of all channels
+    std::vector<ChannelInfo> GetAllChannels() const;
+
     // Pathfinding (Dijkstra's algorithm)
     Result<PaymentRoute> FindRoute(
         const PublicKey& source,
