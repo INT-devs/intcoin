@@ -605,8 +605,10 @@ struct OnionPacket {
 
 // Encrypted blob containing justice transaction data
 struct EncryptedBlob {
-    std::vector<uint8_t> encrypted_data;    // AES-256 encrypted justice tx
+    std::vector<uint8_t> encrypted_data;    // AES-256-GCM encrypted justice tx
     std::vector<uint8_t> hint;              // Hint for matching (first 16 bytes of commitment txid)
+    std::vector<uint8_t> nonce;             // 12-byte nonce for AES-256-GCM
+    std::vector<uint8_t> auth_tag;          // 16-byte authentication tag for AES-256-GCM
     uint32_t sequence_number;               // Commitment transaction sequence
 
     EncryptedBlob();

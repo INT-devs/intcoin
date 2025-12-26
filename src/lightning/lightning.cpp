@@ -10,6 +10,9 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/err.h>
 
 namespace intcoin {
 
@@ -1499,25 +1502,130 @@ Result<EncryptedBlob> EncryptedBlob::Encrypt(
     // Create hint from first 16 bytes of commitment txid
     blob.hint.assign(commitment_txid.begin(), commitment_txid.begin() + 16);
 
-    // TODO: Use proper AES-256-GCM encryption
-    // For now, simple XOR with key (placeholder - NOT SECURE)
-    blob.encrypted_data.resize(justice_tx_data.size());
-    for (size_t i = 0; i < justice_tx_data.size(); i++) {
-        blob.encrypted_data[i] = justice_tx_data[i] ^ encryption_key[i % encryption_key.size()];
+    // Generate random 12-byte nonce for AES-256-GCM
+    blob.nonce.resize(12);
+    if (RAND_bytes(blob.nonce.data(), 12) != 1) {
+        return Result<EncryptedBlob>::Error("Failed to generate random nonce");
     }
+
+    // Initialize encryption context
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        return Result<EncryptedBlob>::Error("Failed to create cipher context");
+    }
+
+    // Initialize AES-256-GCM encryption
+    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<EncryptedBlob>::Error("Failed to initialize AES-256-GCM");
+    }
+
+    // Set nonce length (12 bytes for GCM)
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 12, nullptr) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<EncryptedBlob>::Error("Failed to set nonce length");
+    }
+
+    // Initialize key and nonce
+    if (EVP_EncryptInit_ex(ctx, nullptr, nullptr, encryption_key.data(), blob.nonce.data()) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<EncryptedBlob>::Error("Failed to set encryption key and nonce");
+    }
+
+    // Encrypt the plaintext
+    blob.encrypted_data.resize(justice_tx_data.size() + EVP_CIPHER_block_size(EVP_aes_256_gcm()));
+    int len = 0;
+    if (EVP_EncryptUpdate(ctx, blob.encrypted_data.data(), &len,
+                          justice_tx_data.data(), justice_tx_data.size()) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<EncryptedBlob>::Error("Encryption failed");
+    }
+    int ciphertext_len = len;
+
+    // Finalize encryption
+    if (EVP_EncryptFinal_ex(ctx, blob.encrypted_data.data() + len, &len) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<EncryptedBlob>::Error("Encryption finalization failed");
+    }
+    ciphertext_len += len;
+    blob.encrypted_data.resize(ciphertext_len);
+
+    // Get the authentication tag (16 bytes for GCM)
+    blob.auth_tag.resize(16);
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, blob.auth_tag.data()) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<EncryptedBlob>::Error("Failed to get authentication tag");
+    }
+
+    // Clean up
+    EVP_CIPHER_CTX_free(ctx);
 
     return Result<EncryptedBlob>::Ok(blob);
 }
 
 Result<std::vector<uint8_t>> EncryptedBlob::Decrypt(const uint256& encryption_key) const {
-    // TODO: Use proper AES-256-GCM decryption
-    // For now, simple XOR with key (placeholder - NOT SECURE)
-    std::vector<uint8_t> decrypted;
-    decrypted.resize(encrypted_data.size());
-
-    for (size_t i = 0; i < encrypted_data.size(); i++) {
-        decrypted[i] = encrypted_data[i] ^ encryption_key[i % encryption_key.size()];
+    // Verify we have all required components
+    if (nonce.size() != 12) {
+        return Result<std::vector<uint8_t>>::Error("Invalid nonce size (expected 12 bytes)");
     }
+    if (auth_tag.size() != 16) {
+        return Result<std::vector<uint8_t>>::Error("Invalid authentication tag size (expected 16 bytes)");
+    }
+    if (encrypted_data.empty()) {
+        return Result<std::vector<uint8_t>>::Error("No encrypted data to decrypt");
+    }
+
+    // Initialize decryption context
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) {
+        return Result<std::vector<uint8_t>>::Error("Failed to create cipher context");
+    }
+
+    // Initialize AES-256-GCM decryption
+    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<std::vector<uint8_t>>::Error("Failed to initialize AES-256-GCM");
+    }
+
+    // Set nonce length (12 bytes for GCM)
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 12, nullptr) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<std::vector<uint8_t>>::Error("Failed to set nonce length");
+    }
+
+    // Initialize key and nonce
+    if (EVP_DecryptInit_ex(ctx, nullptr, nullptr, encryption_key.data(), nonce.data()) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<std::vector<uint8_t>>::Error("Failed to set decryption key and nonce");
+    }
+
+    // Decrypt the ciphertext
+    std::vector<uint8_t> decrypted(encrypted_data.size() + EVP_CIPHER_block_size(EVP_aes_256_gcm()));
+    int len = 0;
+    if (EVP_DecryptUpdate(ctx, decrypted.data(), &len,
+                          encrypted_data.data(), encrypted_data.size()) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<std::vector<uint8_t>>::Error("Decryption failed");
+    }
+    int plaintext_len = len;
+
+    // Set the authentication tag for verification
+    if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16,
+                            const_cast<uint8_t*>(auth_tag.data())) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<std::vector<uint8_t>>::Error("Failed to set authentication tag");
+    }
+
+    // Finalize decryption and verify authentication tag
+    if (EVP_DecryptFinal_ex(ctx, decrypted.data() + len, &len) != 1) {
+        EVP_CIPHER_CTX_free(ctx);
+        return Result<std::vector<uint8_t>>::Error("Decryption finalization failed (authentication tag mismatch)");
+    }
+    plaintext_len += len;
+    decrypted.resize(plaintext_len);
+
+    // Clean up
+    EVP_CIPHER_CTX_free(ctx);
 
     return Result<std::vector<uint8_t>>::Ok(decrypted);
 }
