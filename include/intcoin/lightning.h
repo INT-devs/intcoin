@@ -98,12 +98,12 @@ enum class ChannelState {
 struct OpenChannelMsg {
     uint256 chain_hash;
     uint256 temporary_channel_id;
-    uint64_t funding_satoshis;
-    uint64_t push_msat;
-    uint64_t dust_limit_satoshis;
-    uint64_t max_htlc_value_in_flight_msat;
-    uint64_t channel_reserve_satoshis;
-    uint64_t htlc_minimum_msat;
+    uint64_t funding_ints;
+    uint64_t push_mints;
+    uint64_t dust_limit_ints;
+    uint64_t max_htlc_value_in_flight_mints;
+    uint64_t channel_reserve_ints;
+    uint64_t htlc_minimum_mints;
     uint32_t feerate_per_kw;
     uint16_t to_self_delay;
     uint16_t max_accepted_htlcs;
@@ -123,10 +123,10 @@ struct OpenChannelMsg {
 // accept_channel message (BOLT #2)
 struct AcceptChannelMsg {
     uint256 temporary_channel_id;
-    uint64_t dust_limit_satoshis;
-    uint64_t max_htlc_value_in_flight_msat;
-    uint64_t channel_reserve_satoshis;
-    uint64_t htlc_minimum_msat;
+    uint64_t dust_limit_ints;
+    uint64_t max_htlc_value_in_flight_mints;
+    uint64_t channel_reserve_ints;
+    uint64_t htlc_minimum_mints;
     uint32_t minimum_depth;
     uint16_t to_self_delay;
     uint16_t max_accepted_htlcs;
@@ -187,7 +187,7 @@ struct ShutdownMsg {
 // closing_signed message (BOLT #2) - Negotiate closing transaction
 struct ClosingSignedMsg {
     uint256 channel_id;
-    uint64_t fee_satoshis;  // Proposed closing fee
+    uint64_t fee_ints;  // Proposed closing fee
     Signature signature;     // Signature for closing transaction
 
     ClosingSignedMsg();
@@ -203,7 +203,7 @@ struct ClosingSignedMsg {
 struct UpdateAddHTLCMsg {
     uint256 channel_id;
     uint64_t id;                        // HTLC ID
-    uint64_t amount_msat;               // Amount in millisatoshis
+    uint64_t amount_mints;              // Amount in milli-ints
     uint256 payment_hash;               // Hash of payment preimage
     uint32_t cltv_expiry;              // CLTV expiry block height
     std::vector<uint8_t> onion_routing_packet;  // Encrypted routing info (1366 bytes)
@@ -308,8 +308,8 @@ struct ChannelUpdateMsg {
     uint8_t message_flags;              // Message flags
     uint8_t channel_flags;              // Channel flags (direction bit)
     uint16_t cltv_expiry_delta;        // CLTV expiry delta
-    uint64_t htlc_minimum_msat;        // Minimum HTLC amount
-    uint32_t fee_base_msat;            // Base fee in millisatoshi
+    uint64_t htlc_minimum_mints;       // Minimum HTLC amount
+    uint32_t fee_base_mints;           // Base fee in milli-ints
     uint32_t fee_proportional_millionths;  // Proportional fee
 
     ChannelUpdateMsg();
@@ -796,13 +796,13 @@ public:
     // Fee estimation helpers
     /// Estimate fee rate from mempool statistics
     /// @param target_conf Target confirmation blocks (default 6)
-    /// @return Fee rate in satoshis per kiloweight (sat/kw)
+    /// @return Fee rate in INTS per kiloweight (ints/kw)
     uint32_t EstimateFeeRate(uint32_t target_conf = 6);
 
     /// Calculate transaction fee based on size and fee rate
     /// @param tx_size Transaction size in bytes
-    /// @param feerate_per_kw Fee rate in satoshis per kiloweight
-    /// @return Estimated fee in satoshis
+    /// @param feerate_per_kw Fee rate in INTS per kiloweight
+    /// @return Estimated fee in INTS
     static uint64_t CalculateTransactionFee(size_t tx_size, uint32_t feerate_per_kw);
 
 private:

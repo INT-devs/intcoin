@@ -37,9 +37,9 @@ ChannelConfig ChannelConfig::Default() { return ChannelConfig(); }
 // ============================================================================
 
 // OpenChannelMsg
-OpenChannelMsg::OpenChannelMsg() : funding_satoshis(0), push_msat(0), dust_limit_satoshis(lightning::DUST_LIMIT),
-    max_htlc_value_in_flight_msat(lightning::MAX_CHANNEL_CAPACITY * 1000), channel_reserve_satoshis(0),
-    htlc_minimum_msat(1000), feerate_per_kw(1000), to_self_delay(144), max_accepted_htlcs(lightning::MAX_HTLC_COUNT),
+OpenChannelMsg::OpenChannelMsg() : funding_ints(0), push_mints(0), dust_limit_ints(lightning::DUST_LIMIT),
+    max_htlc_value_in_flight_mints(lightning::MAX_CHANNEL_CAPACITY * 1000), channel_reserve_ints(0),
+    htlc_minimum_mints(1000), feerate_per_kw(1000), to_self_delay(144), max_accepted_htlcs(lightning::MAX_HTLC_COUNT),
     channel_flags(0) {
     temporary_channel_id = RandomGenerator::GetRandomUint256();
 }
@@ -52,15 +52,15 @@ std::vector<uint8_t> OpenChannelMsg::Serialize() const {
     data.insert(data.end(), temporary_channel_id.begin(), temporary_channel_id.end());
     // Add funding amount (8 bytes, big-endian)
     for (int i = 7; i >= 0; i--) {
-        data.push_back((funding_satoshis >> (i * 8)) & 0xFF);
+        data.push_back((funding_ints >> (i * 8)) & 0xFF);
     }
-    // Add push_msat (8 bytes)
+    // Add push_mints (8 bytes)
     for (int i = 7; i >= 0; i--) {
-        data.push_back((push_msat >> (i * 8)) & 0xFF);
+        data.push_back((push_mints >> (i * 8)) & 0xFF);
     }
     // Add dust limit (8 bytes)
     for (int i = 7; i >= 0; i--) {
-        data.push_back((dust_limit_satoshis >> (i * 8)) & 0xFF);
+        data.push_back((dust_limit_ints >> (i * 8)) & 0xFF);
     }
     // Add remaining fields (simplified - full BOLT would include all fields)
     // ... (additional fields would be added here in production code)
@@ -77,18 +77,18 @@ Result<OpenChannelMsg> OpenChannelMsg::Deserialize(const std::vector<uint8_t>& d
     // Parse temporary channel ID
     std::copy(data.begin() + 32, data.begin() + 64, msg.temporary_channel_id.begin());
     // Parse funding amount (8 bytes, big-endian)
-    msg.funding_satoshis = 0;
+    msg.funding_ints = 0;
     for (int i = 0; i < 8; i++) {
-        msg.funding_satoshis = (msg.funding_satoshis << 8) | data[64 + i];
+        msg.funding_ints = (msg.funding_ints << 8) | data[64 + i];
     }
     // ... (parse remaining fields)
     return Result<OpenChannelMsg>::Ok(msg);
 }
 
 // AcceptChannelMsg
-AcceptChannelMsg::AcceptChannelMsg() : dust_limit_satoshis(lightning::DUST_LIMIT),
-    max_htlc_value_in_flight_msat(lightning::MAX_CHANNEL_CAPACITY * 1000), channel_reserve_satoshis(0),
-    htlc_minimum_msat(1000), minimum_depth(3), to_self_delay(144), max_accepted_htlcs(lightning::MAX_HTLC_COUNT) {}
+AcceptChannelMsg::AcceptChannelMsg() : dust_limit_ints(lightning::DUST_LIMIT),
+    max_htlc_value_in_flight_mints(lightning::MAX_CHANNEL_CAPACITY * 1000), channel_reserve_ints(0),
+    htlc_minimum_mints(1000), minimum_depth(3), to_self_delay(144), max_accepted_htlcs(lightning::MAX_HTLC_COUNT) {}
 
 std::vector<uint8_t> AcceptChannelMsg::Serialize() const {
     std::vector<uint8_t> data;
@@ -209,7 +209,7 @@ Result<ShutdownMsg> ShutdownMsg::Deserialize(const std::vector<uint8_t>& data) {
 }
 
 // ClosingSignedMsg
-ClosingSignedMsg::ClosingSignedMsg() : fee_satoshis(0) {}
+ClosingSignedMsg::ClosingSignedMsg() : fee_ints(0) {}
 
 std::vector<uint8_t> ClosingSignedMsg::Serialize() const {
     std::vector<uint8_t> data;
@@ -217,7 +217,7 @@ std::vector<uint8_t> ClosingSignedMsg::Serialize() const {
 
     // Serialize fee (8 bytes, big-endian)
     for (int i = 7; i >= 0; i--) {
-        data.push_back((fee_satoshis >> (i * 8)) & 0xFF);
+        data.push_back((fee_ints >> (i * 8)) & 0xFF);
     }
 
     // Serialize signature
@@ -235,9 +235,9 @@ Result<ClosingSignedMsg> ClosingSignedMsg::Deserialize(const std::vector<uint8_t
     std::copy(data.begin(), data.begin() + 32, msg.channel_id.begin());
 
     // Parse fee
-    msg.fee_satoshis = 0;
+    msg.fee_ints = 0;
     for (int i = 0; i < 8; i++) {
-        msg.fee_satoshis = (msg.fee_satoshis << 8) | data[32 + i];
+        msg.fee_ints = (msg.fee_ints << 8) | data[32 + i];
     }
 
     // Parse signature
@@ -251,7 +251,7 @@ Result<ClosingSignedMsg> ClosingSignedMsg::Deserialize(const std::vector<uint8_t
 // ============================================================================
 
 // UpdateAddHTLCMsg
-UpdateAddHTLCMsg::UpdateAddHTLCMsg() : id(0), amount_msat(0), cltv_expiry(0) {}
+UpdateAddHTLCMsg::UpdateAddHTLCMsg() : id(0), amount_mints(0), cltv_expiry(0) {}
 
 std::vector<uint8_t> UpdateAddHTLCMsg::Serialize() const {
     std::vector<uint8_t> data;
@@ -264,9 +264,9 @@ std::vector<uint8_t> UpdateAddHTLCMsg::Serialize() const {
         data.push_back((id >> (i * 8)) & 0xFF);
     }
 
-    // Amount in millisatoshis (8 bytes, big-endian)
+    // Amount in milli-ints (8 bytes, big-endian)
     for (int i = 7; i >= 0; i--) {
-        data.push_back((amount_msat >> (i * 8)) & 0xFF);
+        data.push_back((amount_mints >> (i * 8)) & 0xFF);
     }
 
     // Payment hash (32 bytes)
@@ -304,9 +304,9 @@ Result<UpdateAddHTLCMsg> UpdateAddHTLCMsg::Deserialize(const std::vector<uint8_t
     offset += 8;
 
     // Parse amount
-    msg.amount_msat = 0;
+    msg.amount_mints = 0;
     for (int i = 0; i < 8; i++) {
-        msg.amount_msat = (msg.amount_msat << 8) | data[offset + i];
+        msg.amount_mints = (msg.amount_mints << 8) | data[offset + i];
     }
     offset += 8;
 
@@ -753,7 +753,7 @@ Result<NodeAnnouncementMsg> NodeAnnouncementMsg::Deserialize(const std::vector<u
 
 ChannelUpdateMsg::ChannelUpdateMsg()
     : short_channel_id(0), timestamp(0), message_flags(0), channel_flags(0),
-      cltv_expiry_delta(0), htlc_minimum_msat(0), fee_base_msat(0), fee_proportional_millionths(0) {}
+      cltv_expiry_delta(0), htlc_minimum_mints(0), fee_base_mints(0), fee_proportional_millionths(0) {}
 
 std::vector<uint8_t> ChannelUpdateMsg::Serialize() const {
     std::vector<uint8_t> data;
@@ -786,12 +786,12 @@ std::vector<uint8_t> ChannelUpdateMsg::Serialize() const {
 
     // HTLC minimum (8 bytes)
     for (int i = 7; i >= 0; i--) {
-        data.push_back(static_cast<uint8_t>((htlc_minimum_msat >> (i * 8)) & 0xFF));
+        data.push_back(static_cast<uint8_t>((htlc_minimum_mints >> (i * 8)) & 0xFF));
     }
 
     // Fee base (4 bytes)
     for (int i = 3; i >= 0; i--) {
-        data.push_back(static_cast<uint8_t>((fee_base_msat >> (i * 8)) & 0xFF));
+        data.push_back(static_cast<uint8_t>((fee_base_mints >> (i * 8)) & 0xFF));
     }
 
     // Fee proportional (4 bytes)
@@ -842,16 +842,16 @@ Result<ChannelUpdateMsg> ChannelUpdateMsg::Deserialize(const std::vector<uint8_t
     offset += 2;
 
     // Parse HTLC minimum
-    msg.htlc_minimum_msat = 0;
+    msg.htlc_minimum_mints = 0;
     for (int i = 0; i < 8; i++) {
-        msg.htlc_minimum_msat = (msg.htlc_minimum_msat << 8) | data[offset + i];
+        msg.htlc_minimum_mints = (msg.htlc_minimum_mints << 8) | data[offset + i];
     }
     offset += 8;
 
     // Parse fee base
-    msg.fee_base_msat = 0;
+    msg.fee_base_mints = 0;
     for (int i = 0; i < 4; i++) {
-        msg.fee_base_msat = (msg.fee_base_msat << 8) | data[offset + i];
+        msg.fee_base_mints = (msg.fee_base_mints << 8) | data[offset + i];
     }
     offset += 4;
 
@@ -894,7 +894,7 @@ Result<CommitmentTransaction> CommitmentTransaction::Build(
 
     // Calculate fee (simplified - use 1000 sats per kw)
     uint64_t estimated_weight = 500 + (htlcs.size() * 200);  // Base + HTLCs
-    commitment.fee = (estimated_weight * 1000) / 1000;  // Fee in satoshis
+    commitment.fee = (estimated_weight * 1000) / 1000;  // Fee in INTS
 
     // Verify balances
     uint64_t htlc_total = 0;
@@ -1851,7 +1851,7 @@ Result<Transaction> Watchtower::BuildJusticeTransaction(
     const size_t ESTIMATED_JUSTICE_TX_SIZE = 3555;
 
     // Use higher fee rate for justice transactions (priority broadcast)
-    const uint32_t JUSTICE_FEERATE_PER_KW = 10000;  // ~40 sat/vbyte for fast confirmation
+    const uint32_t JUSTICE_FEERATE_PER_KW = 10000;  // ~40 ints/vbyte for fast confirmation
 
     uint64_t justice_fee = LightningNetwork::CalculateTransactionFee(
         ESTIMATED_JUSTICE_TX_SIZE,
@@ -2069,12 +2069,12 @@ Result<uint256> LightningNetwork::OpenChannel(const PublicKey& remote_node, uint
     OpenChannelMsg open_msg;
     open_msg.chain_hash = blockchain_->GetBestBlockHash();  // Current chain hash
     open_msg.temporary_channel_id = channel->temporary_id;
-    open_msg.funding_satoshis = capacity;
-    open_msg.push_msat = push_amount * 1000;  // Convert to millisatoshis
-    open_msg.dust_limit_satoshis = channel->local_config.dust_limit;
-    open_msg.max_htlc_value_in_flight_msat = channel->local_config.max_htlc_value * 1000;
-    open_msg.channel_reserve_satoshis = channel->local_config.channel_reserve;
-    open_msg.htlc_minimum_msat = channel->local_config.htlc_minimum;
+    open_msg.funding_ints = capacity;
+    open_msg.push_mints = push_amount * 1000;  // Convert to milli-ints
+    open_msg.dust_limit_ints = channel->local_config.dust_limit;
+    open_msg.max_htlc_value_in_flight_mints = channel->local_config.max_htlc_value * 1000;
+    open_msg.channel_reserve_ints = channel->local_config.channel_reserve;
+    open_msg.htlc_minimum_mints = channel->local_config.htlc_minimum;
     open_msg.feerate_per_kw = EstimateFeeRate(6);  // Estimate fee rate for 6-block confirmation
     open_msg.to_self_delay = channel->local_config.to_self_delay;
     open_msg.max_accepted_htlcs = channel->local_config.max_accepted_htlcs;
@@ -2272,7 +2272,7 @@ Result<uint256> LightningNetwork::SendPayment(const PublicKey& dest, uint64_t am
         add_htlc.id = it->second->pending_htlcs.size();
     }
 
-    add_htlc.amount_msat = first_hop.amount * 1000;  // Convert to millisatoshis
+    add_htlc.amount_mints = first_hop.amount * 1000;  // Convert to milli-ints
     add_htlc.payment_hash = payment_hash;
     add_htlc.cltv_expiry = first_hop.cltv_expiry;
     add_htlc.onion_routing_packet = onion_data;
@@ -2371,22 +2371,22 @@ void LightningNetwork::HandleOpenChannel(const PublicKey& peer, const std::vecto
     auto open_msg = msg_result.GetValue();
 
     // Validate channel parameters
-    if (open_msg.funding_satoshis < lightning::MIN_CHANNEL_CAPACITY ||
-        open_msg.funding_satoshis > lightning::MAX_CHANNEL_CAPACITY) {
+    if (open_msg.funding_ints < lightning::MIN_CHANNEL_CAPACITY ||
+        open_msg.funding_ints > lightning::MAX_CHANNEL_CAPACITY) {
         // Send error message
         return;
     }
 
     // Create channel as acceptor
-    auto channel = std::make_shared<Channel>(node_id_, peer, open_msg.funding_satoshis);
+    auto channel = std::make_shared<Channel>(node_id_, peer, open_msg.funding_ints);
     channel->temporary_id = open_msg.temporary_channel_id;
     channel->state = ChannelState::OPENING;
-    channel->local_balance = open_msg.funding_satoshis - (open_msg.push_msat / 1000);
-    channel->remote_balance = open_msg.push_msat / 1000;
-    channel->remote_config.dust_limit = open_msg.dust_limit_satoshis;
-    channel->remote_config.max_htlc_value = open_msg.max_htlc_value_in_flight_msat / 1000;
-    channel->remote_config.channel_reserve = open_msg.channel_reserve_satoshis;
-    channel->remote_config.htlc_minimum = open_msg.htlc_minimum_msat;
+    channel->local_balance = open_msg.funding_ints - (open_msg.push_mints / 1000);
+    channel->remote_balance = open_msg.push_mints / 1000;
+    channel->remote_config.dust_limit = open_msg.dust_limit_ints;
+    channel->remote_config.max_htlc_value = open_msg.max_htlc_value_in_flight_mints / 1000;
+    channel->remote_config.channel_reserve = open_msg.channel_reserve_ints;
+    channel->remote_config.htlc_minimum = open_msg.htlc_minimum_mints;
     channel->remote_config.to_self_delay = open_msg.to_self_delay;
     channel->remote_config.max_accepted_htlcs = open_msg.max_accepted_htlcs;
 
@@ -2399,10 +2399,10 @@ void LightningNetwork::HandleOpenChannel(const PublicKey& peer, const std::vecto
     // Create accept_channel response
     AcceptChannelMsg accept_msg;
     accept_msg.temporary_channel_id = open_msg.temporary_channel_id;
-    accept_msg.dust_limit_satoshis = channel->local_config.dust_limit;
-    accept_msg.max_htlc_value_in_flight_msat = channel->local_config.max_htlc_value * 1000;
-    accept_msg.channel_reserve_satoshis = channel->local_config.channel_reserve;
-    accept_msg.htlc_minimum_msat = channel->local_config.htlc_minimum;
+    accept_msg.dust_limit_ints = channel->local_config.dust_limit;
+    accept_msg.max_htlc_value_in_flight_mints = channel->local_config.max_htlc_value * 1000;
+    accept_msg.channel_reserve_ints = channel->local_config.channel_reserve;
+    accept_msg.htlc_minimum_mints = channel->local_config.htlc_minimum;
     accept_msg.minimum_depth = 3;  // Require 3 confirmations
     accept_msg.to_self_delay = channel->local_config.to_self_delay;
     accept_msg.max_accepted_htlcs = channel->local_config.max_accepted_htlcs;
@@ -2476,10 +2476,10 @@ void LightningNetwork::HandleAcceptChannel(const PublicKey& peer, const std::vec
     }
 
     // Store remote config
-    channel->remote_config.dust_limit = accept_msg.dust_limit_satoshis;
-    channel->remote_config.max_htlc_value = accept_msg.max_htlc_value_in_flight_msat / 1000;
-    channel->remote_config.channel_reserve = accept_msg.channel_reserve_satoshis;
-    channel->remote_config.htlc_minimum = accept_msg.htlc_minimum_msat;
+    channel->remote_config.dust_limit = accept_msg.dust_limit_ints;
+    channel->remote_config.max_htlc_value = accept_msg.max_htlc_value_in_flight_mints / 1000;
+    channel->remote_config.channel_reserve = accept_msg.channel_reserve_ints;
+    channel->remote_config.htlc_minimum = accept_msg.htlc_minimum_mints;
     channel->remote_config.to_self_delay = accept_msg.to_self_delay;
     channel->remote_config.max_accepted_htlcs = accept_msg.max_accepted_htlcs;
 
@@ -2838,7 +2838,7 @@ void LightningNetwork::HandleShutdown(const PublicKey& peer, const std::vector<u
     // Send closing_signed with our signature
     ClosingSignedMsg closing_signed;
     closing_signed.channel_id = shutdown_msg.channel_id;
-    closing_signed.fee_satoshis = proposed_fee;
+    closing_signed.fee_ints = proposed_fee;
     closing_signed.signature = our_sig;
 
     auto closing_data = closing_signed.Serialize();
@@ -2875,7 +2875,7 @@ void LightningNetwork::HandleClosingSigned(const PublicKey& peer, const std::vec
     // Check if we agree on the fee
     // In a real implementation, we would negotiate if fees don't match
     // For now, accept the proposed fee
-    uint64_t agreed_fee = closing_msg.fee_satoshis;
+    uint64_t agreed_fee = closing_msg.fee_ints;
 
     // Create final closing transaction
     Transaction closing_tx;
@@ -2969,12 +2969,12 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
     }
 
     // Verify HTLC amount is valid
-    if (htlc_msg.amount_msat == 0) {
+    if (htlc_msg.amount_mints == 0) {
         return;  // Invalid amount
     }
 
     // Verify we can receive this HTLC (check channel capacity)
-    uint64_t amount_sat = htlc_msg.amount_msat / 1000;  // Convert msat to sat
+    uint64_t amount_sat = htlc_msg.amount_mints / 1000;  // Convert msat to sat
     if (!channel->CanReceive(amount_sat)) {
         return;  // Insufficient capacity
     }
@@ -3105,7 +3105,7 @@ void LightningNetwork::HandleUpdateAddHTLC(const PublicKey& peer, const std::vec
         UpdateAddHTLCMsg forward_htlc;
         forward_htlc.channel_id = next_hop.channel_id;
         forward_htlc.id = next_channel->pending_htlcs.size();  // New HTLC ID for next channel
-        forward_htlc.amount_msat = next_hop.amount;
+        forward_htlc.amount_mints = next_hop.amount;
         forward_htlc.payment_hash = htlc_msg.payment_hash;
         forward_htlc.cltv_expiry = next_hop.cltv_expiry;
         forward_htlc.onion_routing_packet = next_onion.Serialize();
@@ -3694,7 +3694,7 @@ void LightningNetwork::HandleChannelUpdate(const PublicKey& peer, const std::vec
     ChannelInfo channel_info = channel_result.GetValue();
 
     // Update channel parameters based on message
-    channel_info.base_fee = update.fee_base_msat / 1000;  // Convert msat to sat
+    channel_info.base_fee = update.fee_base_mints / 1000;  // Convert msat to sat
     channel_info.fee_rate = update.fee_proportional_millionths;
     channel_info.cltv_expiry_delta = update.cltv_expiry_delta;
     channel_info.enabled = !(update.channel_flags & 0x02);  // Bit 1 = disabled
@@ -3771,12 +3771,12 @@ Result<Transaction> LightningNetwork::AssembleSignedCommitmentTransaction(
 // ============================================================================
 
 uint32_t LightningNetwork::EstimateFeeRate(uint32_t target_conf) {
-    // Default fee rates based on confirmation target (sat/kw - satoshis per kiloweight)
+    // Default fee rates based on confirmation target (ints/kw - INTS per kiloweight)
     // These are conservative estimates for INTcoin
-    const uint32_t DEFAULT_FEERATE_1_BLOCK = 5000;   // ~20 sat/vbyte equivalent
-    const uint32_t DEFAULT_FEERATE_6_BLOCKS = 2500;  // ~10 sat/vbyte equivalent
-    const uint32_t DEFAULT_FEERATE_12_BLOCKS = 1000; // ~4 sat/vbyte equivalent
-    const uint32_t MINIMUM_FEERATE = 253;            // ~1 sat/vbyte minimum
+    const uint32_t DEFAULT_FEERATE_1_BLOCK = 5000;   // ~20 ints/vbyte equivalent
+    const uint32_t DEFAULT_FEERATE_6_BLOCKS = 2500;  // ~10 ints/vbyte equivalent
+    const uint32_t DEFAULT_FEERATE_12_BLOCKS = 1000; // ~4 ints/vbyte equivalent
+    const uint32_t MINIMUM_FEERATE = 253;            // ~1 ints/vbyte minimum
 
     if (!blockchain_) {
         // No blockchain access, use conservative default
@@ -3800,7 +3800,7 @@ uint32_t LightningNetwork::EstimateFeeRate(uint32_t target_conf) {
             // Fee rate in sat/byte
             uint64_t feerate_per_byte = (total_fees * 1000) / total_bytes; // Multiply by 1000 for precision
 
-            // Convert to sat/kw (1 kw = 1000 weight units, 4 weight units = 1 vbyte)
+            // Convert to ints/kw (1 kw = 1000 weight units, 4 weight units = 1 vbyte)
             // So 1 kw = 250 vbytes
             uint32_t feerate_per_kw = static_cast<uint32_t>((feerate_per_byte * 250) / 1000);
 
