@@ -101,6 +101,30 @@ public:
     /// @param remote_pubkey Remote party's public key
     static Script CreateToRemoteScript(const PublicKey& remote_pubkey);
 
+    /// Create BOLT #3 offered HTLC script (we offer, remote can claim with preimage or we timeout)
+    /// @param revocation_pubkey Revocation public key (for penalty)
+    /// @param local_htlcpubkey Local HTLC public key (for timeout path)
+    /// @param remote_htlcpubkey Remote HTLC public key (for success path)
+    /// @param payment_hash Payment hash (SHA3-256)
+    /// @param cltv_expiry CLTV expiry (absolute block height)
+    static Script CreateOfferedHTLCScript(const PublicKey& revocation_pubkey,
+                                          const PublicKey& local_htlcpubkey,
+                                          const PublicKey& remote_htlcpubkey,
+                                          const uint256& payment_hash,
+                                          uint32_t cltv_expiry);
+
+    /// Create BOLT #3 received HTLC script (remote offers, we can claim with preimage or remote timeouts)
+    /// @param revocation_pubkey Revocation public key (for penalty)
+    /// @param local_htlcpubkey Local HTLC public key (for success path)
+    /// @param remote_htlcpubkey Remote HTLC public key (for timeout path)
+    /// @param payment_hash Payment hash (SHA3-256)
+    /// @param cltv_expiry CLTV expiry (absolute block height)
+    static Script CreateReceivedHTLCScript(const PublicKey& revocation_pubkey,
+                                           const PublicKey& local_htlcpubkey,
+                                           const PublicKey& remote_htlcpubkey,
+                                           const uint256& payment_hash,
+                                           uint32_t cltv_expiry);
+
     /// Check if this is a P2PKH script
     bool IsP2PKH() const;
 

@@ -959,23 +959,7 @@ Result<CommitmentTransaction> CommitmentTransaction::Build(
     }
 
     // Outputs 3+: HTLC outputs
-    // HTLC script structure (BOLT #3):
-    // Offered HTLC (we send):
-    //   OP_DUP OP_HASH160 <RIPEMD160(SHA256(revocationpubkey))> OP_EQUAL
-    //   OP_IF
-    //       OP_CHECKSIG
-    //   OP_ELSE
-    //       <remote_htlcpubkey> OP_SWAP OP_SIZE 32 OP_EQUAL
-    //       OP_NOTIF
-    //           OP_DROP 2 OP_SWAP <local_htlcpubkey> 2 OP_CHECKMULTISIG
-    //       OP_ELSE
-    //           OP_HASH160 <RIPEMD160(payment_hash)> OP_EQUALVERIFY
-    //           OP_CHECKSIG
-    //       OP_ENDIF
-    //   OP_ENDIF
-    //
-    // Received HTLC (we receive):
-    //   Similar structure but with CLTV for timeout
+    // BOLT #3 HTLC scripts with revocation, timeout, and success paths
     for (const auto& htlc : htlcs) {
         if (htlc.amount < config.dust_limit) {
             continue;  // Skip dust HTLCs
@@ -984,16 +968,39 @@ Result<CommitmentTransaction> CommitmentTransaction::Build(
         TxOut htlc_output;
         htlc_output.value = htlc.amount;
 
-        // Placeholder HTLC script
-        // TODO: Implement full BOLT #3 HTLC scripts with:
-        //   - Payment hash verification
-        //   - Timeout/CLTV expiry
-        //   - Revocation keys
-        std::vector<uint8_t> htlc_bytes;
-        htlc_bytes.push_back(static_cast<uint8_t>(OpCode::OP_HASH));  // Verify payment hash
-        htlc_bytes.push_back(static_cast<uint8_t>(OpCode::OP_EQUALVERIFY));
-        htlc_bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKSIG));
-        htlc_output.script_pubkey = Script(htlc_bytes);
+        // Generate proper BOLT #3 HTLC scripts
+        // NOTE: Using placeholder keys for now - proper key derivation will be
+        // implemented in Phase 1.3 (Commitment Transaction Signing)
+        PublicKey revocation_pubkey;
+        PublicKey local_htlcpubkey;
+        PublicKey remote_htlcpubkey;
+        revocation_pubkey.fill(0x05);  // Placeholder
+        local_htlcpubkey.fill(0x06);   // Placeholder
+        remote_htlcpubkey.fill(0x07);  // Placeholder
+
+        // Determine HTLC direction and create appropriate script
+        // htlc.incoming: true = received (they offer), false = offered (we offer)
+        if (!htlc.incoming) {
+            // We offered this HTLC (outgoing - we send)
+            // Remote can claim with preimage, we can reclaim after timeout
+            htlc_output.script_pubkey = Script::CreateOfferedHTLCScript(
+                revocation_pubkey,
+                local_htlcpubkey,
+                remote_htlcpubkey,
+                htlc.payment_hash,
+                htlc.cltv_expiry
+            );
+        } else {
+            // We received this HTLC (incoming - they send)
+            // We can claim with preimage, they can reclaim after timeout
+            htlc_output.script_pubkey = Script::CreateReceivedHTLCScript(
+                revocation_pubkey,
+                local_htlcpubkey,
+                remote_htlcpubkey,
+                htlc.payment_hash,
+                htlc.cltv_expiry
+            );
+        }
 
         tx.outputs.push_back(htlc_output);
     }

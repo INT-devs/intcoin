@@ -108,6 +108,178 @@ Script Script::CreateToRemoteScript(const PublicKey& remote_pubkey) {
     return CreateP2PK(remote_pubkey);
 }
 
+Script Script::CreateOfferedHTLCScript(const PublicKey& revocation_pubkey,
+                                        const PublicKey& local_htlcpubkey,
+                                        const PublicKey& remote_htlcpubkey,
+                                        const uint256& payment_hash,
+                                        uint32_t cltv_expiry) {
+    // BOLT #3 offered HTLC script (simplified for INTcoin with Dilithium3)
+    // Structure:
+    // OP_IF
+    //     <revocation_pubkey>  # Revocation path (remote can penalize us)
+    // OP_ELSE
+    //     OP_IF
+    //         OP_HASH <payment_hash> OP_EQUALVERIFY  # Success path (remote with preimage)
+    //         <remote_htlcpubkey>
+    //     OP_ELSE
+    //         <cltv_expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP  # Timeout path (we reclaim)
+    //         <local_htlcpubkey>
+    //     OP_ENDIF
+    // OP_ENDIF
+    // OP_CHECKSIG
+
+    Script script;
+
+    // OP_IF (revocation check)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_IF));
+
+    // Revocation path: <revocation_pubkey>
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t rev_len = static_cast<uint16_t>(revocation_pubkey.size());
+    script.bytes.push_back(rev_len & 0xFF);
+    script.bytes.push_back((rev_len >> 8) & 0xFF);
+    script.bytes.insert(script.bytes.end(), revocation_pubkey.begin(), revocation_pubkey.end());
+
+    // OP_ELSE
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ELSE));
+
+    // OP_IF (success vs timeout check)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_IF));
+
+    // Success path: OP_HASH <payment_hash> OP_EQUALVERIFY <remote_htlcpubkey>
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_HASH));
+
+    // Push payment hash (32 bytes)
+    script.bytes.push_back(32);
+    script.bytes.insert(script.bytes.end(), payment_hash.begin(), payment_hash.end());
+
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_EQUALVERIFY));
+
+    // Push remote_htlcpubkey
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t remote_len = static_cast<uint16_t>(remote_htlcpubkey.size());
+    script.bytes.push_back(remote_len & 0xFF);
+    script.bytes.push_back((remote_len >> 8) & 0xFF);
+    script.bytes.insert(script.bytes.end(), remote_htlcpubkey.begin(), remote_htlcpubkey.end());
+
+    // OP_ELSE (timeout path)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ELSE));
+
+    // Timeout path: <cltv_expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP <local_htlcpubkey>
+    script.bytes.push_back(4);  // Push 4 bytes for uint32_t
+    script.bytes.push_back(cltv_expiry & 0xFF);
+    script.bytes.push_back((cltv_expiry >> 8) & 0xFF);
+    script.bytes.push_back((cltv_expiry >> 16) & 0xFF);
+    script.bytes.push_back((cltv_expiry >> 24) & 0xFF);
+
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKLOCKTIMEVERIFY));
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_DROP));
+
+    // Push local_htlcpubkey
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t local_len = static_cast<uint16_t>(local_htlcpubkey.size());
+    script.bytes.push_back(local_len & 0xFF);
+    script.bytes.push_back((local_len >> 8) & 0xFF);
+    script.bytes.insert(script.bytes.end(), local_htlcpubkey.begin(), local_htlcpubkey.end());
+
+    // OP_ENDIF (close success/timeout IF)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ENDIF));
+
+    // OP_ENDIF (close revocation IF)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ENDIF));
+
+    // OP_CHECKSIG (verify signature)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKSIG));
+
+    return script;
+}
+
+Script Script::CreateReceivedHTLCScript(const PublicKey& revocation_pubkey,
+                                         const PublicKey& local_htlcpubkey,
+                                         const PublicKey& remote_htlcpubkey,
+                                         const uint256& payment_hash,
+                                         uint32_t cltv_expiry) {
+    // BOLT #3 received HTLC script (simplified for INTcoin with Dilithium3)
+    // Structure:
+    // OP_IF
+    //     <revocation_pubkey>  # Revocation path (remote can penalize us)
+    // OP_ELSE
+    //     OP_IF
+    //         OP_HASH <payment_hash> OP_EQUALVERIFY  # Success path (we claim with preimage)
+    //         <local_htlcpubkey>
+    //     OP_ELSE
+    //         <cltv_expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP  # Timeout path (remote reclaims)
+    //         <remote_htlcpubkey>
+    //     OP_ENDIF
+    // OP_ENDIF
+    // OP_CHECKSIG
+
+    Script script;
+
+    // OP_IF (revocation check)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_IF));
+
+    // Revocation path: <revocation_pubkey>
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t rev_len = static_cast<uint16_t>(revocation_pubkey.size());
+    script.bytes.push_back(rev_len & 0xFF);
+    script.bytes.push_back((rev_len >> 8) & 0xFF);
+    script.bytes.insert(script.bytes.end(), revocation_pubkey.begin(), revocation_pubkey.end());
+
+    // OP_ELSE
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ELSE));
+
+    // OP_IF (success vs timeout check)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_IF));
+
+    // Success path: OP_HASH <payment_hash> OP_EQUALVERIFY <local_htlcpubkey>
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_HASH));
+
+    // Push payment hash (32 bytes)
+    script.bytes.push_back(32);
+    script.bytes.insert(script.bytes.end(), payment_hash.begin(), payment_hash.end());
+
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_EQUALVERIFY));
+
+    // Push local_htlcpubkey (we claim with preimage)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t local_len = static_cast<uint16_t>(local_htlcpubkey.size());
+    script.bytes.push_back(local_len & 0xFF);
+    script.bytes.push_back((local_len >> 8) & 0xFF);
+    script.bytes.insert(script.bytes.end(), local_htlcpubkey.begin(), local_htlcpubkey.end());
+
+    // OP_ELSE (timeout path)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ELSE));
+
+    // Timeout path: <cltv_expiry> OP_CHECKLOCKTIMEVERIFY OP_DROP <remote_htlcpubkey>
+    script.bytes.push_back(4);  // Push 4 bytes for uint32_t
+    script.bytes.push_back(cltv_expiry & 0xFF);
+    script.bytes.push_back((cltv_expiry >> 8) & 0xFF);
+    script.bytes.push_back((cltv_expiry >> 16) & 0xFF);
+    script.bytes.push_back((cltv_expiry >> 24) & 0xFF);
+
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKLOCKTIMEVERIFY));
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_DROP));
+
+    // Push remote_htlcpubkey (they reclaim after timeout)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_PUSHDATA));
+    uint16_t remote_len = static_cast<uint16_t>(remote_htlcpubkey.size());
+    script.bytes.push_back(remote_len & 0xFF);
+    script.bytes.push_back((remote_len >> 8) & 0xFF);
+    script.bytes.insert(script.bytes.end(), remote_htlcpubkey.begin(), remote_htlcpubkey.end());
+
+    // OP_ENDIF (close success/timeout IF)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ENDIF));
+
+    // OP_ENDIF (close revocation IF)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_ENDIF));
+
+    // OP_CHECKSIG (verify signature)
+    script.bytes.push_back(static_cast<uint8_t>(OpCode::OP_CHECKSIG));
+
+    return script;
+}
+
 bool Script::IsP2PKH() const {
     // P2PKH pattern: OP_DUP OP_HASH <32> <32-byte hash> OP_EQUALVERIFY OP_CHECKSIG
     // Total: 38 bytes
