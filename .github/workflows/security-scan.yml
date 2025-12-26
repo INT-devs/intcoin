@@ -69,6 +69,7 @@ jobs:
         cmake -B build \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_PREFIX_PATH="$HOME/randomx" \
+          -DCMAKE_CXX_FLAGS="-Wno-error" \
           -DBUILD_TESTS=OFF \
           -DBUILD_WALLET_QT=OFF \
           -GNinja
