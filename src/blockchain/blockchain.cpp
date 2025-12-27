@@ -24,8 +24,8 @@ public:
     // Database
     std::shared_ptr<BlockchainDB> db_;
 
-    // UTXO set (in-memory for fast access)
-    std::unordered_map<OutPoint, TxOut, OutPointHash> utxo_set_;
+    // UTXO set (with database persistence and address indexing)
+    std::unique_ptr<UTXOSet> utxo_set_;
 
     // Chain state cache
     ChainState chain_state_;
@@ -42,7 +42,8 @@ public:
     mutable std::mutex mutex_;
 
     Impl(std::shared_ptr<BlockchainDB> db)
-        : db_(std::move(db)) {}
+        : db_(std::move(db)),
+          utxo_set_(std::make_unique<UTXOSet>(db_)) {}
 
     // Load chain state from database
     Result<void> LoadChainState() {
@@ -72,17 +73,35 @@ public:
 
     // Load UTXO set from database (expensive operation)
     Result<void> LoadUTXOSet() {
-        // TODO: Implement UTXO set loading
-        // For now, UTXO set will be built incrementally as blocks are processed
+        if (!utxo_set_) {
+            return Result<void>::Error("UTXO set not initialized");
+        }
+
+        LogF(LogLevel::INFO, "Loading UTXO set from database...");
+
+        auto load_result = utxo_set_->Load();
+        if (load_result.IsError()) {
+            return Result<void>::Error("Failed to load UTXO set: " + load_result.error);
+        }
+
+        // Update chain state with UTXO count
+        chain_state_.utxo_count = utxo_set_->GetCount();
+
+        LogF(LogLevel::INFO, "Loaded %llu UTXOs from database", chain_state_.utxo_count);
+
         return Result<void>::Ok();
     }
 
     // Apply block to UTXO set
     Result<void> ApplyBlockToUTXO(const Block& block) {
+        if (!utxo_set_) {
+            return Result<void>::Error("UTXO set not initialized");
+        }
+
         // Track spent outputs for reorganization support
         std::vector<SpentOutput> spent_outputs;
 
-        // Remove spent outputs
+        // Collect spent outputs before applying block
         for (const auto& tx : block.transactions) {
             if (tx.IsCoinbase()) continue;
 
@@ -91,27 +110,17 @@ public:
                 outpoint.tx_hash = input.prev_tx_hash;
                 outpoint.index = input.prev_tx_index;
 
-                auto it = utxo_set_.find(outpoint);
-                if (it == utxo_set_.end()) {
+                // Get the output being spent
+                auto utxo_opt = utxo_set_->GetUTXO(outpoint);
+                if (!utxo_opt.has_value()) {
                     return Result<void>::Error("UTXO not found for input: " + ToHex(outpoint.tx_hash));
                 }
 
                 // Store spent output for potential reorg
                 SpentOutput spent;
                 spent.outpoint = outpoint;
-                spent.output = it->second;
+                spent.output = *utxo_opt;
                 spent_outputs.push_back(spent);
-
-                // Remove from in-memory set
-                utxo_set_.erase(it);
-
-                // Remove from database
-                auto delete_result = db_->DeleteUTXO(outpoint);
-                if (delete_result.IsError()) {
-                    return delete_result;
-                }
-
-                chain_state_.utxo_count--;
             }
         }
 
@@ -124,72 +133,36 @@ public:
             }
         }
 
-        // Add new outputs
-        for (const auto& tx : block.transactions) {
-            uint256 tx_hash = tx.GetHash();
-
-            for (uint32_t i = 0; i < tx.outputs.size(); i++) {
-                OutPoint outpoint;
-                outpoint.tx_hash = tx_hash;
-                outpoint.index = i;
-
-                // Add to in-memory set
-                utxo_set_[outpoint] = tx.outputs[i];
-
-                // Add to database
-                auto store_result = db_->StoreUTXO(outpoint, tx.outputs[i]);
-                if (store_result.IsError()) {
-                    return store_result;
-                }
-
-                chain_state_.utxo_count++;
-            }
+        // Apply block to UTXO set (spends inputs and creates new outputs)
+        auto apply_result = utxo_set_->ApplyBlock(block);
+        if (apply_result.IsError()) {
+            return apply_result;
         }
+
+        // Note: UTXO set changes are kept in memory cache
+        // They will be flushed to database periodically or when the blockchain is closed
+        // This improves performance by batching database writes
+
+        // Update chain state with new UTXO count
+        chain_state_.utxo_count = utxo_set_->GetCount();
 
         return Result<void>::Ok();
     }
 
     // Revert block from UTXO set (for reorganization)
     Result<void> RevertBlockFromUTXO(const Block& block) {
-        // Reverse of ApplyBlockToUTXO
-        // Remove outputs that were added
-        for (const auto& tx : block.transactions) {
-            uint256 tx_hash = tx.GetHash();
-
-            for (uint32_t i = 0; i < tx.outputs.size(); i++) {
-                OutPoint outpoint;
-                outpoint.tx_hash = tx_hash;
-                outpoint.index = i;
-
-                utxo_set_.erase(outpoint);
-                db_->DeleteUTXO(outpoint);
-                chain_state_.utxo_count--;
-            }
+        if (!utxo_set_) {
+            return Result<void>::Error("UTXO set not initialized");
         }
 
-        // Restore spent outputs from database
-        uint256 block_hash = block.GetHash();
-        auto spent_outputs_result = db_->GetSpentOutputs(block_hash);
-
-        if (spent_outputs_result.IsOk()) {
-            auto spent_outputs = spent_outputs_result.GetValue();
-
-            for (const auto& spent : spent_outputs) {
-                // Restore to in-memory set
-                utxo_set_[spent.outpoint] = spent.output;
-
-                // Restore to database
-                auto restore_result = db_->StoreUTXO(spent.outpoint, spent.output);
-                if (restore_result.IsError()) {
-                    return restore_result;
-                }
-
-                chain_state_.utxo_count++;
-            }
-
-            // Clean up spent outputs record
-            db_->DeleteSpentOutputs(block_hash);
+        // Revert block from UTXO set (removes created outputs, restores spent outputs)
+        auto revert_result = utxo_set_->RevertBlock(block);
+        if (revert_result.IsError()) {
+            return revert_result;
         }
+
+        // Update chain state with new UTXO count
+        chain_state_.utxo_count = utxo_set_->GetCount();
 
         return Result<void>::Ok();
     }
@@ -823,19 +796,10 @@ Result<void> Blockchain::Reorganize(const std::vector<Block>& new_chain) {
         }
         const auto& block = block_result.GetValue();
 
-        // Reverse UTXO changes (add spent outputs, remove new outputs)
-        for (const auto& tx : block.transactions) {
-            // Remove outputs created by this transaction
-            for (size_t i = 0; i < tx.outputs.size(); ++i) {
-                OutPoint outpoint{tx.GetHash(), static_cast<uint32_t>(i)};
-                impl_->utxo_set_.erase(outpoint);
-            }
-
-            // Restore spent outputs (except coinbase)
-            if (!tx.IsCoinbase()) {
-                // TODO: Need to restore spent UTXOs from database
-                // This requires storing spent outputs for reorganization support
-            }
+        // Revert block from UTXO set
+        auto revert_result = impl_->RevertBlockFromUTXO(block);
+        if (revert_result.IsError()) {
+            return Result<void>::Error("Failed to revert block during reorg: " + revert_result.error);
         }
     }
 
@@ -1004,39 +968,35 @@ Result<Block> Blockchain::GetTransactionBlock(const uint256& tx_hash) const {
 std::optional<TxOut> Blockchain::GetUTXO(const OutPoint& outpoint) const {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
 
-    auto it = impl_->utxo_set_.find(outpoint);
-    if (it != impl_->utxo_set_.end()) {
-        return it->second;
+    if (!impl_->utxo_set_) {
+        return std::nullopt;
     }
 
-    // Try database
-    auto result = impl_->db_->GetUTXO(outpoint);
-    if (result.IsOk()) {
-        return *result.value;
-    }
-
-    return std::nullopt;
+    return impl_->utxo_set_->GetUTXO(outpoint);
 }
 
 bool Blockchain::HasUTXO(const OutPoint& outpoint) const {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
 
-    if (impl_->utxo_set_.find(outpoint) != impl_->utxo_set_.end()) {
-        return true;
+    if (!impl_->utxo_set_) {
+        return false;
     }
 
-    return impl_->db_->HasUTXO(outpoint);
+    return impl_->utxo_set_->HasUTXO(outpoint);
 }
 
 const UTXOSet& Blockchain::GetUTXOSet() const {
-    // TODO: Implement UTXOSet properly
-    // For now, throw an exception as this isn't implemented yet
-    throw std::runtime_error("UTXOSet not yet implemented");
+    if (!impl_->utxo_set_) {
+        throw std::runtime_error("UTXO set not initialized");
+    }
+    return *impl_->utxo_set_;
 }
 
 std::vector<std::pair<OutPoint, TxOut>> Blockchain::GetUTXOsForAddress(const std::string& address) const {
-    // TODO: Implement address UTXO lookup
-    return {};
+    if (!impl_->utxo_set_) {
+        return {};
+    }
+    return impl_->utxo_set_->GetUTXOsForAddress(address);
 }
 
 uint64_t Blockchain::GetAddressBalance(const std::string& address) const {
