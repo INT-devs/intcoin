@@ -2256,14 +2256,68 @@ JSONValue LightningRPC::lightning_getnodeinfo(const JSONValue&, LightningNetwork
 JSONValue LightningRPC::lightning_getnetworkgraph(const JSONValue&, LightningNetwork& lightning) {
     std::map<std::string, JSONValue> graph_info;
 
-    // Note: NetworkGraph doesn't expose public methods to iterate all nodes/channels
-    // Return basic statistics for now
-    // TODO: Add GetAllNodes() and GetAllChannels() methods to NetworkGraph class
+    // Get the network graph from the lightning network
+    auto& network_graph = lightning.GetNetworkGraph();
 
-    graph_info["num_nodes"] = JSONValue(static_cast<int64_t>(0));
-    graph_info["num_channels"] = JSONValue(static_cast<int64_t>(0));
-    graph_info["nodes"] = JSONValue(std::vector<JSONValue>());
-    graph_info["channels"] = JSONValue(std::vector<JSONValue>());
+    // Retrieve all nodes and channels
+    auto all_nodes = network_graph.GetAllNodes();
+    auto all_channels = network_graph.GetAllChannels();
+
+    // Serialize nodes
+    std::vector<JSONValue> nodes_json;
+    for (const auto& node : all_nodes) {
+        std::map<std::string, JSONValue> node_obj;
+
+        // Convert PublicKey to hex string
+        std::vector<uint8_t> node_id_bytes(node.node_id.begin(), node.node_id.end());
+        node_obj["node_id"] = JSONValue(BytesToHex(node_id_bytes));
+        node_obj["alias"] = JSONValue(node.alias);
+
+        // Serialize channel IDs
+        std::vector<JSONValue> channel_ids;
+        for (const auto& channel_id : node.channels) {
+            channel_ids.push_back(JSONValue(Uint256ToHex(channel_id)));
+        }
+        node_obj["channels"] = JSONValue(channel_ids);
+
+        // Convert timestamp to Unix time
+        auto timestamp = std::chrono::system_clock::to_time_t(node.last_update);
+        node_obj["last_update"] = JSONValue(static_cast<int64_t>(timestamp));
+
+        nodes_json.push_back(JSONValue(node_obj));
+    }
+
+    // Serialize channels
+    std::vector<JSONValue> channels_json;
+    for (const auto& channel : all_channels) {
+        std::map<std::string, JSONValue> channel_obj;
+
+        channel_obj["channel_id"] = JSONValue(Uint256ToHex(channel.channel_id));
+
+        // Convert node public keys to hex
+        std::vector<uint8_t> node1_bytes(channel.node1.begin(), channel.node1.end());
+        std::vector<uint8_t> node2_bytes(channel.node2.begin(), channel.node2.end());
+        channel_obj["node1"] = JSONValue(BytesToHex(node1_bytes));
+        channel_obj["node2"] = JSONValue(BytesToHex(node2_bytes));
+
+        channel_obj["capacity"] = JSONValue(static_cast<int64_t>(channel.capacity));
+        channel_obj["base_fee"] = JSONValue(static_cast<int64_t>(channel.base_fee));
+        channel_obj["fee_rate"] = JSONValue(static_cast<int64_t>(channel.fee_rate));
+        channel_obj["cltv_expiry_delta"] = JSONValue(static_cast<int64_t>(channel.cltv_expiry_delta));
+        channel_obj["enabled"] = JSONValue(channel.enabled);
+
+        // Convert timestamp to Unix time
+        auto timestamp = std::chrono::system_clock::to_time_t(channel.last_update);
+        channel_obj["last_update"] = JSONValue(static_cast<int64_t>(timestamp));
+
+        channels_json.push_back(JSONValue(channel_obj));
+    }
+
+    // Build result
+    graph_info["num_nodes"] = JSONValue(static_cast<int64_t>(all_nodes.size()));
+    graph_info["num_channels"] = JSONValue(static_cast<int64_t>(all_channels.size()));
+    graph_info["nodes"] = JSONValue(nodes_json);
+    graph_info["channels"] = JSONValue(channels_json);
 
     return JSONValue(graph_info);
 }
