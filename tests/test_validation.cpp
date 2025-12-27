@@ -55,7 +55,19 @@ Block CreateValidTestBlock(const uint256& prev_hash, uint64_t height) {
     TxIn coinbase_input;
     coinbase_input.prev_tx_hash = uint256{}; // All zeros
     coinbase_input.prev_tx_index = 0xFFFFFFFF;
-    coinbase_input.script_sig = Script(); // Empty script
+
+    // Create coinbase script_sig with block height (BIP34 compliance)
+    std::vector<uint8_t> script_data;
+    // Push block height as a simple data push
+    if (height < 0x7F) {
+        script_data.push_back(1); // Push 1 byte
+        script_data.push_back(static_cast<uint8_t>(height));
+    } else {
+        script_data.push_back(2); // Push 2 bytes
+        script_data.push_back(static_cast<uint8_t>(height & 0xFF));
+        script_data.push_back(static_cast<uint8_t>((height >> 8) & 0xFF));
+    }
+    coinbase_input.script_sig = Script(script_data);
     coinbase_input.sequence = 0xFFFFFFFF;
     coinbase.inputs.push_back(coinbase_input);
 
@@ -391,6 +403,9 @@ void TestUTXOValidation() {
     // Add genesis block to create some UTXOs
     Block genesis = CreateValidTestBlock(uint256{}, 0);
     auto add_result = chain.AddBlock(genesis);
+    if (add_result.IsError()) {
+        std::cout << "✗ Failed to add genesis block: " << add_result.error << "\n";
+    }
     assert(add_result.IsOk());
     std::cout << "✓ Genesis block added\n";
 

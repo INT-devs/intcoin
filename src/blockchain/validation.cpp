@@ -365,7 +365,175 @@ Result<void> TxValidator::ValidateOutputs(const Transaction& tx) const {
             return Result<void>::Error("Output " + std::to_string(i) + " has empty script");
         }
 
-        // TODO: Validate script is well-formed
+        // Validate script is well-formed
+        auto script_validation = ValidateScript(output.script_pubkey, i);
+        if (script_validation.IsError()) {
+            return script_validation;
+        }
+    }
+
+    return Result<void>::Ok();
+}
+
+Result<void> TxValidator::ValidateScript(const Script& script, size_t output_index) const {
+    const auto& bytes = script.Serialize();
+
+    // Maximum script size (10,000 bytes, same as Bitcoin)
+    constexpr size_t MAX_SCRIPT_SIZE = 10000;
+    if (bytes.size() > MAX_SCRIPT_SIZE) {
+        return Result<void>::Error("Output " + std::to_string(output_index) +
+                                  " script exceeds maximum size: " +
+                                  std::to_string(bytes.size()) + " > " +
+                                  std::to_string(MAX_SCRIPT_SIZE));
+    }
+
+    // Validate script opcodes
+    size_t pc = 0; // Program counter
+    int if_depth = 0; // Track IF/ENDIF nesting depth
+
+    while (pc < bytes.size()) {
+        uint8_t opcode = bytes[pc];
+        pc++;
+
+        // Check for push data operations
+        if (opcode >= 0x01 && opcode <= 0x4B) {
+            // Push N bytes (opcode is the length)
+            size_t push_size = opcode;
+
+            if (pc + push_size > bytes.size()) {
+                return Result<void>::Error("Output " + std::to_string(output_index) +
+                                          " script has incomplete push data at position " +
+                                          std::to_string(pc - 1));
+            }
+
+            pc += push_size;
+            continue;
+        }
+
+        // Special push data opcodes
+        if (opcode == 0x4C) { // OP_PUSHDATA1
+            if (pc >= bytes.size()) {
+                return Result<void>::Error("Output " + std::to_string(output_index) +
+                                          " script has incomplete OP_PUSHDATA1");
+            }
+
+            size_t push_size = bytes[pc++];
+            if (pc + push_size > bytes.size()) {
+                return Result<void>::Error("Output " + std::to_string(output_index) +
+                                          " script has incomplete OP_PUSHDATA1 data");
+            }
+
+            pc += push_size;
+            continue;
+        }
+
+        if (opcode == 0x4D) { // OP_PUSHDATA2
+            if (pc + 2 > bytes.size()) {
+                return Result<void>::Error("Output " + std::to_string(output_index) +
+                                          " script has incomplete OP_PUSHDATA2");
+            }
+
+            size_t push_size = bytes[pc] | (bytes[pc + 1] << 8);
+            pc += 2;
+
+            if (pc + push_size > bytes.size()) {
+                return Result<void>::Error("Output " + std::to_string(output_index) +
+                                          " script has incomplete OP_PUSHDATA2 data");
+            }
+
+            pc += push_size;
+            continue;
+        }
+
+        if (opcode == 0x4E) { // OP_PUSHDATA4
+            if (pc + 4 > bytes.size()) {
+                return Result<void>::Error("Output " + std::to_string(output_index) +
+                                          " script has incomplete OP_PUSHDATA4");
+            }
+
+            size_t push_size = bytes[pc] |
+                              (bytes[pc + 1] << 8) |
+                              (bytes[pc + 2] << 16) |
+                              (bytes[pc + 3] << 24);
+            pc += 4;
+
+            if (pc + push_size > bytes.size()) {
+                return Result<void>::Error("Output " + std::to_string(output_index) +
+                                          " script has incomplete OP_PUSHDATA4 data");
+            }
+
+            pc += push_size;
+            continue;
+        }
+
+        // Track IF/ENDIF nesting
+        if (opcode == 0x63 || opcode == 0x64) { // OP_IF or OP_NOTIF
+            if_depth++;
+        } else if (opcode == 0x68) { // OP_ENDIF
+            if_depth--;
+            if (if_depth < 0) {
+                return Result<void>::Error("Output " + std::to_string(output_index) +
+                                          " script has unmatched OP_ENDIF");
+            }
+        }
+
+        // Check for disabled opcodes (same as Bitcoin)
+        // INTcoin disables certain opcodes for security
+        std::set<uint8_t> disabled_opcodes = {
+            0x7D, // OP_2OVER
+            0x7E, // OP_2ROT
+            0x7F, // OP_2SWAP
+            0x80, // OP_IFDUP
+            0x81, // OP_DEPTH
+            0x89, // OP_NUMEQUAL
+            0x8A, // OP_NUMEQUALVERIFY
+            0x8B, // OP_NUMNOTEQUAL
+            0x93, // OP_ADD
+            0x94, // OP_SUB
+            0x95, // OP_MUL (disabled for DoS)
+            0x96, // OP_DIV (disabled for DoS)
+            0x97, // OP_MOD (disabled for DoS)
+            0x98, // OP_LSHIFT (disabled for DoS)
+            0x99, // OP_RSHIFT (disabled for DoS)
+        };
+
+        if (disabled_opcodes.count(opcode) > 0) {
+            return Result<void>::Error("Output " + std::to_string(output_index) +
+                                      " script contains disabled opcode: 0x" +
+                                      BytesToHex(std::vector<uint8_t>{opcode}));
+        }
+
+        // Validate known opcodes
+        std::set<uint8_t> valid_opcodes = {
+            0x00, // OP_0
+            0x51, 0x52, // OP_1, OP_2
+            0x63, 0x64, 0x67, 0x68, 0x69, // OP_IF, OP_NOTIF, OP_ELSE, OP_ENDIF, OP_VERIFY
+            0x6A, // OP_RETURN
+            0x75, 0x76, 0x7C, 0x82, // OP_DROP, OP_DUP, OP_SWAP, OP_SIZE
+            0x87, 0x88, // OP_EQUAL, OP_EQUALVERIFY
+            0xA9, // OP_HASH
+            0xAC, // OP_CHECKSIG
+            0xAE, // OP_CHECKMULTISIG
+            0xB1, 0xB2, // OP_CHECKLOCKTIMEVERIFY, OP_CHECKSEQUENCEVERIFY
+        };
+
+        // Allow push data range
+        if (opcode < 0x4F) {
+            continue; // Already handled push data above
+        }
+
+        if (valid_opcodes.count(opcode) == 0) {
+            return Result<void>::Error("Output " + std::to_string(output_index) +
+                                      " script contains unknown opcode: 0x" +
+                                      BytesToHex(std::vector<uint8_t>{opcode}));
+        }
+    }
+
+    // Check for unmatched IF/ENDIF
+    if (if_depth != 0) {
+        return Result<void>::Error("Output " + std::to_string(output_index) +
+                                  " script has unmatched IF/ENDIF (depth=" +
+                                  std::to_string(if_depth) + ")");
     }
 
     return Result<void>::Ok();

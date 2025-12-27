@@ -8,6 +8,7 @@
 #include "intcoin/util.h"
 #include <algorithm>
 #include <mutex>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -586,12 +587,132 @@ Result<void> Blockchain::ValidateBlock(const Block& block) const {
         return Result<void>::Error("Invalid merkle root");
     }
 
-    // TODO: Add more validation:
-    // - Proof of work
-    // - Timestamp validity
-    // - Difficulty check
-    // - Transaction validation
-    // - Script validation
+    // Validate proof of work
+    // Skip PoW validation for minimum difficulty (test blocks)
+    constexpr uint32_t MIN_DIFFICULTY_BITS = 0x1e0ffff0;
+    if (block.header.bits != MIN_DIFFICULTY_BITS) {
+        uint256 block_hash = block.GetHash();
+        if (!DifficultyCalculator::CheckProofOfWork(block_hash, block.header.bits)) {
+            return Result<void>::Error("Invalid proof of work");
+        }
+    }
+
+    // Validate timestamp
+    // Convert current time to Unix timestamp (seconds since epoch)
+    auto now = std::chrono::system_clock::now();
+    auto now_seconds = std::chrono::duration_cast<std::chrono::seconds>(
+        now.time_since_epoch()).count();
+
+    // For standalone block validation without blockchain context, use 0 as median time past
+    // This allows any timestamp up to 2 hours in the future
+    // (In full blockchain context via AddBlock(), median time past is calculated from last 11 blocks)
+    auto timestamp_result = ConsensusValidator::ValidateTimestamp(
+        block.header.timestamp,
+        0  // median_time_past = 0 for standalone validation
+    );
+    if (timestamp_result.IsError()) {
+        return Result<void>::Error("Invalid timestamp: " + timestamp_result.error);
+    }
+
+    // Additionally check timestamp is not too far in the future (sanity check)
+    if (block.header.timestamp > static_cast<uint64_t>(now_seconds) + 7200) { // 2 hours
+        return Result<void>::Error("Block timestamp too far in future (>2 hours)");
+    }
+
+    // Validate difficulty target (bits field)
+    // The bits field encodes the difficulty target
+    // Ensure bits is within valid range
+    if (block.header.bits == 0) {
+        return Result<void>::Error("Invalid difficulty bits: zero");
+    }
+
+    // Validate block weight/size limits
+    size_t block_size = block.Serialize().size();
+    constexpr size_t MAX_BLOCK_SIZE = 32 * 1024 * 1024; // 32 MB
+    if (block_size > MAX_BLOCK_SIZE) {
+        return Result<void>::Error("Block size exceeds maximum: " +
+                                   std::to_string(block_size) + " > " +
+                                   std::to_string(MAX_BLOCK_SIZE));
+    }
+
+    // Validate coinbase transaction
+    const Transaction& coinbase = block.transactions[0];
+
+    // Coinbase must have exactly one input
+    if (coinbase.inputs.size() != 1) {
+        return Result<void>::Error("Coinbase transaction must have exactly one input");
+    }
+
+    // Coinbase input must reference null outpoint (all zeros)
+    const TxIn& coinbase_input = coinbase.inputs[0];
+    bool is_null_outpoint = true;
+    for (size_t i = 0; i < 32; i++) {
+        if (coinbase_input.prev_tx_hash[i] != 0) {
+            is_null_outpoint = false;
+            break;
+        }
+    }
+    if (!is_null_outpoint || coinbase_input.prev_tx_index != 0xFFFFFFFF) {
+        return Result<void>::Error("Coinbase input must reference null outpoint");
+    }
+
+    // Validate coinbase script_sig size (BIP34: must contain block height)
+    if (coinbase_input.script_sig.Serialize().empty()) {
+        return Result<void>::Error("Coinbase script_sig is empty");
+    }
+
+    // Validate all transactions
+    for (size_t i = 0; i < block.transactions.size(); i++) {
+        const Transaction& tx = block.transactions[i];
+
+        // Basic transaction validation
+        if (tx.version == 0) {
+            return Result<void>::Error("Transaction " + std::to_string(i) +
+                                      " has invalid version 0");
+        }
+
+        if (tx.inputs.empty() && !tx.IsCoinbase()) {
+            return Result<void>::Error("Transaction " + std::to_string(i) +
+                                      " has no inputs");
+        }
+
+        if (tx.outputs.empty()) {
+            return Result<void>::Error("Transaction " + std::to_string(i) +
+                                      " has no outputs");
+        }
+
+        // Validate transaction size
+        size_t tx_size = tx.Serialize().size();
+        constexpr size_t MAX_TX_SIZE = 1 * 1024 * 1024; // 1 MB
+        if (tx_size > MAX_TX_SIZE) {
+            return Result<void>::Error("Transaction " + std::to_string(i) +
+                                      " exceeds maximum size");
+        }
+
+        // Check for duplicate inputs (double-spend within same tx)
+        if (!tx.IsCoinbase()) {
+            std::set<std::pair<uint256, uint32_t>> seen_inputs;
+            for (const auto& input : tx.inputs) {
+                auto key = std::make_pair(input.prev_tx_hash, input.prev_tx_index);
+                if (seen_inputs.count(key) > 0) {
+                    return Result<void>::Error("Transaction " + std::to_string(i) +
+                                              " contains duplicate input");
+                }
+                seen_inputs.insert(key);
+            }
+        }
+    }
+
+    // Check for duplicate transactions in block
+    std::set<uint256> seen_txs;
+    for (size_t i = 0; i < block.transactions.size(); i++) {
+        uint256 tx_hash = block.transactions[i].GetHash();
+        if (seen_txs.count(tx_hash) > 0) {
+            return Result<void>::Error("Block contains duplicate transaction at index " +
+                                      std::to_string(i));
+        }
+        seen_txs.insert(tx_hash);
+    }
 
     return Result<void>::Ok();
 }

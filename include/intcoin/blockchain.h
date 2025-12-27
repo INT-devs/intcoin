@@ -288,6 +288,9 @@ public:
     Result<void> CheckDoubleSpend(const Transaction& tx) const;
 
 private:
+    /// Validate script is well-formed
+    Result<void> ValidateScript(const Script& script, size_t output_index) const;
+
     const Blockchain& chain_;
 };
 
