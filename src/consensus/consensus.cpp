@@ -651,8 +651,8 @@ Result<void> ChainValidator::ValidateReorgDepth(uint64_t current_height,
 
     // Warn about deep reorganizations
     if (reorg_depth >= consensus::DEEP_REORG_WARNING_THRESHOLD) {
-        // TODO: Add logging system
-        // LOG_WARNING("Deep reorganization detected: " + std::to_string(reorg_depth) + " blocks");
+        LogF(LogLevel::WARNING, "Deep reorganization detected: %llu blocks (threshold: %llu)",
+             reorg_depth, consensus::DEEP_REORG_WARNING_THRESHOLD);
     }
 
     // Check if fork point is after a checkpoint

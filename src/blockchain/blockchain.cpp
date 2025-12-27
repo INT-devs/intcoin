@@ -783,9 +783,8 @@ Result<void> Blockchain::Reorganize(const std::vector<Block>& new_chain) {
     // Log deep reorganization warning
     uint64_t reorg_depth = current_height - fork_height;
     if (reorg_depth >= consensus::DEEP_REORG_WARNING_THRESHOLD) {
-        // TODO: Add logging system
-        // LOG_WARNING("Deep reorganization: " + std::to_string(reorg_depth) +
-        //             " blocks from height " + std::to_string(fork_height));
+        LogF(LogLevel::WARNING, "Deep reorganization: %llu blocks from height %llu to %llu",
+             reorg_depth, fork_height, current_height);
     }
 
     // Disconnect blocks from current chain back to fork point
