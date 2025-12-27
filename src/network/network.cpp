@@ -558,6 +558,16 @@ void Peer::IncreaseBanScore(int points) {
 // P2PNode Implementation
 // ============================================================================
 
+// Orphan block entry for handling out-of-order blocks
+struct OrphanBlock {
+    Block block;
+    uint64_t peer_id;  // Peer that sent this orphan
+    std::chrono::system_clock::time_point received_time;
+
+    OrphanBlock(const Block& blk, uint64_t pid)
+        : block(blk), peer_id(pid), received_time(std::chrono::system_clock::now()) {}
+};
+
 class P2PNode::Impl {
 public:
     uint32_t network_magic;
@@ -570,6 +580,13 @@ public:
     std::unordered_map<std::string, std::chrono::system_clock::time_point> banned_peers;
     std::mutex banned_peers_mutex;
 
+    // Orphan block pool
+    std::unordered_map<uint256, OrphanBlock, uint256_hash> orphan_blocks;  // hash -> orphan block
+    std::unordered_map<uint256, std::vector<uint256>, uint256_hash> orphans_by_parent;  // parent_hash -> [orphan_hashes]
+    mutable std::mutex orphans_mutex;  // mutable to allow locking in const methods
+    static constexpr size_t MAX_ORPHAN_BLOCKS = 100;  // Maximum orphan blocks to store
+    static constexpr std::chrono::minutes ORPHAN_TIMEOUT{10};  // Prune orphans older than 10 minutes
+
     Impl(uint32_t magic, uint16_t port)
         : network_magic(magic), listen_port(port), listen_socket(-1),
           running(false), next_peer_id(1) {}
@@ -579,6 +596,12 @@ public:
             close(listen_socket);
         }
     }
+
+    // Orphan block management
+    void AddOrphanBlock(const Block& block, uint64_t peer_id);
+    std::vector<Block> ProcessOrphans(const uint256& parent_hash, Blockchain* blockchain);
+    void PruneOrphans();
+    bool HasOrphan(const uint256& hash) const;
 };
 
 P2PNode::P2PNode(uint32_t network_magic, uint16_t listen_port)
@@ -920,6 +943,142 @@ void P2PNode::BroadcastTransaction(const uint256& tx_hash) {
     // Create and broadcast INV message
     NetworkMessage inv_msg(impl_->network_magic, "inv", inv_payload);
     BroadcastMessage(inv_msg);
+}
+
+// ============================================================================
+// Orphan Block Management
+// ============================================================================
+
+void P2PNode::Impl::AddOrphanBlock(const Block& block, uint64_t peer_id) {
+    std::lock_guard<std::mutex> lock(orphans_mutex);
+
+    uint256 block_hash = block.GetHash();
+    uint256 parent_hash = block.header.prev_block_hash;
+
+    // Don't add if we already have this orphan
+    if (orphan_blocks.find(block_hash) != orphan_blocks.end()) {
+        return;
+    }
+
+    // Prune old orphans before adding new one
+    PruneOrphans();
+
+    // Enforce maximum orphan pool size
+    if (orphan_blocks.size() >= MAX_ORPHAN_BLOCKS) {
+        // Remove oldest orphan
+        auto oldest_it = orphan_blocks.begin();
+        auto oldest_time = oldest_it->second.received_time;
+
+        for (auto it = orphan_blocks.begin(); it != orphan_blocks.end(); ++it) {
+            if (it->second.received_time < oldest_time) {
+                oldest_time = it->second.received_time;
+                oldest_it = it;
+            }
+        }
+
+        // Remove from parent index
+        uint256 oldest_parent = oldest_it->second.block.header.prev_block_hash;
+        auto& parent_orphans = orphans_by_parent[oldest_parent];
+        parent_orphans.erase(
+            std::remove(parent_orphans.begin(), parent_orphans.end(), oldest_it->first),
+            parent_orphans.end()
+        );
+        if (parent_orphans.empty()) {
+            orphans_by_parent.erase(oldest_parent);
+        }
+
+        orphan_blocks.erase(oldest_it);
+    }
+
+    // Add orphan block
+    orphan_blocks.emplace(block_hash, OrphanBlock(block, peer_id));
+
+    // Index by parent hash
+    orphans_by_parent[parent_hash].push_back(block_hash);
+
+    LogF(LogLevel::DEBUG, "Added orphan block %s (parent: %s) - pool size: %zu",
+         Uint256ToHex(block_hash).c_str(),
+         Uint256ToHex(parent_hash).c_str(),
+         orphan_blocks.size());
+}
+
+std::vector<Block> P2PNode::Impl::ProcessOrphans(const uint256& parent_hash, Blockchain* blockchain) {
+    std::lock_guard<std::mutex> lock(orphans_mutex);
+
+    std::vector<Block> processed_blocks;
+
+    // Check if we have orphans waiting for this parent
+    auto it = orphans_by_parent.find(parent_hash);
+    if (it == orphans_by_parent.end()) {
+        return processed_blocks;  // No orphans for this parent
+    }
+
+    // Process all orphans with this parent
+    std::vector<uint256> orphan_hashes = it->second;  // Copy the list
+    orphans_by_parent.erase(it);
+
+    for (const uint256& orphan_hash : orphan_hashes) {
+        auto orphan_it = orphan_blocks.find(orphan_hash);
+        if (orphan_it == orphan_blocks.end()) {
+            continue;  // Orphan was removed (shouldn't happen)
+        }
+
+        Block orphan_block = orphan_it->second.block;
+        orphan_blocks.erase(orphan_it);
+
+        processed_blocks.push_back(orphan_block);
+
+        LogF(LogLevel::INFO, "Processing orphan block %s (parent found: %s)",
+             Uint256ToHex(orphan_hash).c_str(),
+             Uint256ToHex(parent_hash).c_str());
+    }
+
+    return processed_blocks;
+}
+
+void P2PNode::Impl::PruneOrphans() {
+    // Note: Caller must hold orphans_mutex
+
+    auto now = std::chrono::system_clock::now();
+    std::vector<uint256> to_remove;
+
+    // Find orphans older than timeout
+    for (const auto& [hash, orphan] : orphan_blocks) {
+        auto age = std::chrono::duration_cast<std::chrono::minutes>(
+            now - orphan.received_time);
+
+        if (age >= ORPHAN_TIMEOUT) {
+            to_remove.push_back(hash);
+        }
+    }
+
+    // Remove expired orphans
+    for (const uint256& hash : to_remove) {
+        auto orphan_it = orphan_blocks.find(hash);
+        if (orphan_it != orphan_blocks.end()) {
+            uint256 parent_hash = orphan_it->second.block.header.prev_block_hash;
+
+            // Remove from parent index
+            auto& parent_orphans = orphans_by_parent[parent_hash];
+            parent_orphans.erase(
+                std::remove(parent_orphans.begin(), parent_orphans.end(), hash),
+                parent_orphans.end()
+            );
+            if (parent_orphans.empty()) {
+                orphans_by_parent.erase(parent_hash);
+            }
+
+            orphan_blocks.erase(orphan_it);
+
+            LogF(LogLevel::DEBUG, "Pruned expired orphan block %s",
+                 Uint256ToHex(hash).c_str());
+        }
+    }
+}
+
+bool P2PNode::Impl::HasOrphan(const uint256& hash) const {
+    std::lock_guard<std::mutex> lock(orphans_mutex);
+    return orphan_blocks.find(hash) != orphan_blocks.end();
 }
 
 // ============================================================================
@@ -1391,7 +1550,8 @@ Result<void> MessageHandler::HandleGetData(Peer& peer,
 
 Result<void> MessageHandler::HandleBlock(Peer& peer,
                                         const std::vector<uint8_t>& payload,
-                                        Blockchain* blockchain) {
+                                        Blockchain* blockchain,
+                                        P2PNode::Impl* p2p_impl) {
     // BLOCK message format:
     // - block (Block): full block data
 
@@ -1443,10 +1603,39 @@ Result<void> MessageHandler::HandleBlock(Peer& peer,
 
         // 4. Verify block connects to the chain (check prev_block_hash exists)
         if (!block.IsGenesis() && !blockchain->HasBlock(block.header.prev_block_hash)) {
-            // Parent block is missing
-            // TODO: Implement orphan pool to handle out-of-order blocks
-            // For now, we just reject blocks with missing parents
-            return Result<void>::Error("Parent block not found - orphan block handling not yet implemented");
+            // Parent block is missing - add to orphan pool if available
+            if (p2p_impl) {
+                p2p_impl->AddOrphanBlock(block, peer.id);
+
+                // Request the missing parent block from this peer
+                InvVector parent_inv;
+                parent_inv.type = InvType::BLOCK;
+                parent_inv.hash = block.header.prev_block_hash;
+
+                std::vector<uint8_t> getdata_payload;
+                getdata_payload.push_back(1);  // Count: 1 item
+
+                auto serialized_inv = parent_inv.Serialize();
+                getdata_payload.insert(getdata_payload.end(),
+                                     serialized_inv.begin(), serialized_inv.end());
+
+                NetworkMessage getdata(network::MAINNET_MAGIC, "getdata", getdata_payload);
+                auto send_result = peer.SendMessage(getdata);
+                if (send_result.IsError()) {
+                    LogF(LogLevel::WARNING, "Failed to request parent block %s: %s",
+                         Uint256ToHex(block.header.prev_block_hash).c_str(),
+                         send_result.error.c_str());
+                }
+
+                LogF(LogLevel::INFO, "Block %s is orphan, added to pool and requested parent %s",
+                     Uint256ToHex(block_hash).c_str(),
+                     Uint256ToHex(block.header.prev_block_hash).c_str());
+
+                return Result<void>::Ok();  // Successfully handled as orphan
+            } else {
+                // No orphan pool available, reject the block
+                return Result<void>::Error("Parent block not found - orphan pool not available");
+            }
         }
 
         // 5. Validate all transactions in the block
@@ -1471,6 +1660,69 @@ Result<void> MessageHandler::HandleBlock(Peer& peer,
         }
 
         // Successfully added block
+        LogF(LogLevel::INFO, "Successfully added block %s",
+             Uint256ToHex(block_hash).c_str());
+
+        // Process any orphan blocks that were waiting for this block as their parent
+        if (p2p_impl) {
+            std::vector<Block> orphans_to_process = p2p_impl->ProcessOrphans(block_hash, blockchain);
+
+            // Recursively try to add orphan blocks
+            for (const Block& orphan_block : orphans_to_process) {
+                uint256 orphan_hash = orphan_block.GetHash();
+
+                LogF(LogLevel::INFO, "Processing orphan block %s (parent was %s)",
+                     Uint256ToHex(orphan_hash).c_str(),
+                     Uint256ToHex(block_hash).c_str());
+
+                // Recursively handle the orphan block
+                // Note: We don't pass peer here since orphan came from a different peer
+                // For simplicity, we'll validate and add it directly
+                auto orphan_validate_result = blockchain->ValidateBlock(orphan_block);
+                if (orphan_validate_result.IsError()) {
+                    LogF(LogLevel::WARNING, "Orphan block %s failed validation: %s",
+                         Uint256ToHex(orphan_hash).c_str(),
+                         orphan_validate_result.error.c_str());
+                    continue;
+                }
+
+                // Validate transactions
+                auto orphan_tx_result = orphan_block.VerifyTransactions(*blockchain);
+                if (orphan_tx_result.IsError()) {
+                    LogF(LogLevel::WARNING, "Orphan block %s transaction validation failed: %s",
+                         Uint256ToHex(orphan_hash).c_str(),
+                         orphan_tx_result.error.c_str());
+                    continue;
+                }
+
+                // Check merkle root
+                uint256 orphan_merkle = orphan_block.CalculateMerkleRoot();
+                if (orphan_merkle != orphan_block.header.merkle_root) {
+                    LogF(LogLevel::WARNING, "Orphan block %s has invalid merkle root",
+                         Uint256ToHex(orphan_hash).c_str());
+                    continue;
+                }
+
+                // Add to blockchain
+                auto orphan_add_result = blockchain->AddBlock(orphan_block);
+                if (orphan_add_result.IsError()) {
+                    LogF(LogLevel::WARNING, "Failed to add orphan block %s: %s",
+                         Uint256ToHex(orphan_hash).c_str(),
+                         orphan_add_result.error.c_str());
+                    continue;
+                }
+
+                LogF(LogLevel::INFO, "Successfully added orphan block %s",
+                     Uint256ToHex(orphan_hash).c_str());
+
+                // Recursively process orphans of this orphan
+                std::vector<Block> nested_orphans = p2p_impl->ProcessOrphans(orphan_hash, blockchain);
+                orphans_to_process.insert(orphans_to_process.end(),
+                                        nested_orphans.begin(),
+                                        nested_orphans.end());
+            }
+        }
+
         // TODO: In a full implementation, we would:
         // 1. Relay block to other peers
         // 2. Remove transactions from mempool

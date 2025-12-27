@@ -413,6 +413,7 @@ public:
 private:
     class Impl;
     std::unique_ptr<Impl> impl_;
+    friend class MessageHandler;  // Allow MessageHandler to access Impl
 };
 
 // ============================================================================
@@ -444,7 +445,8 @@ public:
     /// Handle BLOCK message
     static Result<void> HandleBlock(Peer& peer,
                                    const std::vector<uint8_t>& payload,
-                                   class Blockchain* blockchain);
+                                   class Blockchain* blockchain,
+                                   class P2PNode::Impl* p2p_impl = nullptr);
 
     /// Handle TX message
     static Result<void> HandleTx(Peer& peer,
