@@ -89,7 +89,9 @@ public:
     Result<void> VerifyTransactions(const class Blockchain& chain) const;
 
     /// Get total transaction fees
-    uint64_t GetTotalFees() const;
+    /// @param chain Blockchain reference to access UTXO set for fee calculation
+    /// @return Total fees in INTS (sum of all non-coinbase transaction fees)
+    uint64_t GetTotalFees(const class Blockchain& chain) const;
 
     /// Get coinbase transaction
     const Transaction& GetCoinbase() const;

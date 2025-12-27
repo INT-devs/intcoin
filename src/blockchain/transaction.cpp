@@ -6,6 +6,7 @@
 #include "intcoin/transaction.h"
 #include "intcoin/crypto.h"
 #include "intcoin/util.h"
+#include "intcoin/storage.h"
 #include <algorithm>
 
 namespace intcoin {
@@ -316,6 +317,46 @@ uint64_t Transaction::GetTotalOutputValue() const {
         total += output.value;
     }
     return total;
+}
+
+uint64_t Transaction::GetTotalInputValue(const UTXOSet& utxo_set) const {
+    // Coinbase transactions have no real inputs
+    if (IsCoinbase()) {
+        return 0;
+    }
+
+    uint64_t total = 0;
+    for (const auto& input : inputs) {
+        OutPoint outpoint;
+        outpoint.tx_hash = input.prev_tx_hash;
+        outpoint.index = input.prev_tx_index;
+
+        auto utxo_opt = utxo_set.GetUTXO(outpoint);
+        if (utxo_opt.has_value()) {
+            total += utxo_opt->value;
+        }
+        // Note: If UTXO not found, we skip it (validation should catch this)
+    }
+
+    return total;
+}
+
+uint64_t Transaction::GetFee(const UTXOSet& utxo_set) const {
+    // Coinbase transactions have no fee
+    if (IsCoinbase()) {
+        return 0;
+    }
+
+    uint64_t input_value = GetTotalInputValue(utxo_set);
+    uint64_t output_value = GetTotalOutputValue();
+
+    // Fee = inputs - outputs
+    if (input_value >= output_value) {
+        return input_value - output_value;
+    }
+
+    // If outputs exceed inputs, something is wrong (return 0)
+    return 0;
 }
 
 std::vector<uint8_t> Transaction::Serialize() const {

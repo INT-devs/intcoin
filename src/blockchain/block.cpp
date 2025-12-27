@@ -158,9 +158,19 @@ Result<void> Block::VerifyTransactions(const Blockchain& chain) const {
     return Result<void>::Ok();
 }
 
-uint64_t Block::GetTotalFees() const {
+uint64_t Block::GetTotalFees(const Blockchain& chain) const {
     uint64_t total_fees = 0;
-    // TODO: Calculate total fees (requires UTXO set)
+
+    // Get UTXO set from blockchain
+    const UTXOSet& utxo_set = chain.GetUTXOSet();
+
+    // Sum fees from all non-coinbase transactions
+    for (const auto& tx : transactions) {
+        if (!tx.IsCoinbase()) {
+            total_fees += tx.GetFee(utxo_set);
+        }
+    }
+
     return total_fees;
 }
 

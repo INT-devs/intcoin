@@ -800,10 +800,18 @@ JSONValue BlockchainRPC::getrawmempool(const JSONValue& params, Blockchain& bloc
         // Return detailed info for each transaction
         std::map<std::string, JSONValue> details;
         auto txs = mempool.GetAllTransactions();
+
+        // Get UTXO set for fee calculation
+        const UTXOSet& utxo_set = blockchain.GetUTXOSet();
+
         for (const auto& tx : txs) {
             std::map<std::string, JSONValue> tx_info;
             tx_info["size"] = JSONValue(static_cast<int64_t>(tx.GetSerializedSize()));
-            tx_info["fee"] = JSONValue(static_cast<int64_t>(0));  // TODO: Calculate actual fee
+
+            // Calculate actual fee from UTXO set
+            uint64_t fee = tx.GetFee(utxo_set);
+            tx_info["fee"] = JSONValue(static_cast<int64_t>(fee));
+
             tx_info["time"] = JSONValue(static_cast<int64_t>(std::time(nullptr)));
             tx_info["height"] = JSONValue(static_cast<int64_t>(blockchain.GetBestHeight()));
 
