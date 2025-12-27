@@ -8,6 +8,7 @@
 #include "intcoin/storage.h"
 #include <map>
 #include <vector>
+#include <algorithm>
 
 namespace intcoin {
 namespace pool {
@@ -189,8 +190,89 @@ public:
     };
 
     std::vector<WorkerStats> GetTopMiners(int limit) {
-        // TODO: Implement aggregated worker stats
-        return {};
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        // Aggregate statistics for each unique payout address
+        std::map<std::string, WorkerStats> stats_map;
+
+        auto now = std::chrono::system_clock::now();
+        auto cutoff_24h = now - std::chrono::hours(24);
+
+        // Aggregate shares from last 24h by worker
+        std::map<uint64_t, uint64_t> worker_shares_24h;
+        std::map<uint64_t, std::vector<std::chrono::system_clock::time_point>> worker_share_times;
+
+        for (const auto& share : shares_) {
+            if (share.timestamp >= cutoff_24h && share.valid) {
+                worker_shares_24h[share.worker_id]++;
+                worker_share_times[share.worker_id].push_back(share.timestamp);
+            }
+        }
+
+        // Process each worker
+        for (const auto& [worker_id, worker] : workers_) {
+            // Find corresponding miner to get payout address
+            // For now, use worker_name as identifier (in real implementation,
+            // would look up miner_id and use actual payout address)
+            std::string address = worker.worker_name; // Simplified for stub
+
+            if (stats_map.find(address) == stats_map.end()) {
+                stats_map[address] = WorkerStats{};
+                stats_map[address].address = address;
+                stats_map[address].hashrate = 0;
+                stats_map[address].shares_24h = 0;
+                stats_map[address].balance = 0;
+                stats_map[address].total_paid = 0;
+            }
+
+            WorkerStats& stats = stats_map[address];
+
+            // Add shares from this worker
+            stats.shares_24h += worker_shares_24h[worker_id];
+
+            // Calculate hashrate from recent shares
+            // Hashrate = (shares * difficulty * 2^32) / time_period
+            const auto& share_times = worker_share_times[worker_id];
+            if (share_times.size() >= 2) {
+                auto time_span = std::chrono::duration_cast<std::chrono::seconds>(
+                    share_times.back() - share_times.front()).count();
+
+                if (time_span > 0) {
+                    // Estimate: each share at difficulty 1 = ~4.3 billion hashes
+                    // For now, use simplified calculation
+                    double estimated_hashrate = (double)share_times.size() *
+                                               worker.current_difficulty *
+                                               4294967296.0 / time_span;
+                    stats.hashrate += static_cast<uint64_t>(estimated_hashrate);
+                }
+            }
+        }
+
+        // Calculate balances and payments by address
+        for (const auto& payment : payments_) {
+            if (stats_map.find(payment.address) != stats_map.end()) {
+                stats_map[payment.address].total_paid += payment.amount;
+            }
+        }
+
+        // Convert map to vector
+        std::vector<WorkerStats> result;
+        for (const auto& [addr, stats] : stats_map) {
+            result.push_back(stats);
+        }
+
+        // Sort by hashrate (descending)
+        std::sort(result.begin(), result.end(),
+                  [](const WorkerStats& a, const WorkerStats& b) {
+                      return a.hashrate > b.hashrate;
+                  });
+
+        // Limit results
+        if (result.size() > static_cast<size_t>(limit)) {
+            result.resize(limit);
+        }
+
+        return result;
     }
 
 private:

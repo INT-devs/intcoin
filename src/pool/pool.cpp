@@ -1211,10 +1211,19 @@ void MiningPoolServer::AdjustWorkerDifficulty(uint64_t worker_id) {
     auto it = impl_->workers_.find(worker_id);
     if (it == impl_->workers_.end()) return;
 
+    uint64_t old_diff = it->second.current_difficulty;
     uint64_t new_diff = impl_->vardiff_.CalculateDifficulty(it->second);
-    it->second.current_difficulty = new_diff;
 
-    // TODO: Send difficulty update via Stratum
+    // Only update if difficulty changed
+    if (new_diff != old_diff) {
+        it->second.current_difficulty = new_diff;
+
+        // Send difficulty update via Stratum
+        SendSetDifficulty(worker_id, new_diff);
+
+        LogF(LogLevel::DEBUG, "Adjusted worker %llu difficulty: %llu -> %llu",
+             worker_id, old_diff, new_diff);
+    }
 }
 
 void MiningPoolServer::SetWorkerDifficulty(uint64_t worker_id, uint64_t difficulty) {
@@ -1227,12 +1236,30 @@ void MiningPoolServer::SetWorkerDifficulty(uint64_t worker_id, uint64_t difficul
 
 void MiningPoolServer::AdjustAllDifficulties() {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    size_t adjusted_count = 0;
+
     for (auto& [worker_id, worker] : impl_->workers_) {
         if (impl_->vardiff_.ShouldAdjust(worker)) {
+            uint64_t old_diff = worker.current_difficulty;
             uint64_t new_diff = impl_->vardiff_.CalculateDifficulty(worker);
-            worker.current_difficulty = new_diff;
-            // TODO: Send difficulty update via Stratum
+
+            if (new_diff != old_diff) {
+                worker.current_difficulty = new_diff;
+
+                // Send difficulty update via Stratum
+                SendSetDifficulty(worker_id, new_diff);
+
+                LogF(LogLevel::DEBUG, "Adjusted worker %llu difficulty: %llu -> %llu",
+                     worker_id, old_diff, new_diff);
+
+                adjusted_count++;
+            }
         }
+    }
+
+    if (adjusted_count > 0) {
+        LogF(LogLevel::INFO, "Adjusted difficulty for %zu workers", adjusted_count);
     }
 }
 

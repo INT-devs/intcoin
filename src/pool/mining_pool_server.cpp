@@ -623,8 +623,20 @@ Result<void> MiningPoolServer::UpdateWork() {
 }
 
 void MiningPoolServer::BroadcastWork(const Work& work) {
-    // TODO: Implement Stratum broadcast
-    // This would send mining.notify to all connected workers
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+
+    // Send mining.notify to all active workers
+    for (const auto& [worker_id, worker] : impl_->workers_) {
+        if (worker.is_active) {
+            // Send notify message via Stratum
+            // Note: In full implementation, this would use the worker's connection ID
+            // For now, we use worker_id as connection ID
+            SendNotify(worker_id, work);
+        }
+    }
+
+    LogF(LogLevel::DEBUG, "Broadcast new work (job_id: %s) to %zu active workers",
+         ToHex(work.job_id).c_str(), impl_->workers_.size());
 }
 
 // ============================================================================
@@ -650,11 +662,19 @@ void MiningPoolServer::AdjustWorkerDifficulty(uint64_t worker_id) {
         return;
     }
 
+    uint64_t old_diff = it->second.current_difficulty;
     uint64_t new_diff = impl_->vardiff_manager_.CalculateDifficulty(it->second);
-    it->second.current_difficulty = new_diff;
 
-    // TODO: Send difficulty update via Stratum
-    // SendSetDifficulty(worker_id, new_diff);
+    // Only update if difficulty changed significantly
+    if (new_diff != old_diff) {
+        it->second.current_difficulty = new_diff;
+
+        // Send difficulty update via Stratum
+        SendSetDifficulty(worker_id, new_diff);
+
+        LogF(LogLevel::DEBUG, "Adjusted worker %llu difficulty: %llu -> %llu",
+             worker_id, old_diff, new_diff);
+    }
 }
 
 void MiningPoolServer::SetWorkerDifficulty(uint64_t worker_id, uint64_t difficulty) {
@@ -669,11 +689,29 @@ void MiningPoolServer::SetWorkerDifficulty(uint64_t worker_id, uint64_t difficul
 void MiningPoolServer::AdjustAllDifficulties() {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
 
+    size_t adjusted_count = 0;
+
     for (auto& [worker_id, worker] : impl_->workers_) {
         if (impl_->vardiff_manager_.ShouldAdjust(worker)) {
+            uint64_t old_diff = worker.current_difficulty;
             uint64_t new_diff = impl_->vardiff_manager_.CalculateDifficulty(worker);
-            worker.current_difficulty = new_diff;
+
+            if (new_diff != old_diff) {
+                worker.current_difficulty = new_diff;
+
+                // Send difficulty update via Stratum
+                SendSetDifficulty(worker_id, new_diff);
+
+                LogF(LogLevel::DEBUG, "Adjusted worker %llu difficulty: %llu -> %llu",
+                     worker_id, old_diff, new_diff);
+
+                adjusted_count++;
+            }
         }
+    }
+
+    if (adjusted_count > 0) {
+        LogF(LogLevel::INFO, "Adjusted difficulty for %zu workers", adjusted_count);
     }
 }
 
@@ -685,10 +723,148 @@ PoolStatistics MiningPoolServer::GetStatistics() const {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
 
     PoolStatistics stats{};
-    // TODO: Populate statistics
+
+    // Network statistics
+    stats.network_height = impl_->blockchain_->GetBestHeight();
+    double network_difficulty_double = impl_->blockchain_->GetDifficulty();
+    stats.network_difficulty = static_cast<uint64_t>(network_difficulty_double);
+
+    // Estimate network hashrate from difficulty
+    // Network hashrate ≈ difficulty * 2^32 / block_time
+    const uint64_t target_block_time = 120; // 2 minutes in seconds
+    stats.network_hashrate = static_cast<uint64_t>(
+        network_difficulty_double * 4294967296.0 / target_block_time);
+
+    // Pool statistics
     stats.active_miners = GetActiveMiners().size();
+
+    // Count active workers
+    stats.active_workers = 0;
+    for (const auto& [worker_id, worker] : impl_->workers_) {
+        if (worker.is_active) {
+            stats.active_workers++;
+        }
+    }
+
+    stats.total_connections = impl_->workers_.size();
+    stats.pool_hashrate = CalculatePoolHashrate();
+
+    // Calculate pool hashrate as percentage of network
+    if (stats.network_hashrate > 0) {
+        stats.pool_hashrate_percentage = (stats.pool_hashrate / stats.network_hashrate) * 100.0;
+    } else {
+        stats.pool_hashrate_percentage = 0.0;
+    }
+
+    // Share statistics
+    auto now = std::chrono::system_clock::now();
+    auto cutoff_1h = now - std::chrono::hours(1);
+    auto cutoff_24h = now - std::chrono::hours(24);
+
+    stats.shares_this_round = impl_->current_round_.shares_submitted;
+    stats.shares_last_hour = 0;
+    stats.shares_last_day = 0;
+
+    for (const auto& share : impl_->recent_shares_) {
+        if (share.valid) {
+            if (share.timestamp >= cutoff_1h) {
+                stats.shares_last_hour++;
+            }
+            if (share.timestamp >= cutoff_24h) {
+                stats.shares_last_day++;
+            }
+        }
+    }
+
     stats.total_shares = impl_->total_shares_submitted_;
+
+    // Block statistics
     stats.blocks_found = impl_->total_blocks_found_;
+    stats.blocks_pending = 0;
+    stats.blocks_confirmed = 0;
+    stats.blocks_orphaned = 0;
+    stats.last_block_found = std::chrono::system_clock::time_point{};
+
+    // Count block statuses from round history
+    std::chrono::system_clock::time_point latest_block_time;
+    uint64_t total_block_time_seconds = 0;
+    size_t block_count = 0;
+
+    for (const auto& round : impl_->round_history_) {
+        if (round.is_complete && round.block_height > 0) {
+            block_count++;
+
+            // Track latest block
+            if (round.ended_at > latest_block_time) {
+                latest_block_time = round.ended_at;
+            }
+
+            // Calculate block time
+            auto round_duration = std::chrono::duration_cast<std::chrono::seconds>(
+                round.ended_at - round.started_at).count();
+            total_block_time_seconds += round_duration;
+
+            // For now, assume all blocks are confirmed (in full implementation,
+            // would check blockchain confirmation status)
+            stats.blocks_confirmed++;
+        }
+    }
+
+    stats.last_block_found = latest_block_time;
+
+    // Calculate average block time
+    if (block_count > 0) {
+        stats.average_block_time = (double)total_block_time_seconds / block_count;
+    } else {
+        stats.average_block_time = 0.0;
+    }
+
+    // Earnings statistics
+    stats.total_paid = impl_->total_paid_;
+    stats.pool_revenue = impl_->pool_revenue_;
+
+    // Calculate total unpaid balance
+    stats.total_unpaid = 0;
+    for (const auto& [miner_id, miner] : impl_->miners_) {
+        stats.total_unpaid += miner.unpaid_balance;
+    }
+
+    // Performance statistics
+    auto uptime = std::chrono::duration_cast<std::chrono::hours>(
+        now - impl_->server_start_time_).count();
+    stats.uptime_hours = static_cast<double>(uptime);
+
+    // Efficiency: valid shares / total shares
+    if (impl_->total_shares_submitted_ > 0) {
+        uint64_t valid_shares = 0;
+        for (const auto& share : impl_->recent_shares_) {
+            if (share.valid) {
+                valid_shares++;
+            }
+        }
+        // Use recent shares as sample (more accurate than total)
+        if (impl_->recent_shares_.size() > 0) {
+            stats.efficiency = ((double)valid_shares / impl_->recent_shares_.size()) * 100.0;
+        } else {
+            stats.efficiency = 100.0; // Assume 100% if no recent data
+        }
+    } else {
+        stats.efficiency = 0.0;
+    }
+
+    // Luck: actual blocks found / expected blocks
+    // Expected blocks = pool_hashrate / network_hashrate * time_elapsed / block_time
+    if (stats.network_hashrate > 0 && stats.pool_hashrate > 0 && uptime > 0) {
+        double expected_blocks = (stats.pool_hashrate / stats.network_hashrate) *
+                                (uptime * 3600.0 / 120.0); // 120s block time
+        if (expected_blocks > 0) {
+            stats.luck = ((double)stats.blocks_found / expected_blocks) * 100.0;
+        } else {
+            stats.luck = 100.0;
+        }
+    } else {
+        stats.luck = 100.0; // Default to 100% if insufficient data
+    }
 
     return stats;
 }

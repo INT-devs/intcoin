@@ -374,9 +374,53 @@ private:
             block["timestamp"] = rpc::JSONValue(static_cast<int64_t>(
                 std::chrono::duration_cast<std::chrono::milliseconds>(
                     round.ended_at.time_since_epoch()).count()));
-            block["finder"] = rpc::JSONValue("pool");  // TODO: Get actual finder
+
+            // Find block finder (miner with most shares in this round)
+            std::string finder_address = "pool";
+            if (!round.miner_shares.empty()) {
+                uint64_t max_shares = 0;
+                uint64_t finder_miner_id = 0;
+
+                for (const auto& [miner_id, share_count] : round.miner_shares) {
+                    if (share_count > max_shares) {
+                        max_shares = share_count;
+                        finder_miner_id = miner_id;
+                    }
+                }
+
+                // Get finder's payout address
+                if (finder_miner_id > 0) {
+                    auto miner_opt = pool_.GetMiner(finder_miner_id);
+                    if (miner_opt.has_value()) {
+                        finder_address = miner_opt->payout_address;
+                    }
+                }
+            }
+            block["finder"] = rpc::JSONValue(finder_address);
             block["reward"] = rpc::JSONValue(static_cast<int64_t>(round.block_reward));
-            block["status"] = rpc::JSONValue("confirmed");  // TODO: Check actual status
+
+            // Check block status from blockchain
+            // Get current network height from pool statistics
+            std::string status = "pending";
+            auto pool_stats = pool_.GetStatistics();
+            uint64_t current_height = pool_stats.network_height;
+
+            if (round.block_height <= current_height) {
+                uint64_t confirmations = current_height - round.block_height + 1;
+
+                if (confirmations >= 100) {
+                    status = "confirmed";
+                } else if (confirmations >= 1) {
+                    status = "confirming";
+                } else {
+                    status = "pending";
+                }
+
+                // Note: To properly detect orphaned blocks, would need direct blockchain access
+                // For now, assume blocks with sufficient confirmations are valid
+                // In full implementation, would check if block hash at this height matches
+            }
+            block["status"] = rpc::JSONValue(status);
 
             blocks.push_back(rpc::JSONValue(block));
         }
