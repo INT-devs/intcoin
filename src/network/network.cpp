@@ -789,6 +789,18 @@ void P2PNode::BroadcastMessage(const NetworkMessage& msg) {
     }
 }
 
+void P2PNode::BroadcastMessage(const NetworkMessage& msg, uint64_t skip_peer_id) {
+    std::lock_guard<std::mutex> lock(impl_->peers_mutex);
+
+    for (auto& peer : impl_->peers) {
+        // Skip the peer that sent us this message (prevent relay loop)
+        if (peer->id == skip_peer_id) {
+            continue;
+        }
+        peer->SendMessage(msg);  // Ignore errors
+    }
+}
+
 Result<void> P2PNode::SendToPeer(uint64_t peer_id, const NetworkMessage& msg) {
     std::lock_guard<std::mutex> lock(impl_->peers_mutex);
 
@@ -943,6 +955,23 @@ void P2PNode::BroadcastTransaction(const uint256& tx_hash) {
     // Create and broadcast INV message
     NetworkMessage inv_msg(impl_->network_magic, "inv", inv_payload);
     BroadcastMessage(inv_msg);
+}
+
+void P2PNode::BroadcastTransaction(const uint256& tx_hash, uint64_t skip_peer_id) {
+    // Create INV message for the new transaction
+    InvVector inv;
+    inv.type = InvType::TX;
+    inv.hash = tx_hash;
+
+    // Serialize INV vector
+    std::vector<uint8_t> inv_payload;
+    inv_payload.push_back(1); // count = 1
+    auto serialized = inv.Serialize();
+    inv_payload.insert(inv_payload.end(), serialized.begin(), serialized.end());
+
+    // Create and broadcast INV message (skip sender to prevent relay loop)
+    NetworkMessage inv_msg(impl_->network_magic, "inv", inv_payload);
+    BroadcastMessage(inv_msg, skip_peer_id);
 }
 
 // ============================================================================
@@ -1733,7 +1762,8 @@ Result<void> MessageHandler::HandleBlock(Peer& peer,
 
 Result<void> MessageHandler::HandleTx(Peer& peer,
                                      const std::vector<uint8_t>& payload,
-                                     Blockchain* blockchain) {
+                                     Blockchain* blockchain,
+                                     P2PNode* p2pnode) {
     // TX message format:
     // - transaction (Transaction): full transaction data
 
@@ -1794,7 +1824,17 @@ Result<void> MessageHandler::HandleTx(Peer& peer,
         }
 
         // Successfully added transaction to mempool
-        // TODO: Relay transaction to other peers
+        LogF(LogLevel::INFO, "Added transaction %s to mempool",
+             Uint256ToHex(tx_hash).c_str());
+
+        // Relay transaction to other peers (skip sender to prevent relay loop)
+        if (p2pnode) {
+            p2pnode->BroadcastTransaction(tx_hash, peer.id);
+            LogF(LogLevel::DEBUG, "Broadcasted transaction %s to %zu peers (excluding sender %llu)",
+                 Uint256ToHex(tx_hash).c_str(),
+                 p2pnode->GetPeerCount() - 1,
+                 peer.id);
+        }
     }
 
     return Result<void>::Ok();

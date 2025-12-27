@@ -324,6 +324,11 @@ public:
     /// Broadcast message to all peers
     void BroadcastMessage(const NetworkMessage& msg);
 
+    /// Broadcast message to all peers except one (prevents relay loops)
+    /// @param msg Message to broadcast
+    /// @param skip_peer_id Peer ID to skip
+    void BroadcastMessage(const NetworkMessage& msg, uint64_t skip_peer_id);
+
     /// Send message to specific peer
     Result<void> SendToPeer(uint64_t peer_id, const NetworkMessage& msg);
 
@@ -350,6 +355,11 @@ public:
 
     /// Broadcast new transaction to all peers (sends INV message)
     void BroadcastTransaction(const uint256& tx_hash);
+
+    /// Broadcast new transaction to all peers except one (sends INV message)
+    /// @param tx_hash Transaction hash to broadcast
+    /// @param skip_peer_id Peer ID to skip (prevents relay loops)
+    void BroadcastTransaction(const uint256& tx_hash, uint64_t skip_peer_id);
 
     // ------------------------------------------------------------------------
     // Network Security
@@ -451,7 +461,8 @@ public:
     /// Handle TX message
     static Result<void> HandleTx(Peer& peer,
                                 const std::vector<uint8_t>& payload,
-                                class Blockchain* blockchain);
+                                class Blockchain* blockchain,
+                                class P2PNode* p2pnode = nullptr);
 
     /// Handle GETHEADERS message
     static Result<void> HandleGetHeaders(Peer& peer,
