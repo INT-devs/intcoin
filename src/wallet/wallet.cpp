@@ -14,6 +14,9 @@
 #include <cstring>
 #include <fstream>
 #include <chrono>
+#include <thread>
+#include <atomic>
+#include <mutex>
 #include <set>
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
@@ -1675,7 +1678,72 @@ public:
     // UTXO set
     std::map<OutPoint, TxOut> utxos;
 
+    // Auto-lock functionality
+    std::atomic<uint32_t> lock_timeout_seconds{0};  // 0 = no auto-lock
+    std::atomic<std::time_t> last_unlock_time{0};   // Time when wallet was last unlocked
+    std::atomic<bool> auto_lock_running{false};     // Auto-lock thread running flag
+    std::thread auto_lock_thread;                   // Background thread for auto-locking
+    mutable std::mutex wallet_mutex;                // Mutex for thread safety
+
     explicit Impl(const WalletConfig& cfg) : config(cfg) {}
+
+    ~Impl() {
+        // Stop auto-lock thread
+        StopAutoLock();
+    }
+
+    // Start auto-lock monitoring thread
+    void StartAutoLock(uint32_t timeout_seconds) {
+        if (timeout_seconds == 0) {
+            return;  // No auto-lock
+        }
+
+        // Stop existing thread if running
+        StopAutoLock();
+
+        lock_timeout_seconds = timeout_seconds;
+        last_unlock_time = std::time(nullptr);
+        auto_lock_running = true;
+
+        // Start background thread
+        auto_lock_thread = std::thread([this]() {
+            while (auto_lock_running) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+
+                // Check if wallet should be locked
+                if (!is_locked && lock_timeout_seconds > 0) {
+                    std::time_t now = std::time(nullptr);
+                    std::time_t elapsed = now - last_unlock_time.load();
+
+                    if (elapsed >= static_cast<std::time_t>(lock_timeout_seconds.load())) {
+                        // Auto-lock the wallet
+                        std::lock_guard<std::mutex> lock(wallet_mutex);
+                        is_locked = true;
+
+                        // Clear sensitive data from memory
+                        OPENSSL_cleanse(master_key.chain_code.data(), master_key.chain_code.size());
+                        if (master_key.private_key.has_value()) {
+                            OPENSSL_cleanse(master_key.private_key->data(), master_key.private_key->size());
+                            master_key.private_key.reset();
+                        }
+
+                        LogF(LogLevel::INFO, "Wallet auto-locked after %u seconds of inactivity",
+                             lock_timeout_seconds.load());
+                    }
+                }
+            }
+        });
+    }
+
+    // Stop auto-lock monitoring thread
+    void StopAutoLock() {
+        auto_lock_running = false;
+        if (auto_lock_thread.joinable()) {
+            auto_lock_thread.join();
+        }
+        lock_timeout_seconds = 0;
+        last_unlock_time = 0;
+    }
 
     // Derive address at index
     Result<WalletAddress> DeriveAddress(uint32_t account, bool is_change, uint32_t index) {
@@ -1853,6 +1921,9 @@ Result<void> Wallet::Close() {
     if (!impl_->is_loaded) {
         return Result<void>::Error("Wallet not loaded");
     }
+
+    // Stop auto-lock thread before closing
+    impl_->StopAutoLock();
 
     if (impl_->db && impl_->db->IsOpen()) {
         auto close_result = impl_->db->Close();
@@ -2079,8 +2150,16 @@ Result<void> Wallet::Unlock(const std::string& passphrase, uint32_t timeout_seco
 
     impl_->is_locked = false;
 
-    // TODO: Handle timeout_seconds for auto-locking (future enhancement)
-    (void)timeout_seconds;
+    // Start auto-lock timer if timeout is specified
+    if (timeout_seconds > 0) {
+        impl_->StartAutoLock(timeout_seconds);
+        LogF(LogLevel::INFO, "Wallet unlocked with auto-lock timeout of %u seconds",
+             timeout_seconds);
+    } else {
+        // Stop any existing auto-lock timer
+        impl_->StopAutoLock();
+        LogF(LogLevel::INFO, "Wallet unlocked (no auto-lock)");
+    }
 
     return Result<void>::Ok();
 }
@@ -2094,7 +2173,21 @@ Result<void> Wallet::Lock() {
         return Result<void>::Error("Wallet not encrypted");
     }
 
+    // Stop auto-lock timer
+    impl_->StopAutoLock();
+
+    // Lock the wallet
+    std::lock_guard<std::mutex> lock(impl_->wallet_mutex);
     impl_->is_locked = true;
+
+    // Clear sensitive data from memory
+    OPENSSL_cleanse(impl_->master_key.chain_code.data(), impl_->master_key.chain_code.size());
+    if (impl_->master_key.private_key.has_value()) {
+        OPENSSL_cleanse(impl_->master_key.private_key->data(), impl_->master_key.private_key->size());
+        impl_->master_key.private_key.reset();
+    }
+
+    LogF(LogLevel::INFO, "Wallet locked");
     return Result<void>::Ok();
 }
 
