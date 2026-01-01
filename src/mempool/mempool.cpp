@@ -166,7 +166,9 @@ Result<void> INTcoinMempool::AddTransaction(const Transaction& tx, TxPriority pr
 
     // Calculate tx size and fee
     uint64_t tx_size = CalculateTxSize(tx);
-    uint64_t fee = 0;  // Would calculate from tx inputs/outputs
+    // Placeholder fee calculation: use minimum relay fee * size
+    // In production, would calculate from (sum of inputs - sum of outputs) using UTXO set
+    uint64_t fee = (impl_->config.min_relay_fee_per_kb * tx_size) / 1000;
     uint64_t fee_per_byte = fee / std::max<uint64_t>(tx_size, 1);
 
     // Determine final priority (may upgrade based on fee)
@@ -221,9 +223,8 @@ Result<void> INTcoinMempool::AddTransaction(const Transaction& tx, TxPriority pr
     return Result<void>::Ok();
 }
 
-Result<void> INTcoinMempool::RemoveTransaction(const uint256& tx_hash) {
-    std::lock_guard<std::mutex> lock(impl_->mutex);
-
+Result<void> INTcoinMempool::RemoveTransactionInternal(const uint256& tx_hash) {
+    // Note: Caller must hold mutex lock
     if (!impl_->is_initialized) {
         return Result<void>::Error("Mempool not initialized");
     }
@@ -254,6 +255,11 @@ Result<void> INTcoinMempool::RemoveTransaction(const uint256& tx_hash) {
 
     LogF(LogLevel::INFO, "Mempool: Removed tx %s", tx_key.substr(0, 16).c_str());
     return Result<void>::Ok();
+}
+
+Result<void> INTcoinMempool::RemoveTransaction(const uint256& tx_hash) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    return RemoveTransactionInternal(tx_hash);
 }
 
 bool INTcoinMempool::HasTransaction(const uint256& tx_hash) const {
@@ -299,9 +305,8 @@ Result<MempoolEntry> INTcoinMempool::GetEntry(const uint256& tx_hash) const {
     return Result<MempoolEntry>::Ok(it->second);
 }
 
-std::vector<MempoolEntry> INTcoinMempool::GetAllTransactions() const {
-    std::lock_guard<std::mutex> lock(impl_->mutex);
-
+std::vector<MempoolEntry> INTcoinMempool::GetAllTransactionsInternal() const {
+    // Note: Caller must hold mutex lock
     std::vector<MempoolEntry> result;
     result.reserve(impl_->entries.size());
 
@@ -320,6 +325,11 @@ std::vector<MempoolEntry> INTcoinMempool::GetAllTransactions() const {
     return result;
 }
 
+std::vector<MempoolEntry> INTcoinMempool::GetAllTransactions() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    return GetAllTransactionsInternal();
+}
+
 std::vector<Transaction> INTcoinMempool::GetBlockTemplate(
     uint64_t max_size_bytes,
     uint64_t max_count
@@ -330,7 +340,7 @@ std::vector<Transaction> INTcoinMempool::GetBlockTemplate(
     uint64_t total_size = 0;
 
     // Get transactions ordered by priority and fee
-    auto all_entries = GetAllTransactions();
+    auto all_entries = GetAllTransactionsInternal();
 
     for (const auto& entry : all_entries) {
         if (max_count > 0 && result.size() >= max_count) break;
@@ -355,7 +365,7 @@ Result<uint32_t> INTcoinMempool::RemoveConfirmedTransactions(
     uint32_t removed_count = 0;
 
     for (const auto& tx_hash : tx_hashes) {
-        auto remove_result = RemoveTransaction(tx_hash);
+        auto remove_result = RemoveTransactionInternal(tx_hash);
         if (remove_result.IsOk()) {
             removed_count++;
         }
@@ -386,13 +396,30 @@ Result<uint32_t> INTcoinMempool::RemoveExpired() {
         }
     }
 
-    uint32_t removed_count = to_remove.size();
+    uint32_t removed_count = 0;
 
     for (const auto& tx_key : to_remove) {
-        (void)tx_key;  // Suppress unused warning - placeholder implementation
-        // Convert hex string back to uint256
-        uint256 tx_hash;  // Would parse from hex
-        RemoveTransaction(tx_hash);
+        // Find and remove the entry
+        auto it = impl_->entries.find(tx_key);
+        if (it != impl_->entries.end()) {
+            const MempoolEntry& entry = it->second;
+
+            // Remove from priority queue
+            auto& pq = impl_->priority_queues[entry.priority];
+            auto range = pq.equal_range(entry.fee_per_byte);
+            for (auto pq_it = range.first; pq_it != range.second; ) {
+                if (pq_it->second == tx_key) {
+                    pq_it = pq.erase(pq_it);
+                    break;
+                } else {
+                    ++pq_it;
+                }
+            }
+
+            // Remove from storage
+            impl_->entries.erase(it);
+            removed_count++;
+        }
     }
 
     if (removed_count > 0) {
@@ -468,8 +495,7 @@ Result<uint64_t> INTcoinMempool::EstimateFee(
 }
 
 Result<void> INTcoinMempool::Persist() const {
-    std::lock_guard<std::mutex> lock(impl_->mutex);
-
+    // Note: Caller must hold mutex lock
     if (!impl_->is_initialized) {
         return Result<void>::Error("Mempool not initialized");
     }
@@ -501,8 +527,7 @@ Result<void> INTcoinMempool::Persist() const {
 }
 
 Result<void> INTcoinMempool::Restore() {
-    std::lock_guard<std::mutex> lock(impl_->mutex);
-
+    // Note: Caller must hold mutex lock
     std::ifstream file(impl_->config.persist_file, std::ios::binary);
     if (!file.is_open()) {
         return Result<void>::Error("Mempool file not found");

@@ -185,6 +185,8 @@ private:
     bool ValidateTransaction(const Transaction& tx) const;
     void EvictLowPriority();
     uint64_t CalculateTxSize(const Transaction& tx) const;
+    std::vector<MempoolEntry> GetAllTransactionsInternal() const;  // Internal helper, caller must hold mutex
+    Result<void> RemoveTransactionInternal(const uint256& tx_hash);  // Internal helper, caller must hold mutex
 };
 
 /// Helper functions
