@@ -342,6 +342,9 @@ set(INTCOIN_CORE_SOURCES
     # Atomic Swaps (cross-chain trustless exchanges)
     src/swap/atomic_swap.cpp
 
+    # Cross-Chain Bridges (wrapped tokens, federated validators)
+    src/bridge/bridge.cpp
+
     # Testnet Faucet
     src/faucet/faucet.cpp
 )
