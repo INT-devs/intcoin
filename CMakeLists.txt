@@ -347,6 +347,9 @@ set(INTCOIN_CORE_SOURCES
     src/bridge/bridge.cpp
     src/bridge/bridge_monitor.cpp
 
+    # Mempool (priority queues, persistence)
+    src/mempool/mempool.cpp
+
     # Testnet Faucet
     src/faucet/faucet.cpp
 )

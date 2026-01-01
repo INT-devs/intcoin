@@ -66,6 +66,10 @@ target_link_libraries(test_atomic_swap intcoin_core ${ROCKSDB_LIB})
 add_executable(test_bridge test_bridge.cpp)
 target_link_libraries(test_bridge intcoin_core ${ROCKSDB_LIB})
 
+# Test: Mempool (priority queues, persistence, eviction)
+add_executable(test_mempool test_mempool.cpp)
+target_link_libraries(test_mempool intcoin_core ${ROCKSDB_LIB})
+
 # Register tests with CTest
 add_test(NAME CryptoTest COMMAND test_crypto)
 add_test(NAME RandomXTest COMMAND test_randomx)
@@ -82,6 +86,7 @@ add_test(NAME IntegrationTest COMMAND test_integration)
 add_test(NAME LightningTest COMMAND test_lightning)
 add_test(NAME AtomicSwapTest COMMAND test_atomic_swap)
 add_test(NAME BridgeTest COMMAND test_bridge)
+add_test(NAME MempoolTest COMMAND test_mempool)
 
 # Install test executables (optional)
 install(TARGETS
@@ -100,5 +105,6 @@ install(TARGETS
     test_lightning
     test_atomic_swap
     test_bridge
+    test_mempool
     DESTINATION bin/tests
 )
