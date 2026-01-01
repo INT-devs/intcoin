@@ -345,6 +345,7 @@ set(INTCOIN_CORE_SOURCES
 
     # Cross-Chain Bridges (wrapped tokens, federated validators)
     src/bridge/bridge.cpp
+    src/bridge/bridge_monitor.cpp
 
     # Testnet Faucet
     src/faucet/faucet.cpp
