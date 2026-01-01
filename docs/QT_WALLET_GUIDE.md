@@ -825,7 +825,7 @@ If you need to update your passphrase:
 
 **Resources**:
 - **Documentation**: [https://international-coin.org/docs](https://international-coin.org/docs)
-- **GitLab Issues**: [https://gitlab.com/intcoin/crypto/-/issues](https://gitlab.com/intcoin/crypto/-/issues)
+- **GitHub Issues**: [https://github.com/INT-devs/intcoin/issues](https://github.com/INT-devs/intcoin/issues)
 - **Discord**: [https://discord.gg/intcoin](https://discord.gg/intcoin)
 - **Telegram**: [https://t.me/INTcoin_official](https://t.me/INTcoin_official)
 

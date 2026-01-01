@@ -50,7 +50,7 @@ The automated installation script handles all dependencies and configuration:
 
 ```bash
 # Clone the repository
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 
 # Run installation script (Ubuntu 20.04, 22.04, 24.04 / Debian 11, 12)
@@ -194,7 +194,7 @@ The automated installation script provides a streamlined installation process:
 
 ```bash
 # Clone the repository
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 
 # Run FreeBSD installation script
@@ -396,7 +396,7 @@ sudo make install
 
 ### Using Pre-built Binaries
 
-1. Download the latest release from the [Releases page](https://gitlab.com/intcoin/crypto/-/releases)
+1. Download the latest release from the [Releases page](https://github.com/INT-devs/intcoin/releases)
 2. Extract the ZIP file
 3. Run `intcoind.exe` from the extracted folder
 
@@ -486,7 +486,7 @@ chmod +x cross-build-windows.sh
 ### Clone Repository
 
 ```bash
-git clone https://gitlab.com/intcoin/crypto.git
+git clone https://github.com/INT-devs/intcoin.git
 cd intcoin
 ```
 
@@ -660,8 +660,8 @@ intcoind --port=2220
 ## Getting Help
 
 - **Documentation**: https://international-coin.org/docs
-- **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/
-- **Issues**: https://gitlab.com/intcoin/crypto/-/issues
+- **Wiki**: https://github.com/INT-devs/intcoin/-/wikis/
+- **Issues**: https://github.com/INT-devs/intcoin/issues
 - **Discord**: https://discord.gg/7p4VmS2z
 - **Telegram**: https://t.me/INTcoin_official
 - **X (Twitter)**: https://x.com/INTcoin_team

@@ -94,7 +94,7 @@ Features:
 sudo apt update
 sudo apt install build-essential cmake git libboost-all-dev libssl-dev \
   librocksdb-dev qt6-base-dev libzmq3-dev libevent-dev
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 mkdir build && cd build
 cmake ..
@@ -104,7 +104,7 @@ make -j$(nproc)
 **macOS:**
 ```bash
 brew install cmake boost openssl rocksdb qt@6 zeromq libevent
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 mkdir build && cd build
 cmake ..
@@ -288,7 +288,7 @@ intcoin/
 
 **Build Steps:**
 ```bash
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
@@ -325,7 +325,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 Stay connected with the INTcoin community:
 
 - **Website**: https://international-coin.org
-- **Repository**: https://gitlab.com/intcoin/crypto
+- **Repository**: https://github.com/INT-devs/intcoin
 - **Twitter/X**: https://x.com/INTcoin_team
 - **Reddit**: https://www.reddit.com/r/INTcoin
 - **Discord**: https://discord.gg/jCy3eNgx

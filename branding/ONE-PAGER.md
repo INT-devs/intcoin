@@ -176,7 +176,7 @@ intcoin-miner --address=<your-address> --threads=4
 ### For Developers
 ```bash
 # Clone repository
-git clone https://gitlab.com/intcoin/crypto.git
+git clone https://github.com/INT-devs/intcoin.git
 
 # Build from source
 mkdir build && cd build
@@ -189,7 +189,7 @@ make -j$(nproc)
 ## Community
 
 - **Website**: [international-coin.org](https://international-coin.org)
-- **Repository**: [gitlab.com/intcoin/crypto](https://gitlab.com/intcoin/crypto)
+- **Repository**: [github.com/INT-devs/intcoin](https://github.com/INT-devs/intcoin)
 - **Email**: team@international-coin.org
 - **Discord**: https://discord.gg/7p4VmS2z
 - **X (Twitter)**: https://x.com/INTcoin_team
@@ -207,7 +207,7 @@ INTcoin is **100% open source** under the MIT License.
 - No pre-mine or founder rewards
 - Community-driven development
 
-**View the code**: [gitlab.com/intcoin/crypto](https://gitlab.com/intcoin/crypto)
+**View the code**: [github.com/INT-devs/intcoin](https://github.com/INT-devs/intcoin)
 
 ---
 

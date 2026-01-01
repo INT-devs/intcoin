@@ -132,7 +132,7 @@ sudo make install
 ```bash
 # Clone repository
 cd /path/to/intcoin
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 
 # Create build directory
@@ -223,7 +223,7 @@ sudo ldconfig
 ```bash
 # Clone repository
 cd /path/to
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 
 # Create build directory
@@ -318,7 +318,7 @@ sudo gmake install
 ```bash
 # Clone repository
 cd /path/to
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 
 # Create build directory
@@ -405,7 +405,7 @@ cmake --install . --prefix "C:\RandomX"
 ```powershell
 # Clone repository
 cd \path\to
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 
 # Create build directory

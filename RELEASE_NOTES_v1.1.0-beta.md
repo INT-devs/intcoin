@@ -404,7 +404,4 @@ MIT License - See [LICENSE](LICENSE) for details
 
 ---
 
-**🤖 Generated with Claude Code**
-https://claude.com/claude-code
-
 **Build with confidence. Deploy with security. Scale with INTcoin.**

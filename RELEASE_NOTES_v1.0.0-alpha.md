@@ -199,28 +199,28 @@ The first alpha release of INTcoin - a post-quantum cryptocurrency built for the
 
 #### Linux (Ubuntu/Debian)
 ```bash
-git clone https://gitlab.com/intcoin/crypto.git
+git clone https://github.com/INT-devs/intcoin.git
 cd crypto
 sudo ./scripts/install-linux.sh
 ```
 
 #### Windows
 ```powershell
-git clone https://gitlab.com/intcoin/crypto.git
+git clone https://github.com/INT-devs/intcoin.git
 cd crypto
 .\scripts\build-windows.ps1
 ```
 
 #### FreeBSD
 ```bash
-git clone https://gitlab.com/intcoin/crypto.git
+git clone https://github.com/INT-devs/intcoin.git
 cd crypto
 sudo ./scripts/install-freebsd.sh
 ```
 
 #### macOS
 ```bash
-git clone https://gitlab.com/intcoin/crypto.git
+git clone https://github.com/INT-devs/intcoin.git
 cd crypto
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -363,11 +363,11 @@ INTcoin is released under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## 🔗 Links
 
-- **GitLab**: https://gitlab.com/intcoin/crypto
+- **GitHub**: https://github.com/INT-devs/intcoin
 - **GitHub Mirror**: https://github.com/INT-devs/intcoin
-- **Documentation**: https://gitlab.com/intcoin/crypto/-/tree/main/docs
-- **Issues**: https://gitlab.com/intcoin/crypto/-/issues
-- **Releases**: https://gitlab.com/intcoin/crypto/-/releases
+- **Documentation**: https://github.com/INT-devs/intcoin/-/tree/main/docs
+- **Issues**: https://github.com/INT-devs/intcoin/issues
+- **Releases**: https://github.com/INT-devs/intcoin/releases
 
 ---
 
@@ -427,8 +427,8 @@ Please email security concerns to: security@intcoin.org
 ## 💬 Support
 
 ### Community Support
-- GitLab Issues: https://gitlab.com/intcoin/crypto/-/issues
-- Discussions: https://gitlab.com/intcoin/crypto/-/discussions
+- GitHub Issues: https://github.com/INT-devs/intcoin/issues
+- Discussions: https://github.com/INT-devs/intcoin/discussions
 
 ### Documentation
 - Build Issues: See [BUILDING.md](docs/BUILDING.md#troubleshooting)
@@ -467,4 +467,4 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 ---
 
-*For questions, suggestions, or contributions, please visit our GitLab repository.*
+*For questions, suggestions, or contributions, please visit our GitHub repository.*

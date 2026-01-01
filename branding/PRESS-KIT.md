@@ -17,7 +17,7 @@
 | **License** | MIT (Open Source) |
 | **Creator** | Neil Adamson |
 | **Website** | https://international-coin.org |
-| **Repository** | https://gitlab.com/intcoin/crypto |
+| **Repository** | https://github.com/INT-devs/intcoin |
 
 ---
 
@@ -312,7 +312,7 @@ INTcoin was designed quantum-resistant from the start, avoiding these migration 
 ## Community & Social
 
 - **Website**: https://international-coin.org
-- **GitLab**: https://gitlab.com/intcoin/crypto
+- **GitHub**: https://github.com/INT-devs/intcoin
 - **Email**: team@international-coin.org
 - **X (Twitter)**: https://x.com/INTcoin_team
 - **Discord**: https://discord.gg/7p4VmS2z
@@ -326,7 +326,7 @@ INTcoin was designed quantum-resistant from the start, avoiding these migration 
 For press inquiries, interviews, or additional information:
 
 **Email**: team@international-coin.org
-**GPG Key**: `85A2 19E7 98EE E017 2669 450B E7FC C378 2A41 8E33`
+**GPG Key**: `93C7 3090 AD8C 404D 4786  7CE7 D100 3736 1A73 8BE6`
 
 **Response Time**: Within 24 hours for media inquiries
 

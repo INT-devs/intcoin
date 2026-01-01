@@ -15,7 +15,7 @@ Get up and running with INTcoin in 5 minutes.
 
 ```bash
 # Clone repository
-git clone https://gitlab.com/intcoin/crypto.git
+git clone https://github.com/INT-devs/intcoin.git
 cd intcoin
 
 # Run installation script (Linux)
@@ -31,7 +31,7 @@ sudo make install
 
 ### Windows
 
-1. Download pre-built binaries from [Releases](https://gitlab.com/intcoin/crypto/-/releases)
+1. Download pre-built binaries from [Releases](https://github.com/INT-devs/intcoin/releases)
 2. Extract ZIP file
 3. Run `intcoind.exe`
 
@@ -311,8 +311,8 @@ cp ~/.intcoin/wallets/wallet.dat ~/backup/
 ### Support
 
 - **Documentation**: https://international-coin.org/docs
-- **Wiki**: https://gitlab.com/intcoin/crypto/-/wikis/
-- **Issues**: https://gitlab.com/intcoin/crypto/-/issues
+- **Wiki**: https://github.com/INT-devs/intcoin/-/wikis/
+- **Issues**: https://github.com/INT-devs/intcoin/issues
 - **Email**: admin@international-coin.org
 
 ## Next Steps

@@ -441,7 +441,7 @@ ctest --output-on-failure
 For security vulnerability reports related to the CI/CD pipeline or findings from security scans:
 
 **Security Team:** security@international-coin.org
-**PGP Key:** `4E5A A9F8 A4C2 F245 E3FC  9381 BCFB 6274 A3AF EEE9`
+**PGP Key:** `93C7 3090 AD8C 404D 4786  7CE7 D100 3736 1A73 8BE6`
 
 See [SECURITY.md](../SECURITY.md) for full responsible disclosure policy.
 

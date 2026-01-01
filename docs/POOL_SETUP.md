@@ -141,7 +141,7 @@ INTcoin includes a full-featured mining pool server with:
 
 ```bash
 # Clone repository
-git clone https://gitlab.com/intcoin/crypto.git intcoin
+git clone https://github.com/INT-devs/intcoin.git intcoin
 cd intcoin
 
 # Build with pool support

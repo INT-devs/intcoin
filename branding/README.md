@@ -280,7 +280,7 @@ For brand asset questions or custom design requests:
 
 **Email**: team@international-coin.org
 
-**Repository**: https://gitlab.com/intcoin/crypto
+**Repository**: https://github.com/INT-devs/intcoin
 
 **Website**: https://international-coin.org
 

@@ -19,7 +19,7 @@ We take the security of INTcoin seriously. If you have discovered a security vul
 
 **Neil Adamson**
 - **Email**: security@international-coin.org
-- **PGP Fingerprint**: `4E5A A9F8 A4C2 F245 E3FC  9381 BCFB 6274 A3AF EEE9`
+- **PGP Fingerprint**: `93C7 3090 AD8C 404D 4786  7CE7 D100 3736 1A73 8BE6`
 - **GPG Public Key**: [Download](https://international-coin.org/security.asc)
 
 ### Reporting Process
@@ -152,11 +152,11 @@ No vulnerabilities have been publicly disclosed at this time.
 
 To verify signatures or encrypt communications, use Neil Adamson's PGP public key:
 
-**Fingerprint**: `4E5A A9F8 A4C2 F245 E3FC  9381 BCFB 6274 A3AF EEE9`
+**Fingerprint**: `93C7 3090 AD8C 404D 4786  7CE7 D100 3736 1A73 8BE6`
 
 Download from:
 - **Official Website**: https://international-coin.org/security.asc
-- **Keyserver**: `gpg --recv-keys 4E5AA9F8A4C2F245E3FC9381BCFB6274A3AFEEE9`
+- **Keyserver**: `gpg --recv-keys 93C73090AD8C404D47867CE7D10037361A738BE6`
 
 ---
 
