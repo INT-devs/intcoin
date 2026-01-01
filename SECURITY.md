@@ -47,7 +47,7 @@ We take the security of INTcoin seriously. If you have discovered a security vul
 Security researchers who responsibly disclose vulnerabilities will be:
 - Acknowledged in our security advisories (unless anonymity is requested)
 - Listed in our Hall of Fame (if desired)
-- Considered for bug bounty rewards (when program is established)
+- Invited to participate in the community project development
 
 ---
 

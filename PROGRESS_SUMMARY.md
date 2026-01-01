@@ -333,7 +333,7 @@ Total: 100% passing (excluding wallet directory setup tests)
 
 ### Ongoing Security Measures
 - Community-driven code review (ongoing)
-- Open bug bounty program (starting 2026)
+- Open community project - everyone can participate
 - Responsible disclosure policy
 - Continuous peer review
 - Community penetration testing

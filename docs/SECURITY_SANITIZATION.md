@@ -446,7 +446,7 @@ cmake --build build
 - [ ] Formal verification of critical paths
 - [ ] Security audit by third party
 - [ ] Penetration testing
-- [ ] Bounty program for vulnerability disclosure
+- [ ] Community participation program for vulnerability disclosure
 
 ---
 

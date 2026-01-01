@@ -353,7 +353,7 @@ INTcoin Core is released under the MIT License. See [LICENSE](LICENSE) for detai
 
 Found a security issue? Please email security@international-coin.org or see [SECURITY.md](SECURITY.md) for our responsible disclosure policy.
 
-**Bug Bounty**: Coming soon (post-mainnet launch)
+**Community Project**: Everyone can participate in improving INTcoin security
 
 ---
 
