@@ -70,6 +70,10 @@ target_link_libraries(test_bridge intcoin_core ${ROCKSDB_LIB})
 add_executable(test_mempool test_mempool.cpp)
 target_link_libraries(test_mempool intcoin_core ${ROCKSDB_LIB})
 
+# Test: Bloom Filter (SPV transaction filtering, BIP37)
+add_executable(test_bloom test_bloom.cpp)
+target_link_libraries(test_bloom intcoin_core ${ROCKSDB_LIB})
+
 # Register tests with CTest
 add_test(NAME CryptoTest COMMAND test_crypto)
 add_test(NAME RandomXTest COMMAND test_randomx)
@@ -87,6 +91,7 @@ add_test(NAME LightningTest COMMAND test_lightning)
 add_test(NAME AtomicSwapTest COMMAND test_atomic_swap)
 add_test(NAME BridgeTest COMMAND test_bridge)
 add_test(NAME MempoolTest COMMAND test_mempool)
+add_test(NAME BloomTest COMMAND test_bloom)
 
 # Install test executables (optional)
 install(TARGETS
@@ -106,5 +111,6 @@ install(TARGETS
     test_atomic_swap
     test_bridge
     test_mempool
+    test_bloom
     DESTINATION bin/tests
 )
