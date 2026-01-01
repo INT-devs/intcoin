@@ -299,6 +299,35 @@ public:
 };
 
 // ============================================================================
+// Bitcoin-Compatible Hashing (for cross-chain atomic swaps)
+// ============================================================================
+
+/// Bitcoin SHA-256 and RIPEMD-160 hashing for HTLC compatibility
+class BitcoinHash {
+public:
+    /// SHA-256 hash (single, 32 bytes output)
+    static uint256 SHA256(const std::vector<uint8_t>& data);
+
+    /// SHA-256 hash with pointer and length
+    static uint256 SHA256(const uint8_t* data, size_t len);
+
+    /// Double SHA-256 (SHA256(SHA256(data)))
+    static uint256 DoubleSHA256(const std::vector<uint8_t>& data);
+
+    /// RIPEMD-160 hash (20 bytes output)
+    static std::array<uint8_t, 20> RIPEMD160(const std::vector<uint8_t>& data);
+
+    /// RIPEMD-160 hash with pointer and length
+    static std::array<uint8_t, 20> RIPEMD160(const uint8_t* data, size_t len);
+
+    /// Hash160: RIPEMD160(SHA256(data)) - Bitcoin's standard pubkey hash
+    static std::array<uint8_t, 20> Hash160(const std::vector<uint8_t>& data);
+
+    /// Hash256: SHA256(SHA256(data)) - Bitcoin's double hash
+    static uint256 Hash256(const std::vector<uint8_t>& data);
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 

@@ -129,13 +129,13 @@ if(RELAXED_DEPENDENCIES)
     )
     find_package(OpenSSL)
 else()
-    find_package(Boost 1.90.0 COMPONENTS
+    find_package(Boost 1.74.0 COMPONENTS
         system
         filesystem
         thread
         program_options
     )
-    find_package(OpenSSL 3.4.0)
+    find_package(OpenSSL 3.0.2)
 endif()
 find_package(Threads REQUIRED)
 
@@ -192,9 +192,32 @@ if(NOT SODIUM_FOUND)
     )
 endif()
 
-# Qt6 (optional) - 6.8+ (latest LTS)
+# CURL (for blockchain monitoring RPC clients)
+find_package(CURL REQUIRED)
+
+# jsoncpp (for JSON-RPC communication)
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(JSONCPP jsoncpp)
+endif()
+if(NOT JSONCPP_FOUND)
+    find_library(JSONCPP_LIB jsoncpp
+        PATHS
+            /opt/homebrew/lib
+            /usr/local/lib
+            $ENV{HOME}/.local/lib
+    )
+    find_path(JSONCPP_INCLUDE_DIR json/json.h
+        PATHS
+            /opt/homebrew/include
+            /usr/local/include
+            $ENV{HOME}/.local/include
+    )
+endif()
+
+# Qt6 (optional) - 6.2.4
 if(BUILD_WALLET_QT)
-    find_package(Qt6 6.8 COMPONENTS
+    find_package(Qt6 6.2.4 COMPONENTS
         Core
         Widgets
         Network
@@ -252,6 +275,9 @@ set(INTCOIN_CORE_SOURCES
     src/blockchain/blockchain.cpp
     src/blockchain/validation.cpp
     src/blockchain/sync.cpp
+    src/blockchain/blockchain_monitor.cpp
+    src/blockchain/bitcoin_monitor.cpp
+    src/blockchain/litecoin_monitor.cpp
 
     # Storage
     src/storage/storage.cpp
@@ -273,6 +299,8 @@ set(INTCOIN_CORE_SOURCES
 
     # RPC Server
     src/rpc/rpc.cpp
+    src/rpc/htlc_rpc.cpp
+    src/rpc/swap_rpc.cpp
 
     # Wallet
     src/wallet/wallet.cpp
@@ -283,7 +311,6 @@ set(INTCOIN_CORE_SOURCES
     # Mining Pool
     src/pool/pool.cpp
     src/pool/stratum_server.cpp
-    src/pool/mining_pool_server.cpp
     src/pool/http_api.cpp
     src/pool/pool_database.cpp
 
@@ -297,6 +324,24 @@ set(INTCOIN_CORE_SOURCES
     src/lightning/bolt_onion.cpp
     src/lightning/bolt_invoice.cpp
 
+    # SPV (Simplified Payment Verification)
+    src/spv/spv.cpp
+
+    # Bloom Filters (BIP37)
+    src/bloom/bloom.cpp
+
+    # Mobile RPC (Lightweight wallet API)
+    src/mobile/mobile_rpc.cpp
+
+    # Mobile SDK (iOS/Android wallet SDK)
+    src/mobile/mobile_sdk.cpp
+
+    # HTLC (Hash Time-Locked Contracts for atomic swaps)
+    src/htlc/htlc.cpp
+
+    # Atomic Swaps (cross-chain trustless exchanges)
+    src/swap/atomic_swap.cpp
+
     # Testnet Faucet
     src/faucet/faucet.cpp
 )
@@ -305,6 +350,7 @@ set(INTCOIN_CORE_SOURCES
 add_library(intcoin_core STATIC ${INTCOIN_CORE_SOURCES})
 target_link_libraries(intcoin_core
     Threads::Threads
+    CURL::libcurl
 )
 
 # Link optional dependencies if found
@@ -314,6 +360,16 @@ endif()
 
 if(OPENSSL_FOUND)
     target_link_libraries(intcoin_core OpenSSL::SSL OpenSSL::Crypto)
+endif()
+
+if(JSONCPP_FOUND OR JSONCPP_LIB)
+    if(JSONCPP_FOUND)
+        target_link_libraries(intcoin_core ${JSONCPP_LINK_LIBRARIES})
+        target_include_directories(intcoin_core PRIVATE ${JSONCPP_INCLUDE_DIRS})
+    else()
+        target_link_libraries(intcoin_core ${JSONCPP_LIB})
+        target_include_directories(intcoin_core PRIVATE ${JSONCPP_INCLUDE_DIR})
+    endif()
 endif()
 
 if(ROCKSDB_FOUND)

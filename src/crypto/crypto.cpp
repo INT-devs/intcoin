@@ -8,6 +8,8 @@
 #include <cstring>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
+#include <openssl/ripemd.h>
 #include <stdexcept>
 #include <oqs/oqs.h>
 
@@ -961,6 +963,73 @@ uint64_t RandomGenerator::GetRandomUint64() {
         result |= (static_cast<uint64_t>(bytes[i]) << (i * 8));
     }
     return result;
+}
+
+// ============================================================================
+// Bitcoin-Compatible Hashing
+// ============================================================================
+
+uint256 BitcoinHash::SHA256(const std::vector<uint8_t>& data) {
+    return SHA256(data.data(), data.size());
+}
+
+uint256 BitcoinHash::SHA256(const uint8_t* data, size_t len) {
+    uint256 hash;
+    ::SHA256(data, len, hash.data());
+    return hash;
+}
+
+uint256 BitcoinHash::DoubleSHA256(const std::vector<uint8_t>& data) {
+    uint256 hash1;
+    ::SHA256(data.data(), data.size(), hash1.data());
+
+    uint256 hash2;
+    ::SHA256(hash1.data(), hash1.size(), hash2.data());
+
+    return hash2;
+}
+
+std::array<uint8_t, 20> BitcoinHash::RIPEMD160(const std::vector<uint8_t>& data) {
+    return RIPEMD160(data.data(), data.size());
+}
+
+std::array<uint8_t, 20> BitcoinHash::RIPEMD160(const uint8_t* data, size_t len) {
+    std::array<uint8_t, 20> hash;
+
+    // Use EVP interface for RIPEMD160 (modern OpenSSL 3.x)
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        throw std::runtime_error("Failed to create EVP_MD_CTX");
+    }
+
+    const EVP_MD* md = EVP_ripemd160();
+    if (!md) {
+        EVP_MD_CTX_free(mdctx);
+        throw std::runtime_error("RIPEMD160 not available");
+    }
+
+    if (EVP_DigestInit_ex(mdctx, md, nullptr) != 1 ||
+        EVP_DigestUpdate(mdctx, data, len) != 1 ||
+        EVP_DigestFinal_ex(mdctx, hash.data(), nullptr) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        throw std::runtime_error("RIPEMD160 hashing failed");
+    }
+
+    EVP_MD_CTX_free(mdctx);
+    return hash;
+}
+
+std::array<uint8_t, 20> BitcoinHash::Hash160(const std::vector<uint8_t>& data) {
+    // First SHA-256
+    uint256 sha256_hash;
+    ::SHA256(data.data(), data.size(), sha256_hash.data());
+
+    // Then RIPEMD-160
+    return RIPEMD160(sha256_hash.data(), sha256_hash.size());
+}
+
+uint256 BitcoinHash::Hash256(const std::vector<uint8_t>& data) {
+    return DoubleSHA256(data);
 }
 
 } // namespace intcoin

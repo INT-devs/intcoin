@@ -58,6 +58,10 @@ target_link_libraries(test_integration intcoin_core ${ROCKSDB_LIB})
 add_executable(test_lightning test_lightning.cpp)
 target_link_libraries(test_lightning intcoin_core ${ROCKSDB_LIB})
 
+# Test: Atomic Swaps (cross-chain HTLCs, Bitcoin/Litecoin monitoring)
+add_executable(test_atomic_swap test_atomic_swap.cpp)
+target_link_libraries(test_atomic_swap intcoin_core ${ROCKSDB_LIB})
+
 # Register tests with CTest
 add_test(NAME CryptoTest COMMAND test_crypto)
 add_test(NAME RandomXTest COMMAND test_randomx)
@@ -72,6 +76,7 @@ add_test(NAME WalletTest COMMAND test_wallet)
 add_test(NAME FuzzTest COMMAND test_fuzz)
 add_test(NAME IntegrationTest COMMAND test_integration)
 add_test(NAME LightningTest COMMAND test_lightning)
+add_test(NAME AtomicSwapTest COMMAND test_atomic_swap)
 
 # Install test executables (optional)
 install(TARGETS
@@ -88,5 +93,6 @@ install(TARGETS
     test_fuzz
     test_integration
     test_lightning
+    test_atomic_swap
     DESTINATION bin/tests
 )
