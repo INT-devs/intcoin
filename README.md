@@ -1,6 +1,6 @@
 # INTcoin Core
 
-**Version 1.2.0-beta** | **Release: TBD 2026** | **License: MIT** | **Status: Development**
+**Version 1.2.0-beta** | **Release: January 2, 2026** | **License: MIT** | **Status: Production Beta**
 
 A next-generation cryptocurrency built on post-quantum cryptography (Dilithium3) with full Lightning Network support, designed to secure value in the quantum computing era.
 
@@ -189,25 +189,30 @@ make -j$(sysctl -n hw.ncpu)
 
 ## Project Status
 
-**Development Progress: v1.0.0-alpha Release Candidate**
+**Development Progress: v1.2.0-beta Production Beta**
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Core Blockchain | ✅ 100% | UTXO, consensus, validation, reorg support complete |
-| Cryptography | ✅ 100% | Dilithium3, SHA3-256 implemented |
-| Mining | ✅ 100% | GetBlockTemplate, RandomX PoW, solo + pool mining |
-| Mining Pool Server | ✅ 100% | Stratum protocol, VarDiff, HTTP API, database |
-| Lightning Network | ⏳ 57% | BOLT #1-12 framework (deferred to v1.0.0-beta) |
-| Qt Wallet | ✅ 100% | Full-featured desktop wallet with all dialogs |
-| RPC Server | ✅ 100% | JSON-RPC 2.0 with authentication |
-| P2P Network | ✅ 100% | Peer discovery, relay, sync |
-| Security | ✅ 100% | Sanitization, fuzzing, audits |
-| Testing | ⏳ 85% | Core tests passing, pool/Qt tests pending |
-| Documentation | ⏳ 90% | Core docs complete, pool setup guide pending |
-| CI/CD | ✅ 100% | Automated builds and tests |
+| Component | Status | Tests | Notes |
+|-----------|--------|-------|-------|
+| Core Blockchain | ✅ 100% | ✅ | UTXO, consensus, validation, reorg support complete |
+| Cryptography | ✅ 100% | ✅ | Dilithium3 (signatures), Kyber768 (encryption), SHA3-256 |
+| Mining | ✅ 100% | ✅ | RandomX PoW, solo + pool mining, GetBlockTemplate |
+| Mining Pool Server | ✅ 100% | ✅ | Stratum protocol, PPLNS/PPS payouts, VarDiff |
+| Lightning Network | ✅ 100% | ✅ | Full BOLT #1-13 implementation, watchtowers, routing |
+| Qt Wallet | ✅ 100% | ✅ | Full-featured desktop wallet with Lightning support |
+| RPC Server | ✅ 100% | ✅ | JSON-RPC 2.0, 70+ methods including mobile/swap/bridge |
+| P2P Network | ✅ 100% | ✅ | Peer discovery, relay, sync, bloom filters (BIP37) |
+| **Mobile Wallet** | ✅ 100% | ✅ 8/8 | **SPV client, iOS/Android SDKs, bloom filters** |
+| **Atomic Swaps** | ✅ 100% | ✅ | **HTLC, BTC/LTC cross-chain trustless exchanges** |
+| **Cross-Chain Bridges** | ✅ 100% | ✅ | **wBTC/wETH/wLTC, federated multi-sig, bridge UI** |
+| **Enhanced Mempool** | ✅ 100% | ✅ 12/12 | **6-level priority, persistence, fee-based sorting** |
+| **Prometheus Metrics** | ✅ 100% | ✅ 18/18 | **40+ metrics, HTTP endpoint at :9090/metrics** |
+| Security | ✅ 100% | ✅ | Sanitization, fuzzing, post-quantum cryptography |
+| Testing | ✅ 100% | ✅ | **51 test suites, all passing (38 new in v1.2.0)** |
+| Documentation | ⏳ 95% | N/A | Core docs complete, v1.2.0 feature docs in progress |
+| CI/CD | ✅ 100% | ✅ | Automated builds, tests, multi-platform support |
 
-**v1.0.0-alpha**: All core functionality operational
-**Next Milestone**: v1.0.0-beta (Lightning Network business logic - February 2026)
+**v1.2.0-beta**: Mobile wallets, atomic swaps, cross-chain bridges, enhanced infrastructure
+**Next Milestone**: v1.3.0-alpha (DeFi primitives, additional privacy features - Q2 2026)
 
 ---
 
@@ -378,4 +383,4 @@ See [ROADMAP.md](ROADMAP.md) for our 10-year development plan.
 
 ---
 
-*Last Updated: December 25, 2025 - v1.0.0-alpha Release Candidate*
+*Last Updated: January 2, 2026 - v1.2.0-beta Production Beta*

@@ -6,6 +6,8 @@ Currently supported versions of INTcoin:
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 1.2.x   | :white_check_mark: |
+| 1.1.x   | :white_check_mark: |
 | 1.0.x   | :white_check_mark: |
 | < 1.0   | :x:                |
 
@@ -160,6 +162,126 @@ Download from:
 
 ---
 
+## v1.2.0-beta Security Considerations
+
+### Mobile Wallet Security
+
+**SPV Security Model**:
+- SPV clients trust that the longest proof-of-work chain is valid
+- Merkle proofs verify transaction inclusion but not validity
+- SPV clients rely on full nodes for transaction validity
+- **Risk**: Potential for eclipse attacks if all connected peers are malicious
+- **Mitigation**: Connect to multiple diverse peers, use trusted full node connections
+
+**Bloom Filter Privacy**:
+- Bloom filters leak some privacy information through false positive patterns
+- **Risk**: Sophisticated attackers may correlate transactions to addresses
+- **Mitigation**: Use larger filters (higher false positive rate), rotate filters periodically
+- Note: Bloom filter use is optional; users can run full nodes for maximum privacy
+
+**Mobile Key Storage**:
+- **iOS**: Keys must be stored in iOS Keychain with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
+- **Android**: Use EncryptedSharedPreferences or Android Keystore for key storage
+- **Never** store mnemonic or private keys in plain text or shared preferences
+- Enable biometric authentication for additional security layer
+
+**Mobile RPC Security**:
+- Mobile RPC endpoints should be accessed over TLS/SSL
+- Implement certificate pinning in production mobile apps
+- Use authentication tokens for RPC access
+- Rate limit mobile RPC to prevent abuse
+
+### Atomic Swap Security
+
+**HTLC Security**:
+- HTLCs are cryptographically secure if preimage remains secret until claim
+- **Risk**: Preimage revelation before both HTLCs are locked can lead to fund loss
+- **Mitigation**: Protocol enforces strict state machine, automated monitoring
+
+**Timeout Considerations**:
+- Initiator timeout: 48 hours (must be longer than participant timeout)
+- Participant timeout: 24 hours
+- **Critical**: Always claim before timeout or funds may be lost to refund
+- **Mitigation**: Automated monitoring alerts for expiring HTLCs
+
+**Exchange Rate Volatility**:
+- Exchange rates may change between swap initiation and completion
+- **Risk**: Price slippage during swap execution
+- **Mitigation**: Set acceptable price range, short swap windows, automated monitoring
+
+**Chain Reorganization**:
+- Deep reorgs on either chain could invalidate HTLCs
+- **Mitigation**: Wait for sufficient confirmations before finalizing (BTC: 6, LTC: 24)
+
+### Cross-Chain Bridge Security
+
+**Multi-Sig Validation**:
+- All bridge transactions require M-of-N validator signatures
+- Current: 3-of-5 validators required for testnet
+- Mainnet: Will increase to 7-of-11 or higher
+- **Risk**: Validator collusion could compromise bridge
+- **Mitigation**: Diverse, reputable validator set; ongoing reputation monitoring
+
+**Emergency Pause Mechanism**:
+- Circuit breaker can halt bridge operations if anomalies detected
+- Activated by majority validator vote or automated detection
+- **Risk**: Malicious validators could DOS bridge with false pause
+- **Mitigation**: High threshold for emergency pause, transparent override process
+
+**Supply Consistency**:
+- Total wrapped token supply must always equal locked assets
+- Automated verification every 100 blocks
+- **Risk**: Minting bug could create unbacked tokens
+- **Mitigation**: Multi-layer validation, public audit trail, insurance fund
+
+**Validator Key Management**:
+- Validators must use HSM (Hardware Security Module) or equivalent for signing keys
+- Hot/cold wallet separation for large value operations
+- Regular key rotation and backup procedures
+- **Critical**: Validator key compromise could enable unauthorized minting
+
+**Deposit/Withdrawal Limits**:
+- Initial limits: 10 BTC / 100 ETH / 1000 LTC per transaction (testnet)
+- Larger transactions require additional confirmation time
+- **Risk**: Large value transactions increase attack incentive
+- **Mitigation**: Graduated limits, time locks on large withdrawals
+
+### Enhanced Mempool Security
+
+**Priority System**:
+- CRITICAL and BRIDGE priority levels reserved for protocol transactions
+- **Risk**: Attackers could spam high-priority transactions
+- **Mitigation**: Require higher fees for CRITICAL priority, rate limiting per address
+
+**Mempool Persistence**:
+- Mempool saved to `mempool.dat` on shutdown
+- **Risk**: Malicious mempool.dat could crash node on restart
+- **Mitigation**: Integrity checks on load, size limits, validation before acceptance
+
+**DoS Protection**:
+- Transaction size limits prevent memory exhaustion
+- Low-fee transactions evicted when mempool full
+- **Mitigation**: Min relay fee, max mempool size (300 MB), orphan tx limits
+
+### Prometheus Metrics Security
+
+**Metrics Endpoint Exposure**:
+- Default configuration binds to 127.0.0.1:9090 (localhost only)
+- **Risk**: Exposing metrics publicly reveals node information (peers, txs, etc.)
+- **Mitigation**: Use firewall rules, reverse proxy with authentication, VPN access
+
+**No Built-in Authentication**:
+- Metrics HTTP endpoint has no authentication by default
+- **Risk**: Unauthorized access if exposed
+- **Mitigation**: Use reverse proxy (nginx/apache) with HTTP basic auth, or mTLS
+
+**Information Disclosure**:
+- Metrics reveal operational details (block height, peer count, mempool size)
+- **Risk**: Information useful for targeted attacks
+- **Mitigation**: Limit external access, monitor for unusual scraping patterns
+
+---
+
 ## Contact
 
 For security-related questions that are not vulnerability reports:
@@ -168,4 +290,4 @@ For security-related questions that are not vulnerability reports:
 
 ---
 
-*Last Updated: December 17, 2025*
+*Last Updated: January 2, 2026 - v1.2.0-beta*
