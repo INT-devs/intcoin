@@ -118,6 +118,14 @@ target_link_libraries(test_routing intcoin_core ${ROCKSDB_LIB})
 add_executable(test_network_explorer lightning/test_network_explorer.cpp)
 target_link_libraries(test_network_explorer intcoin_core ${ROCKSDB_LIB})
 
+# Test: Mempool Analytics Integration (Phase 5: end-to-end mempool testing)
+add_executable(test_mempool_analytics_integration integration/test_mempool_analytics_integration.cpp)
+target_link_libraries(test_mempool_analytics_integration intcoin_core ${ROCKSDB_LIB})
+
+# Test: IBD Integration (Phase 5: end-to-end IBD testing)
+add_executable(test_ibd_integration integration/test_ibd_integration.cpp)
+target_link_libraries(test_ibd_integration intcoin_core ${ROCKSDB_LIB})
+
 # Register tests with CTest
 add_test(NAME CryptoTest COMMAND test_crypto)
 add_test(NAME RandomXTest COMMAND test_randomx)
@@ -147,6 +155,8 @@ add_test(NAME SubmarineSwapsTest COMMAND test_submarine_swaps)
 add_test(NAME ChannelRebalancingTest COMMAND test_channel_rebalancing)
 add_test(NAME RoutingTest COMMAND test_routing)
 add_test(NAME NetworkExplorerTest COMMAND test_network_explorer)
+add_test(NAME MempoolAnalyticsIntegrationTest COMMAND test_mempool_analytics_integration)
+add_test(NAME IBDIntegrationTest COMMAND test_ibd_integration)
 
 # Install test executables (optional)
 install(TARGETS
@@ -178,5 +188,7 @@ install(TARGETS
     test_channel_rebalancing
     test_routing
     test_network_explorer
+    test_mempool_analytics_integration
+    test_ibd_integration
     DESTINATION bin/tests
 )
