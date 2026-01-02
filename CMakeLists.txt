@@ -10,7 +10,7 @@ else()
 endif()
 
 project(INTcoin
-    VERSION 1.2.0
+    VERSION 1.3.0
     DESCRIPTION "Quantum-Resistant Cryptocurrency"
     LANGUAGES CXX
 )
