@@ -1,9 +1,20 @@
 # INTcoin API Reference
 
-**Version**: 1.0.0-beta
-**Last Updated**: December 26, 2025
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
+**Status**: Production Beta
 
 This document provides comprehensive API reference documentation for INTcoin's core components, RPC interface, and network protocol.
+
+## What's New in v1.2.0-beta
+
+- 📊 **Enhanced Mempool API**: Priority-based mempool management with 6 priority levels
+- 📈 **Prometheus Metrics API**: 40+ metrics endpoints for monitoring and observability
+- 🔄 **Atomic Swaps API**: HTLC-based cross-chain trading (BTC, LTC, XMR)
+- 🌉 **Bridge API**: Cross-chain bridges for ETH, BTC, BSC
+- 📱 **SPV API**: Bloom filter and header synchronization for mobile wallets
+
+See complete RPC documentation: [RPC.md](RPC.md)
 
 ---
 
@@ -16,8 +27,13 @@ This document provides comprehensive API reference documentation for INTcoin's c
 5. [Network API](#network-api)
 6. [Lightning Network API](#lightning-network-api)
 7. [Mining Pool API](#mining-pool-api)
-8. [Data Types](#data-types)
-9. [Error Codes](#error-codes)
+8. [Enhanced Mempool API (v1.2.0)](#enhanced-mempool-api-v120)
+9. [Prometheus Metrics API (v1.2.0)](#prometheus-metrics-api-v120)
+10. [Atomic Swaps API (v1.2.0)](#atomic-swaps-api-v120)
+11. [Bridge API (v1.2.0)](#bridge-api-v120)
+12. [SPV API (v1.2.0)](#spv-api-v120)
+13. [Data Types](#data-types)
+14. [Error Codes](#error-codes)
 
 ---
 
@@ -770,6 +786,252 @@ Returns recent payments made by the pool.
   ...
 ]
 ```
+
+---
+
+## Enhanced Mempool API (v1.2.0)
+
+INTcoin v1.2.0-beta introduces enhanced mempool management with priority-based transaction handling.
+
+### `getmempoolinfo`
+
+Returns detailed mempool statistics including priority breakdown.
+
+**Parameters**: None
+
+**Result**:
+```json
+{
+  "size": 1523,
+  "bytes": 456789,
+  "usage": 567890,
+  "maxmempool": 300000000,
+  "mempoolminfee": 0.00001000,
+  "priority_breakdown": {
+    "LOW": 100,
+    "NORMAL": 1200,
+    "HIGH": 200,
+    "HTLC": 15,
+    "BRIDGE": 5,
+    "CRITICAL": 3
+  }
+}
+```
+
+### `setmempoolpriority`
+
+Changes the priority of a transaction in the mempool.
+
+**Parameters**:
+1. `txid` (string, required) - Transaction ID
+2. `priority` (string, required) - Priority level: LOW, NORMAL, HIGH, HTLC, BRIDGE, CRITICAL
+
+**Result**: `true` on success
+
+**Example**:
+```bash
+intcoin-cli setmempoolpriority "abc123..." "HIGH"
+```
+
+### `savemempool`
+
+Persists the current mempool to disk.
+
+**Parameters**: None
+
+**Result**: `true` on success
+
+See also: [Enhanced Mempool Documentation](ENHANCED_MEMPOOL.md)
+
+---
+
+## Prometheus Metrics API (v1.2.0)
+
+### `getmetricsinfo`
+
+Returns Prometheus metrics server configuration and status.
+
+**Parameters**: None
+
+**Result**:
+```json
+{
+  "enabled": true,
+  "bind": "127.0.0.1",
+  "port": 9090,
+  "threads": 2,
+  "requests_total": 12345,
+  "uptime_seconds": 86400
+}
+```
+
+### `getprometheusmetrics`
+
+Returns all metrics in Prometheus text exposition format.
+
+**Parameters**: None
+
+**Result**: Prometheus metrics text (string)
+
+**HTTP Endpoint**: `GET http://localhost:9090/metrics`
+
+See also: [Prometheus Metrics Documentation](PROMETHEUS_METRICS.md)
+
+---
+
+## Atomic Swaps API (v1.2.0)
+
+### `initiate_atomic_swap`
+
+Initiates an atomic swap with a counterparty.
+
+**Parameters**:
+1. `chain` (string, required) - Target blockchain (BTC, LTC, XMR)
+2. `amount` (double, required) - Amount to swap (in INT)
+3. `counterparty_amount` (double, required) - Amount to receive
+4. `counterparty_address` (string, required) - Counterparty's address
+5. `locktime` (integer, required) - HTLC locktime (blocks)
+
+**Result**:
+```json
+{
+  "swap_id": "abc123...",
+  "secret_hash": "def456...",
+  "htlc_address": "INT1qxy...",
+  "funding_txid": "ghi789...",
+  "status": "initiated"
+}
+```
+
+### `redeem_atomic_swap`
+
+Redeems funds from a completed atomic swap.
+
+**Parameters**:
+1. `swap_id` (string, required) - Swap ID
+2. `secret` (string, required) - Preimage secret
+
+**Result**: Transaction ID of redemption
+
+### `refund_atomic_swap`
+
+Refunds an expired atomic swap.
+
+**Parameters**:
+1. `swap_id` (string, required) - Swap ID
+
+**Result**: Transaction ID of refund
+
+See also: [Atomic Swaps Documentation](ATOMIC_SWAPS.md)
+
+---
+
+## Bridge API (v1.2.0)
+
+### `bridge_deposit`
+
+Deposits INT to a cross-chain bridge.
+
+**Parameters**:
+1. `bridge` (string, required) - Bridge name (ETH, BTC, BSC)
+2. `amount` (double, required) - Amount to bridge
+3. `destination_address` (string, required) - Address on destination chain
+
+**Result**:
+```json
+{
+  "deposit_id": "abc123...",
+  "lock_txid": "def456...",
+  "mint_address": "0x789...",
+  "status": "pending"
+}
+```
+
+### `bridge_withdraw`
+
+Withdraws from a cross-chain bridge back to INT.
+
+**Parameters**:
+1. `bridge` (string, required) - Bridge name
+2. `amount` (double, required) - Amount to withdraw
+3. `burn_txid` (string, required) - Burn transaction on other chain
+
+**Result**:
+```json
+{
+  "withdrawal_id": "abc123...",
+  "unlock_txid": "def456...",
+  "status": "pending"
+}
+```
+
+### `bridge_status`
+
+Gets the status of a bridge operation.
+
+**Parameters**:
+1. `operation_id` (string, required) - Deposit or withdrawal ID
+
+**Result**:
+```json
+{
+  "operation_id": "abc123...",
+  "type": "deposit",
+  "bridge": "ETH",
+  "amount": 10.5,
+  "status": "confirmed",
+  "confirmations": 12,
+  "created_at": 1735171200
+}
+```
+
+See also: [Cross-Chain Bridges Documentation](CROSS_CHAIN_BRIDGES.md)
+
+---
+
+## SPV API (v1.2.0)
+
+### `loadbloomfilter`
+
+Loads a Bloom filter for SPV transaction filtering.
+
+**Parameters**:
+1. `filter` (string, required) - Hex-encoded Bloom filter
+2. `num_hash_funcs` (integer, required) - Number of hash functions
+3. `tweak` (integer, required) - Randomization tweak
+4. `flags` (integer, required) - Update flags
+
+**Result**: `true` on success
+
+### `getheaders`
+
+Gets block headers for SPV synchronization.
+
+**Parameters**:
+1. `block_locator` (array, required) - Array of block hashes
+2. `hash_stop` (string, optional) - Hash to stop at
+
+**Result**: Array of block headers
+
+### `getmerkleproof`
+
+Gets Merkle proof for a transaction.
+
+**Parameters**:
+1. `txid` (string, required) - Transaction ID
+2. `blockhash` (string, optional) - Block hash containing transaction
+
+**Result**:
+```json
+{
+  "txid": "abc123...",
+  "blockhash": "0000000000000000000abc123...",
+  "merkleproof": ["hash1", "hash2", ...],
+  "index": 5
+}
+```
+
+See also: [SPV & Bloom Filters Documentation](SPV_AND_BLOOM_FILTERS.md), [Mobile SDK](MOBILE_SDK.md)
 
 ---
 

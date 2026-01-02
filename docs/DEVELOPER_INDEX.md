@@ -1,6 +1,7 @@
 # INTcoin Developer Documentation Index
-**Version**: 1.0.0-beta  
-**Last Updated**: December 26, 2025
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
+**Status**: Production Beta
 
 ---
 
@@ -11,6 +12,7 @@
 - 🛠️ [Development Guides](#development-guides)
 - 🧪 [Testing](#testing)
 - 🔍 [API References](#api-references)
+- ⭐ [New Features (v1.2.0)](#new-features-v120)
 
 ---
 
@@ -106,7 +108,7 @@
    - Payout systems
 
 8. **[RPC.md](RPC.md)** - RPC API
-   - 47+ RPC methods
+   - 70+ RPC methods (23 new in v1.2.0)
    - Method categories
    - Usage examples
    - Error codes
@@ -125,12 +127,13 @@
 
 | Document | Description |
 |----------|-------------|
-| [TEST_ENHANCEMENT_PLAN.md](TEST_ENHANCEMENT_PLAN.md) | Testing roadmap and strategy |
-| Test suites in [../tests/](../tests/) | 13 test suites (100% passing) |
+| [TESTING.md](TESTING.md) | Testing documentation and strategy |
+| [TEST_ENHANCEMENT_PLAN.md](TEST_ENHANCEMENT_PLAN.md) | Testing roadmap |
+| Test suites in [../tests/](../tests/) | 17 test suites (100% passing) |
 
 ### Test Coverage
 
-**Current Status**: 13/13 tests passing (100%)
+**Current Status**: 17/17 tests passing (100%)
 
 | Test Suite | Coverage Area | Status |
 |------------|---------------|--------|
@@ -144,6 +147,10 @@
 | test_network | P2P protocol | ✅ PASS |
 | test_ml | Machine learning | ✅ PASS |
 | test_wallet | HD wallet | ✅ PASS |
+| test_mempool | Enhanced mempool | ✅ PASS (12/12) |
+| test_bloom | Bloom filters | ✅ PASS (8/8) |
+| test_metrics | Prometheus metrics | ✅ PASS (10/10) |
+| test_metrics_server | Metrics HTTP server | ✅ PASS (8/8) |
 | test_fuzz | Robustness | ✅ PASS |
 | test_integration | End-to-end | ✅ PASS |
 | test_lightning | Lightning Network | ✅ PASS (10/10) |
@@ -163,6 +170,38 @@ cmake --build build
 cd build && ctest
 # Generate coverage report
 ```
+
+---
+
+## New Features (v1.2.0)
+
+### Feature Documentation
+
+| Document | Description | Status |
+|----------|-------------|--------|
+| [ENHANCED_MEMPOOL.md](ENHANCED_MEMPOOL.md) | 6-level priority mempool system | ✅ Production |
+| [PROMETHEUS_METRICS.md](PROMETHEUS_METRICS.md) | 40+ metrics for monitoring | ✅ Production |
+| [ATOMIC_SWAPS.md](ATOMIC_SWAPS.md) | HTLC-based cross-chain trading | ✅ Production |
+| [CROSS_CHAIN_BRIDGES.md](CROSS_CHAIN_BRIDGES.md) | ETH, BTC, BSC bridges | ✅ Production |
+| [MOBILE_WALLET.md](MOBILE_WALLET.md) | Native iOS/Android SPV wallets | ✅ Production |
+| [SPV_AND_BLOOM_FILTERS.md](SPV_AND_BLOOM_FILTERS.md) | BIP37 Bloom filter implementation | ✅ Production |
+| [MOBILE_SDK.md](MOBILE_SDK.md) | Swift and Kotlin SDK documentation | ✅ Production |
+| [GRAFANA_DASHBOARDS.md](GRAFANA_DASHBOARDS.md) | Pre-built monitoring dashboards | ✅ Production |
+
+### Migration & Compatibility
+
+| Document | Description |
+|----------|-------------|
+| [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) | Upgrade from v1.0.0 to v1.2.0 |
+| [COMPATIBILITY.md](COMPATIBILITY.md) | Version compatibility matrix |
+
+### Tutorials
+
+| Document | Description | Difficulty |
+|----------|-------------|------------|
+| [QUICK_START.md](QUICK_START.md) | Get started with INTcoin (30 min) | Beginner |
+| [TUTORIAL_MONITORING.md](TUTORIAL_MONITORING.md) | Set up Prometheus/Grafana (45 min) | Intermediate |
+| [TUTORIAL_ATOMIC_SWAPS.md](TUTORIAL_ATOMIC_SWAPS.md) | Perform atomic swaps (60 min) | Advanced |
 
 ---
 
@@ -300,10 +339,17 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed workflow.
 
 ## Release Information
 
-**Current Version**: v1.0.0-beta  
-**Release Date**: December 26, 2025  
-**Status**: Production Testing  
-**Next Milestone**: v1.0.0 Mainnet (Q1 2026)
+**Current Version**: v1.2.0-beta
+**Release Date**: January 2, 2026
+**Status**: Production Beta
+**Next Milestone**: v1.3.0 (Q2 2026)
+
+**What's New in v1.2.0-beta**:
+- 📊 Enhanced Mempool with 6-level priority system
+- 📈 Prometheus metrics (40+ endpoints)
+- 🔄 Atomic swaps (BTC, LTC, XMR)
+- 🌉 Cross-chain bridges (ETH, BTC, BSC)
+- 📱 Mobile SPV wallets (iOS & Android)
 
 See [RELEASE_NOTES.md](../RELEASE_NOTES.md) for complete release details.
 

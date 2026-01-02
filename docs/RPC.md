@@ -1,9 +1,17 @@
 # INTcoin RPC API Documentation
 
-**Version**: 1.0.0-beta
-**Last Updated**: December 26, 2025
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
 
 This document describes the JSON-RPC API for interacting with the INTcoin daemon (`intcoind`).
+
+## What's New in v1.2.0-beta
+
+- **Enhanced Mempool RPCs**: Priority-aware transaction queries
+- **Metrics RPCs**: Prometheus metrics endpoint information
+- **Bridge RPCs**: Cross-chain bridge operations
+- **Atomic Swap RPCs**: HTLC and atomic swap management
+- **SPV RPCs**: Bloom filter and headers-only sync
 
 ---
 
@@ -25,6 +33,11 @@ This document describes the JSON-RPC API for interacting with the INTcoin daemon
   - [Lightning Network](#lightning-network-methods)
   - [Mining Pool](#mining-pool-methods)
   - [Enhanced Blockchain](#enhanced-blockchain-methods)
+  - [Enhanced Mempool](#enhanced-mempool-methods) **(New in v1.2.0)**
+  - [Metrics & Monitoring](#metrics-and-monitoring-methods) **(New in v1.2.0)**
+  - [Atomic Swaps](#atomic-swap-methods) **(New in v1.2.0)**
+  - [Cross-Chain Bridges](#cross-chain-bridge-methods) **(New in v1.2.0)**
+  - [SPV & Bloom Filters](#spv-and-bloom-filter-methods) **(New in v1.2.0)**
 - [Examples](#examples)
 
 ---
@@ -1411,6 +1424,509 @@ curl --user myuser:mypass --data-binary '{"jsonrpc":"2.0","id":"curl","method":"
 
 ---
 
+## Enhanced Mempool Methods
+
+*New in v1.2.0-beta*
+
+### getmempoolinfo
+
+Get detailed mempool statistics including priority breakdown.
+
+**Syntax**:
+```bash
+intcoin-cli getmempoolinfo
+```
+
+**Response**:
+```json
+{
+  "size": 1523,
+  "bytes": 456789,
+  "usage": 1234567,
+  "maxmempool": 314572800,
+  "mempoolminfee": 0.00001000,
+  "minrelaytxfee": 0.00001000,
+  "priority_stats": {
+    "LOW": {"count": 100, "bytes": 25000},
+    "NORMAL": {"count": 1200, "bytes": 400000},
+    "HIGH": {"count": 200, "bytes": 30000},
+    "HTLC": {"count": 15, "bytes": 1500},
+    "BRIDGE": {"count": 7, "bytes": 289},
+    "CRITICAL": {"count": 1, "bytes": 250}
+  },
+  "total_fees": "15.5"
+}
+```
+
+### getmempoolentry
+
+Get mempool entry for a specific transaction.
+
+**Syntax**:
+```bash
+intcoin-cli getmempoolentry <txid>
+```
+
+**Parameters**:
+- `txid` (string, required): Transaction ID
+
+**Response**:
+```json
+{
+  "fees": {
+    "base": 0.00050000,
+    "modified": 0.00050000,
+    "ancestor": 0.00050000,
+    "descendant": 0.00050000
+  },
+  "size": 250,
+  "fee": 0.00050000,
+  "modifiedfee": 0.00050000,
+  "time": 1704153600,
+  "height": 150000,
+  "priority": "NORMAL",
+  "depends": [],
+  "spentby": [],
+  "bip125-replaceable": false
+}
+```
+
+### savemempool
+
+Manually save mempool to disk.
+
+**Syntax**:
+```bash
+intcoin-cli savemempool
+```
+
+**Response**:
+```json
+{
+  "result": "Mempool saved to disk",
+  "file": "/home/user/.intcoin/mempool.dat",
+  "transactions": 1523
+}
+```
+
+### setmempoolpriority
+
+Set priority for a transaction (requires authorization).
+
+**Syntax**:
+```bash
+intcoin-cli setmempoolpriority <txid> <priority>
+```
+
+**Parameters**:
+- `txid` (string, required): Transaction ID
+- `priority` (string, required): LOW, NORMAL, HIGH, HTLC, BRIDGE, CRITICAL
+
+**Response**:
+```json
+{
+  "result": "Priority updated",
+  "txid": "abc123...",
+  "old_priority": "NORMAL",
+  "new_priority": "HIGH"
+}
+```
+
+---
+
+## Metrics and Monitoring Methods
+
+*New in v1.2.0-beta*
+
+### getmetricsinfo
+
+Get Prometheus metrics endpoint information.
+
+**Syntax**:
+```bash
+intcoin-cli getmetricsinfo
+```
+
+**Response**:
+```json
+{
+  "enabled": true,
+  "bind_address": "127.0.0.1",
+  "port": 9090,
+  "threads": 2,
+  "endpoint": "http://127.0.0.1:9090/metrics",
+  "uptime": 3600,
+  "requests_total": 245
+}
+```
+
+### getprometheusmetrics
+
+Get Prometheus metrics in text exposition format.
+
+**Syntax**:
+```bash
+intcoin-cli getprometheusmetrics
+```
+
+**Response**: Prometheus text format (truncated example)
+```
+# HELP intcoin_blocks_processed_total Total number of blocks processed
+# TYPE intcoin_blocks_processed_total counter
+intcoin_blocks_processed_total 150234.00
+
+# HELP intcoin_blockchain_height Current blockchain height
+# TYPE intcoin_blockchain_height gauge
+intcoin_blockchain_height 150234.00
+
+# HELP intcoin_mempool_size Current mempool transaction count
+# TYPE intcoin_mempool_size gauge
+intcoin_mempool_size 1523.00
+...
+```
+
+---
+
+## Atomic Swap Methods
+
+*New in v1.2.0-beta*
+
+### initiate_atomic_swap
+
+Initiate an atomic swap (creates HTLC on chain A).
+
+**Syntax**:
+```bash
+intcoin-cli initiate_atomic_swap <amount> <recipient_address> <refund_address> <secret_hash> <locktime>
+```
+
+**Parameters**:
+- `amount` (numeric, required): Amount to swap
+- `recipient_address` (string, required): Counterparty's address
+- `refund_address` (string, required): Your refund address
+- `secret_hash` (string, required): SHA256 hash of secret
+- `locktime` (numeric, required): Refund locktime (Unix timestamp)
+
+**Response**:
+```json
+{
+  "txid": "abc123...",
+  "htlc_address": "int1qhtlc...",
+  "secret_hash": "def456...",
+  "locktime": 1704240000,
+  "amount": 10.5,
+  "status": "initiated"
+}
+```
+
+### participate_atomic_swap
+
+Participate in atomic swap (creates HTLC on chain B).
+
+**Syntax**:
+```bash
+intcoin-cli participate_atomic_swap <amount> <recipient_address> <refund_address> <secret_hash> <locktime>
+```
+
+**Response**: Same format as `initiate_atomic_swap`
+
+### redeem_atomic_swap
+
+Redeem atomic swap by revealing secret.
+
+**Syntax**:
+```bash
+intcoin-cli redeem_atomic_swap <htlc_address> <secret>
+```
+
+**Parameters**:
+- `htlc_address` (string, required): HTLC contract address
+- `secret` (string, required): Preimage of secret_hash
+
+**Response**:
+```json
+{
+  "txid": "ghi789...",
+  "secret": "jkl012...",
+  "amount": 10.5,
+  "status": "redeemed"
+}
+```
+
+### refund_atomic_swap
+
+Refund atomic swap after locktime expires.
+
+**Syntax**:
+```bash
+intcoin-cli refund_atomic_swap <htlc_address>
+```
+
+**Response**:
+```json
+{
+  "txid": "mno345...",
+  "amount": 10.5,
+  "status": "refunded"
+}
+```
+
+### get_atomic_swap_status
+
+Get status of an atomic swap.
+
+**Syntax**:
+```bash
+intcoin-cli get_atomic_swap_status <htlc_address>
+```
+
+**Response**:
+```json
+{
+  "htlc_address": "int1qhtlc...",
+  "status": "initiated",
+  "amount": 10.5,
+  "locktime": 1704240000,
+  "secret_hash": "def456...",
+  "confirmations": 3
+}
+```
+
+---
+
+## Cross-Chain Bridge Methods
+
+*New in v1.2.0-beta*
+
+### bridge_deposit
+
+Deposit INT tokens to cross-chain bridge.
+
+**Syntax**:
+```bash
+intcoin-cli bridge_deposit <amount> <destination_chain> <destination_address>
+```
+
+**Parameters**:
+- `amount` (numeric, required): Amount to bridge
+- `destination_chain` (string, required): ethereum, bitcoin, bsc
+- `destination_address` (string, required): Address on destination chain
+
+**Response**:
+```json
+{
+  "deposit_txid": "pqr678...",
+  "bridge_id": "BRG-123456",
+  "amount": 100.0,
+  "destination_chain": "ethereum",
+  "destination_address": "0xabc...",
+  "estimated_time": "10-30 minutes",
+  "status": "pending"
+}
+```
+
+### bridge_withdraw
+
+Withdraw tokens from bridge back to INT.
+
+**Syntax**:
+```bash
+intcoin-cli bridge_withdraw <bridge_id> <int_address>
+```
+
+**Parameters**:
+- `bridge_id` (string, required): Bridge transaction ID
+- `int_address` (string, required): INT address to receive tokens
+
+**Response**:
+```json
+{
+  "withdrawal_txid": "stu901...",
+  "bridge_id": "BRG-123456",
+  "amount": 100.0,
+  "int_address": "int1q...",
+  "status": "processing"
+}
+```
+
+### bridge_status
+
+Get status of bridge transaction.
+
+**Syntax**:
+```bash
+intcoin-cli bridge_status <bridge_id>
+```
+
+**Response**:
+```json
+{
+  "bridge_id": "BRG-123456",
+  "type": "deposit",
+  "source_chain": "intcoin",
+  "destination_chain": "ethereum",
+  "amount": 100.0,
+  "status": "completed",
+  "confirmations": {
+    "source": 50,
+    "destination": 12
+  },
+  "txids": {
+    "source": "pqr678...",
+    "destination": "0xdef..."
+  }
+}
+```
+
+### list_bridges
+
+List all bridge transactions for current wallet.
+
+**Syntax**:
+```bash
+intcoin-cli list_bridges [count] [skip]
+```
+
+**Response**:
+```json
+[
+  {
+    "bridge_id": "BRG-123456",
+    "type": "deposit",
+    "amount": 100.0,
+    "destination_chain": "ethereum",
+    "status": "completed",
+    "timestamp": 1704153600
+  },
+  ...
+]
+```
+
+---
+
+## SPV and Bloom Filter Methods
+
+*New in v1.2.0-beta*
+
+### loadbloomfilter
+
+Load Bloom filter for SPV client.
+
+**Syntax**:
+```bash
+intcoin-cli loadbloomfilter <filter_data> <num_hash_funcs> <tweak> <flags>
+```
+
+**Parameters**:
+- `filter_data` (string, required): Hex-encoded filter data
+- `num_hash_funcs` (numeric, required): Number of hash functions
+- `tweak` (numeric, required): Randomization parameter
+- `flags` (numeric, required): Update flags (0=NONE, 1=ALL, 2=P2PUBKEY_ONLY)
+
+**Response**:
+```json
+{
+  "result": "Bloom filter loaded",
+  "size": 180,
+  "hash_funcs": 10,
+  "false_positive_rate": 0.001
+}
+```
+
+### addtobloomfilter
+
+Add element to existing Bloom filter.
+
+**Syntax**:
+```bash
+intcoin-cli addtobloomfilter <element>
+```
+
+**Parameters**:
+- `element` (string, required): Hex-encoded element to add
+
+**Response**:
+```json
+{
+  "result": "Element added to Bloom filter"
+}
+```
+
+### clearbloomfilter
+
+Clear loaded Bloom filter.
+
+**Syntax**:
+```bash
+intcoin-cli clearbloomfilter
+```
+
+**Response**:
+```json
+{
+  "result": "Bloom filter cleared"
+}
+```
+
+### getheaders
+
+Get block headers for SPV synchronization.
+
+**Syntax**:
+```bash
+intcoin-cli getheaders <start_height> [count]
+```
+
+**Parameters**:
+- `start_height` (numeric, required): Starting block height
+- `count` (numeric, optional, default=2000): Number of headers
+
+**Response**:
+```json
+{
+  "headers": [
+    {
+      "height": 150000,
+      "hash": "abc123...",
+      "version": 1,
+      "prev_hash": "def456...",
+      "merkle_root": "ghi789...",
+      "timestamp": 1704153600,
+      "bits": "1f0ff0f0",
+      "nonce": 12345678
+    },
+    ...
+  ],
+  "count": 2000
+}
+```
+
+### getmerkleproof
+
+Get merkle proof for a transaction.
+
+**Syntax**:
+```bash
+intcoin-cli getmerkleproof <txid>
+```
+
+**Parameters**:
+- `txid` (string, required): Transaction ID
+
+**Response**:
+```json
+{
+  "txid": "jkl012...",
+  "block_hash": "mno345...",
+  "merkle_root": "pqr678...",
+  "proof": ["stu901...", "vwx234...", "yza567..."],
+  "position": 42,
+  "total_transactions": 1000
+}
+```
+
+---
+
 ## See Also
 
 - [CLI Guide](../wiki/CLI-Guide.md) - intcoin-cli usage guide
@@ -1419,6 +1935,6 @@ curl --user myuser:mypass --data-binary '{"jsonrpc":"2.0","id":"curl","method":"
 
 ---
 
-**Version**: 1.0.0-beta
-**Last Updated**: December 26, 2025
-**Build**: Complete - 47+ RPC methods implemented (includes Lightning, Pool, and Fee Estimation)
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
+**Build**: Complete - 70+ RPC methods implemented (includes Lightning, Pool, Fee Estimation, Mempool Priority, Metrics, Atomic Swaps, Bridges, and SPV)

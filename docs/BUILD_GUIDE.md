@@ -1,7 +1,17 @@
 # INTcoin Build Guide
-**Version**: 1.0.0-beta  
-**Date**: December 26, 2025  
+**Version**: 1.2.0-beta
+**Date**: January 2, 2026
+**Status**: Production Beta
 **Platforms**: Ubuntu, Debian, Fedora, Arch, macOS, FreeBSD, Windows
+
+## What's New in v1.2.0-beta
+
+- 📊 **Enhanced Mempool**: 6-level priority system with RocksDB persistence
+- 📈 **Prometheus Metrics**: HTTP endpoint for monitoring (port 9090)
+- 🔄 **Atomic Swaps**: HTLC-based cross-chain trading
+- 🌉 **Cross-Chain Bridges**: ETH, BTC, BSC support
+- 📱 **Mobile SPV**: Bloom filter support for mobile wallets
+- ✅ **17 Test Suites**: Comprehensive testing (all passing)
 
 ---
 
@@ -12,6 +22,7 @@
 - [Dependencies](#dependencies)
 - [Platform-Specific Instructions](#platform-specific-instructions)
 - [Build Options](#build-options)
+- [Mobile SDK Build](#mobile-sdk-build)
 - [Troubleshooting](#troubleshooting)
 - [Cross-Compilation](#cross-compilation)
 
@@ -286,7 +297,7 @@ cmake --build build --config Release
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `BUILD_TESTS` | OFF | Build test suite (13 tests) |
+| `BUILD_TESTS` | OFF | Build test suite (17 tests) |
 | `BUILD_WALLET_QT` | OFF | Build Qt6 GUI wallet |
 | `BUILD_BENCH` | OFF | Build performance benchmarks |
 | `CMAKE_BUILD_TYPE` | Release | Build type: Release, Debug, RelWithDebInfo |
@@ -331,6 +342,106 @@ cmake -B build \
   -DRELAXED_DEPENDENCIES=ON \
   -DWARNINGS_AS_ERRORS=OFF
 ```
+
+---
+
+## Mobile SDK Build
+
+INTcoin v1.2.0-beta includes native mobile SDKs for iOS and Android.
+
+### iOS SDK (Swift)
+
+**Requirements**:
+- macOS 13+ (Ventura)
+- Xcode 15+
+- Swift 5.9+
+- CocoaPods or Swift Package Manager
+
+**Build Instructions**:
+
+```bash
+# Clone repository
+cd mobile/ios
+
+# Install dependencies with CocoaPods
+pod install
+
+# Open in Xcode
+open INTcoinKit.xcworkspace
+
+# Build framework
+xcodebuild -workspace INTcoinKit.xcworkspace \
+  -scheme INTcoinKit \
+  -configuration Release \
+  -destination 'generic/platform=iOS' \
+  -derivedDataPath .build
+
+# Run tests
+xcodebuild test -workspace INTcoinKit.xcworkspace \
+  -scheme INTcoinKit \
+  -destination 'platform=iOS Simulator,name=iPhone 15'
+```
+
+**Swift Package Manager**:
+
+```swift
+// Package.swift
+dependencies: [
+    .package(url: "https://github.com/INT-devs/intcoin-ios.git", from: "1.2.0")
+]
+```
+
+See: [Mobile SDK Documentation](MOBILE_SDK.md)
+
+---
+
+### Android SDK (Kotlin)
+
+**Requirements**:
+- JDK 17+
+- Android SDK 34+ (API Level 34)
+- Kotlin 1.9+
+- Gradle 8.5+
+
+**Build Instructions**:
+
+```bash
+# Clone repository
+cd mobile/android
+
+# Build SDK
+./gradlew assembleRelease
+
+# Run tests
+./gradlew test
+
+# Generate AAR
+./gradlew bundleReleaseAar
+
+# Built SDK location
+ls build/outputs/aar/intcoin-sdk-release.aar
+```
+
+**Gradle Dependency**:
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("org.intcoin:intcoin-sdk:1.2.0")
+}
+```
+
+**Maven**:
+
+```xml
+<dependency>
+    <groupId>org.intcoin</groupId>
+    <artifactId>intcoin-sdk</artifactId>
+    <version>1.2.0</version>
+</dependency>
+```
+
+See: [Mobile SDK Documentation](MOBILE_SDK.md)
 
 ---
 
@@ -476,13 +587,27 @@ After successful build:
 
 ## Documentation
 
-- [Developer Guide](DEVELOPER_GUIDE.md)
+**Core Documentation**:
 - [Architecture](ARCHITECTURE.md)
-- [Contributing](../CONTRIBUTING.md)
 - [API Reference](API_REFERENCE.md)
+- [RPC Commands](RPC.md)
+- [Testing Guide](TESTING.md)
+
+**New Features (v1.2.0)**:
+- [Enhanced Mempool](ENHANCED_MEMPOOL.md)
+- [Prometheus Metrics](PROMETHEUS_METRICS.md)
+- [Atomic Swaps](ATOMIC_SWAPS.md)
+- [Cross-Chain Bridges](CROSS_CHAIN_BRIDGES.md)
+- [SPV & Bloom Filters](SPV_AND_BLOOM_FILTERS.md)
+- [Mobile SDK](MOBILE_SDK.md)
+- [Grafana Dashboards](GRAFANA_DASHBOARDS.md)
+
+**General**:
+- [Contributing](../CONTRIBUTING.md)
+- [Security Policy](../SECURITY.md)
 
 ---
 
-**Maintainer**: INTcoin Development Team  
-**Contact**: team@international-coin.org  
-**Last Updated**: December 26, 2025
+**Maintainer**: INTcoin Development Team
+**Contact**: team@international-coin.org
+**Last Updated**: January 2, 2026

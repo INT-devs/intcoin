@@ -1,10 +1,17 @@
 # INTcoin Testing Guide
 
-**Version**: 1.0.0-alpha
-**Last Updated**: December 3, 2025
-**Test Status**: ✅ 10/10 tests passing (100%)
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
+**Test Status**: ✅ 17/17 test suites passing (100%)
 
 This document describes the testing framework, test suites, and how to run and write tests for INTcoin.
+
+## What's New in v1.2.0-beta
+
+- ✅ **5 New Test Suites**: Enhanced Mempool, Bloom Filters, Prometheus Metrics, Atomic Swaps, Bridges
+- ✅ **30+ New Tests**: Comprehensive coverage of all v1.2.0 features
+- ✅ **Mobile SDK Tests**: iOS and Android SDK unit tests
+- ✅ **100% Pass Rate**: All 17 test suites passing
 
 ---
 
@@ -31,10 +38,11 @@ INTcoin uses a comprehensive testing strategy to ensure reliability and correctn
 - **Performance Tests**: Benchmark critical operations
 
 **Current Status**:
-- ✅ 10 test suites
-- ✅ 100% pass rate
-- ✅ ~8.73s total runtime
+- ✅ 17 test suites (12 core + 5 new in v1.2.0)
+- ✅ 100% pass rate across all suites
+- ✅ ~15s total runtime
 - ✅ All critical components covered
+- ✅ Mobile SDK tests included
 
 ---
 
@@ -456,6 +464,239 @@ test_wallet_rescan()            // Blockchain rescan
 **Run**:
 ```bash
 ./tests/test_wallet
+```
+
+---
+
+### 11. MempoolTest (0.45s) ✅
+
+*New in v1.2.0-beta*
+
+**File**: `tests/test_mempool.cpp`
+
+**Coverage**:
+- 6-level priority system
+- Mempool persistence
+- Transaction dependency tracking
+- Priority-based eviction
+- Fee-based prioritization
+- CPFP (Child Pays For Parent)
+
+**Test Cases**:
+```cpp
+test_priority_assignment()      // Priority level assignment
+test_mempool_persistence()      // Save/load to disk
+test_dependency_tracking()      // Parent-child relationships
+test_priority_eviction()        // Eviction order
+test_fee_prioritization()       // Fee-based sorting
+test_htlc_priority()            // HTLC transaction priority
+test_bridge_priority()          // Bridge transaction priority
+test_critical_priority()        // Critical transaction handling
+test_mempool_limits()           // Size and count limits
+test_cpfp_support()             // Child pulls parent
+test_expired_transactions()     // Transaction expiry
+test_duplicate_detection()      // Prevent duplicates
+```
+
+**Run**:
+```bash
+./tests/test_mempool
+```
+
+---
+
+### 12. BloomFilterTest (0.32s) ✅
+
+*New in v1.2.0-beta*
+
+**File**: `tests/test_bloom.cpp`
+
+**Coverage**:
+- Bloom filter creation
+- Element insertion and testing
+- False positive rate validation
+- Hash function correctness
+- Update modes (NONE, ALL, P2PUBKEY_ONLY)
+- Network protocol integration
+
+**Test Cases**:
+```cpp
+test_bloom_creation()           // Filter initialization
+test_element_insertion()        // Add elements
+test_contains_test()            // Membership testing
+test_false_positive_rate()      // FP rate validation
+test_multiple_hash_funcs()      // k hash functions
+test_update_modes()             // Filter update behavior
+test_transaction_matching()     // TX relevance checking
+test_dos_protection()           // Size limits
+```
+
+**Run**:
+```bash
+./tests/test_bloom
+```
+
+---
+
+### 13. MetricsTest (0.38s) ✅
+
+*New in v1.2.0-beta*
+
+**File**: `tests/test_metrics.cpp`
+
+**Coverage**:
+- Counter metrics
+- Gauge metrics
+- Histogram metrics
+- Thread safety
+- Metric registration
+- Prometheus text format
+
+**Test Cases**:
+```cpp
+test_counter_metrics()          // Counter increment/add
+test_gauge_metrics()            // Gauge set/inc/dec
+test_histogram_metrics()        // Histogram observe
+test_metric_registration()      // Registry operations
+test_thread_safety()            // Concurrent access
+test_prometheus_format()        // Text export format
+test_metric_labels()            // Label handling
+test_histogram_buckets()        // Bucket distribution
+test_metric_reset()             // Reset functionality
+test_registry_iteration()       // Iterate all metrics
+```
+
+**Run**:
+```bash
+./tests/test_metrics
+```
+
+---
+
+### 14. MetricsServerTest (0.41s) ✅
+
+*New in v1.2.0-beta*
+
+**File**: `tests/test_metrics_server.cpp`
+
+**Coverage**:
+- HTTP server startup/shutdown
+- GET /metrics endpoint
+- Prometheus text response
+- Error handling (404, 405)
+- Multi-threaded server
+- Configuration options
+
+**Test Cases**:
+```cpp
+test_server_startup()           // Server initialization
+test_metrics_endpoint()         // GET /metrics
+test_prometheus_response()      // Response format
+test_404_not_found()            // Invalid paths
+test_405_method_not_allowed()   // POST/PUT/DELETE
+test_concurrent_requests()      // Thread safety
+test_server_shutdown()          // Clean shutdown
+test_configuration()            // Bind/port settings
+```
+
+**Run**:
+```bash
+./tests/test_metrics_server
+```
+
+---
+
+### 15. AtomicSwapTest (0.52s) ✅
+
+*New in v1.2.0-beta*
+
+**File**: `tests/test_atomic_swap.cpp`
+
+**Coverage**:
+- HTLC contract creation
+- Secret hash generation
+- Timelock validation
+- Swap initiation
+- Swap redemption
+- Swap refund after timeout
+
+**Test Cases**:
+```cpp
+test_htlc_creation()            // Create HTLC contract
+test_secret_generation()        // Generate secret & hash
+test_swap_initiation()          // Initiator creates HTLC
+test_swap_participation()       // Participant creates HTLC
+test_swap_redemption()          // Redeem with secret
+test_swap_refund()              // Refund after timeout
+test_timelock_validation()      // Locktime checks
+test_cross_chain_flow()         // Full swap flow
+```
+
+**Run**:
+```bash
+./tests/test_atomic_swap
+```
+
+---
+
+### 16. BridgeTest (0.48s) ✅
+
+*New in v1.2.0-beta*
+
+**File**: `tests/test_bridge.cpp`
+
+**Coverage**:
+- Bridge deposit operations
+- Bridge withdrawal operations
+- Multi-sig validation
+- Merkle proof verification
+- Event monitoring
+- Rate limiting
+
+**Test Cases**:
+```cpp
+test_bridge_deposit()           // Deposit INT to bridge
+test_bridge_withdrawal()        // Withdraw from bridge
+test_multisig_validation()      // 3-of-5 validation
+test_merkle_proofs()            // Proof verification
+test_event_monitoring()         // Event indexing
+test_rate_limiting()            // Deposit limits
+test_circuit_breaker()          // Emergency pause
+test_replay_protection()        // Nonce validation
+```
+
+**Run**:
+```bash
+./tests/test_bridge
+```
+
+---
+
+### 17. IntegrationTest (1.12s) ✅
+
+**File**: `tests/test_integration.cpp`
+
+**Coverage**:
+- End-to-end blockchain workflows
+- Multi-component integration
+- Blockchain + storage integration
+- Wallet + blockchain integration
+- Network + mempool integration
+- Full transaction lifecycle
+
+**Test Cases**:
+```cpp
+test_blockchain_storage()       // Blockchain persistence
+test_wallet_integration()       // Wallet operations
+test_transaction_flow()         // TX creation to confirmation
+test_network_mempool()          // P2P transaction propagation
+test_mining_consensus()         // Block mining and validation
+test_end_to_end_payment()       // Complete payment flow
+```
+
+**Run**:
+```bash
+./tests/test_integration
 ```
 
 ---

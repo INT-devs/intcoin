@@ -1,10 +1,11 @@
 # INTcoin Cryptography
 
-**Status**: ✅ Complete (100%)
-**Tests**: 5/5 passing
-**Last Updated**: November 26, 2025
+**Version**: 1.2.0-beta
+**Status**: ✅ Production Beta (100%)
+**Tests**: 17/17 test suites passing
+**Last Updated**: January 2, 2026
 
-INTcoin uses post-quantum cryptographic algorithms approved by NIST to ensure long-term security in the post-quantum era.
+INTcoin uses post-quantum cryptographic algorithms approved by NIST to ensure long-term security in the post-quantum era. All wallet types (desktop, mobile) use the same quantum-resistant cryptography.
 
 ---
 

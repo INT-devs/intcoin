@@ -67,6 +67,16 @@ tests/test_integration
 moc_*.cpp
 ui_*.h
 
+# Mobile build artifacts
+mobile/ios/.build/
+mobile/ios/Pods/
+mobile/ios/*.xcworkspace/xcuserdata/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+*.aar
+*.apk
+
 # Logs
 *.log
 

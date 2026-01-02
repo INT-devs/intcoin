@@ -1,10 +1,11 @@
 # INTcoin Consensus Mechanism
 
-**Status**: 🟢 Complete (RandomX + Coinbase Validation)
-**Tests**: 6/6 RandomX tests passing
-**Last Updated**: December 18, 2025
+**Version**: 1.2.0-beta
+**Status**: 🟢 Production Beta (RandomX + Enhanced Mempool)
+**Tests**: 17/17 test suites passing (100%)
+**Last Updated**: January 2, 2026
 
-INTcoin uses a hybrid consensus mechanism combining RandomX Proof-of-Work with Digishield V3 dynamic difficulty adjustment.
+INTcoin uses a hybrid consensus mechanism combining RandomX Proof-of-Work with Digishield V3 dynamic difficulty adjustment, enhanced with intelligent transaction prioritization.
 
 ---
 

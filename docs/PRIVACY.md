@@ -1,10 +1,25 @@
 # Privacy & Anonymous Networking
 
-Complete guide to INTcoin's privacy features including Tor and I2P integration.
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
+**Status**: Production Beta
+
+Complete guide to INTcoin's privacy features including Tor, I2P, and mobile SPV privacy.
+
+## What's New in v1.2.0-beta
+
+- 📱 **Mobile SPV Privacy**: Bloom filter privacy considerations for lightweight clients
+- 🔐 **Enhanced Filtering**: Privacy-preserving transaction filtering
+- 📲 **Mobile Tor/I2P**: Support for privacy networks on mobile platforms
+
+See also: [SPV & Bloom Filters](SPV_AND_BLOOM_FILTERS.md), [Mobile SDK](MOBILE_SDK.md)
+
+---
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Mobile SPV Privacy](#mobile-spv-privacy)
 - [Tor Integration](#tor-integration)
 - [I2P Integration](#i2p-integration)
 - [Configuration](#configuration)
@@ -27,6 +42,142 @@ INTcoin provides optional privacy features for users who want to enhance their a
 | **Tor Only** | High | All connections through Tor (.onion addresses) |
 | **I2P Only** | High | All connections through I2P (.i2p addresses) |
 | **Tor + I2P Hybrid** | Very High | Mix of both networks for enhanced privacy |
+
+---
+
+## Mobile SPV Privacy
+
+### Overview
+
+INTcoin v1.2.0-beta introduces mobile SPV wallets using Bloom filters (BIP37) for lightweight blockchain verification. While SPV provides convenience, users should understand the privacy implications.
+
+### Bloom Filter Privacy
+
+**How Bloom Filters Affect Privacy:**
+
+| Aspect | Privacy Level | Explanation |
+|--------|---------------|-------------|
+| **False Positives** | Medium | Bloom filters intentionally include false positives to obscure which transactions you own |
+| **Full Node Knowledge** | Medium-Low | Full nodes can see which transactions match your filter (though with false positives) |
+| **Network Observation** | Low | Network observers can correlate filter patterns with transactions |
+| **Address Linkage** | Medium | Multiple addresses in the same filter may be linked to the same wallet |
+
+### Privacy Best Practices for Mobile
+
+**1. Use Lower False Positive Rates**
+```swift
+// iOS SDK example
+let wallet = try Wallet.create(mnemonic: mnemonic)
+wallet.bloomFilterFPR = 0.001  // Lower FPR = more privacy (default: 0.0001)
+```
+
+**2. Rotate Bloom Filters Regularly**
+```kotlin
+// Android SDK example
+wallet.rotateBloomFilter()  // Creates new filter with different randomization
+```
+
+**3. Combine with Tor/I2P**
+```ini
+# Mobile node configuration
+tor=1
+onlynet=onion
+
+# SPV with Tor
+spv.enabled=1
+spv.tor=1
+```
+
+**4. Use Multiple Wallets**
+- Separate wallets for different purposes prevent address linkage
+- Don't reuse addresses across wallets
+
+### Mobile Privacy Modes
+
+**Standard SPV** (Default):
+- FPR: 0.0001 (0.01%)
+- ~100 false positives per 1M transactions
+- Good balance of privacy and bandwidth
+
+**High Privacy SPV**:
+- FPR: 0.001 (0.1%)
+- ~1,000 false positives per 1M transactions
+- Better privacy, higher bandwidth
+
+**Maximum Privacy** (Full Node):
+- Run full node instead of SPV
+- Download entire blockchain
+- No bloom filter privacy leaks
+
+### Privacy Comparison
+
+| Wallet Type | Privacy | Bandwidth | Storage |
+|-------------|---------|-----------|---------|
+| **Mobile SPV (Standard)** | Medium | Low (~50 MB/month) | Minimal (~10 MB) |
+| **Mobile SPV (High Privacy)** | Medium-High | Medium (~200 MB/month) | Minimal (~10 MB) |
+| **Mobile SPV + Tor** | High | Low-Medium | Minimal (~10 MB) |
+| **Desktop Full Node** | Very High | High (~10 GB/month) | High (~50 GB) |
+| **Desktop Full Node + Tor** | Maximum | High | High (~50 GB) |
+
+### SPV Privacy Limitations
+
+**Known Privacy Leaks:**
+
+1. **Transaction Broadcasting**: When you broadcast a transaction, nodes know your IP (unless using Tor)
+2. **Timing Correlation**: Requesting specific blocks immediately after broadcasting reveals ownership
+3. **Filter Updates**: Changing filters after receiving coins reveals which transactions you care about
+4. **IP Address**: SPV nodes reveal their IP to full nodes (unless using Tor/I2P)
+
+**Mitigations:**
+
+```ini
+# Desktop SPV configuration
+spv.enabled=1
+spv.tor=1                    # Use Tor for all SPV connections
+spv.rotate_filter=3600       # Rotate filter every hour
+spv.delay_broadcast=60       # Random delay before broadcasting (0-60 seconds)
+spv.fetch_extra_blocks=10    # Fetch extra blocks to obscure interest
+```
+
+### Mobile SDK Privacy Features
+
+**iOS (Swift):**
+```swift
+import INTcoinKit
+
+// High privacy configuration
+let config = WalletConfig(
+    network: .mainnet,
+    bloomFilterFPR: 0.001,      // Higher FPR for more false positives
+    torEnabled: true,            // Use Tor (requires Tor app)
+    rotateFilterInterval: 3600   // Rotate every hour
+)
+
+let wallet = try Wallet.create(mnemonic: mnemonic, config: config)
+```
+
+**Android (Kotlin):**
+```kotlin
+import org.intcoin.sdk.Wallet
+
+// High privacy configuration
+val config = WalletConfig(
+    network = Network.MAINNET,
+    bloomFilterFPR = 0.001,      // Higher FPR
+    torEnabled = true,            // Use Orbot
+    rotateFilterInterval = 3600   // Rotate every hour
+)
+
+val wallet = Wallet.create(mnemonic, config)
+```
+
+### Further Reading
+
+- [SPV & Bloom Filters Technical Guide](SPV_AND_BLOOM_FILTERS.md)
+- [Mobile SDK Documentation](MOBILE_SDK.md)
+- [BIP37: Connection Bloom Filtering](https://github.com/bitcoin/bips/blob/master/bip-0037.mediawiki)
+
+---
 
 ## Tor Integration
 

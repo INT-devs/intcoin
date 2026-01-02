@@ -1,10 +1,17 @@
 # INTcoin Mining Documentation
 
-**Version**: 1.0.0-alpha
-**Last Updated**: December 25, 2025
-**Status**: Complete - Production Ready
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
+**Status**: Production Beta
 
 This document describes the mining system for INTcoin, including solo mining, pool mining, and the CPU miner implementation.
+
+## What's New in v1.2.0-beta
+
+- 📊 **Prometheus Metrics**: Mining hashrate and block metrics exposed via HTTP endpoint
+- 📈 **Enhanced Monitoring**: Grafana dashboard templates for mining operations
+- 🔗 **Bridge Priority**: Mined blocks now support cross-chain bridge transaction prioritization
+- ⚡ **HTLC Support**: Lightning Network and atomic swap transaction prioritization in blocks
 
 ---
 

@@ -1,11 +1,22 @@
 # Building INTcoin from Source
 
-**Version**: 1.0.0-alpha
-**Last Updated**: December 18, 2025
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
+**Status**: Production Beta
 
 Complete guide for building INTcoin on all supported platforms.
 
+## What's New in v1.2.0-beta
+
+- 📊 **Enhanced Mempool**: 6-level priority system with persistence
+- 📈 **Prometheus Metrics**: Monitoring endpoint on port 9090
+- 🔄 **Atomic Swaps & Bridges**: Cross-chain functionality
+- 📱 **Mobile SDKs**: iOS (Swift) and Android (Kotlin) support
+- ✅ **17 Test Suites**: Comprehensive test coverage
+
 **Note**: Automated installation scripts are available in `scripts/` for Linux and FreeBSD. See [Automated Installation](#automated-installation) below.
+
+**Detailed Build Guide**: [BUILD_GUIDE.md](BUILD_GUIDE.md)
 
 ---
 

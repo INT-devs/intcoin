@@ -82,7 +82,7 @@ option(BUILD_WALLET_QT "Build Qt wallet" ON)
 option(BUILD_DAEMON "Build intcoind daemon" ON)
 option(BUILD_CLI "Build intcoin-cli" ON)
 option(BUILD_MINER "Build miner" ON)
-option(BUILD_POOL_SERVER "Build mining pool server" ON)
+option(BUILD_POOL_SERVER "Build mining pool server" OFF)
 option(BUILD_EXPLORER "Build block explorer" ON)
 option(BUILD_FAUCET "Build testnet faucet" ON)
 option(ENABLE_LIGHTNING "Enable Lightning Network" OFF)  # Deferred

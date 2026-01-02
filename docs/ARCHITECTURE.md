@@ -1,7 +1,7 @@
 # INTcoin Architecture
 
-**Version**: 1.0.0
-**Last Updated**: January 2025
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
 
 ---
 
@@ -14,45 +14,74 @@
 5. [Storage Layer](#storage-layer)
 6. [Consensus Layer](#consensus-layer)
 7. [Application Layer](#application-layer)
-8. [Security Model](#security-model)
+8. [Enhanced Mempool Architecture](#enhanced-mempool-architecture) **(New in v1.2.0)**
+9. [Mobile & SPV Architecture](#mobile-and-spv-architecture) **(New in v1.2.0)**
+10. [Monitoring & Metrics](#monitoring-and-metrics-architecture) **(New in v1.2.0)**
+11. [Cross-Chain Architecture](#cross-chain-architecture) **(New in v1.2.0)**
+12. [Security Model](#security-model)
 
 ---
 
 ## System Overview
 
-INTcoin is designed as a multi-layered system with clear separation of concerns:
+INTcoin v1.2.0-beta is designed as a multi-layered system with clear separation of concerns:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              Application Layer                          │
-│  (Wallets, Explorer, RPC, CLI, Lightning Network)      │
-└─────────────────────────────────────────────────────────┘
-                          ▲
-┌─────────────────────────────────────────────────────────┐
-│              Consensus Layer                            │
-│     (RandomX PoW, Difficulty Adjustment, Validation)    │
-└─────────────────────────────────────────────────────────┘
-                          ▲
-┌─────────────────────────────────────────────────────────┐
-│              Blockchain Layer                           │
-│      (Blocks, Transactions, UTXO, Scripts)             │
-└─────────────────────────────────────────────────────────┘
-                          ▲
-┌─────────────────────────────────────────────────────────┐
-│              Network Layer                              │
-│        (P2P, Message Protocol, Peer Discovery)          │
-└─────────────────────────────────────────────────────────┘
-                          ▲
-┌─────────────────────────────────────────────────────────┐
-│              Storage Layer                              │
-│        (RocksDB, Indexing, Pruning, UTXO Set)          │
-└─────────────────────────────────────────────────────────┘
-                          ▲
-┌─────────────────────────────────────────────────────────┐
-│              Cryptography Layer                         │
-│   (Dilithium Signatures, Kyber Key Exchange, Hashing)  │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                    Application Layer                             │
+│  Desktop: Qt Wallet, CLI                                         │
+│  Mobile: iOS/Android SPV Wallets                                 │
+│  Services: RPC API, Lightning Network, Block Explorer            │
+└──────────────────────────────────────────────────────────────────┘
+                               ▲
+┌──────────────────────────────────────────────────────────────────┐
+│                  Cross-Chain Layer (v1.2.0)                      │
+│  Atomic Swaps | Bridges (ETH, BTC, BSC) | HTLC Contracts        │
+└──────────────────────────────────────────────────────────────────┘
+                               ▲
+┌──────────────────────────────────────────────────────────────────┐
+│              Monitoring & Metrics Layer (v1.2.0)                 │
+│  Prometheus Metrics | HTTP Endpoint | Grafana Integration        │
+└──────────────────────────────────────────────────────────────────┘
+                               ▲
+┌──────────────────────────────────────────────────────────────────┐
+│                    Consensus Layer                               │
+│  RandomX PoW | Difficulty Adjustment | Transaction Validation    │
+└──────────────────────────────────────────────────────────────────┘
+                               ▲
+┌──────────────────────────────────────────────────────────────────┐
+│                    Blockchain Layer                              │
+│  Blocks | Transactions | UTXO Model | Script System              │
+└──────────────────────────────────────────────────────────────────┘
+                               ▲
+┌──────────────────────────────────────────────────────────────────┐
+│                Enhanced Mempool Layer (v1.2.0)                   │
+│  6-Level Priority | Persistence | Dependency Tracking            │
+└──────────────────────────────────────────────────────────────────┘
+                               ▲
+┌──────────────────────────────────────────────────────────────────┐
+│                    Network Layer                                 │
+│  Full Node P2P | SPV Protocol (v1.2.0) | Bloom Filters (v1.2.0) │
+│  Peer Discovery | Message Protocol | Privacy (Tor/I2P)           │
+└──────────────────────────────────────────────────────────────────┘
+                               ▲
+┌──────────────────────────────────────────────────────────────────┐
+│                    Storage Layer                                 │
+│  RocksDB | Block Index | UTXO Set | Mempool Persistence          │
+└──────────────────────────────────────────────────────────────────┘
+                               ▲
+┌──────────────────────────────────────────────────────────────────┐
+│                  Cryptography Layer                              │
+│  Post-Quantum: Dilithium3, Kyber768, SHA3-256                    │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+### New in v1.2.0-beta
+
+- **Enhanced Mempool**: 6-level priority system with persistence
+- **Mobile & SPV**: Lightweight mobile wallets with Bloom filters
+- **Monitoring**: Enterprise-grade Prometheus metrics
+- **Cross-Chain**: Atomic swaps and bridge infrastructure
 
 ---
 
@@ -420,6 +449,278 @@ Implements BOLT (Basis of Lightning Technology) specifications:
 
 ---
 
+## Enhanced Mempool Architecture
+
+*New in v1.2.0-beta*
+
+### Priority System
+
+```cpp
+enum class TransactionPriority {
+    LOW = 0,        // Very low fee transactions
+    NORMAL = 1,     // Standard transactions (default)
+    HIGH = 2,       // Urgent transactions
+    HTLC = 3,       // Lightning Network HTLCs
+    BRIDGE = 4,     // Cross-chain bridge operations
+    CRITICAL = 5    // Protocol-critical transactions
+};
+
+class EnhancedMempool {
+private:
+    std::map<TransactionPriority, std::set<Transaction>> priority_queues_;
+    std::unordered_map<uint256, MempoolEntry> entries_;
+    std::mutex mempool_mutex_;
+
+public:
+    bool AddTransaction(const Transaction& tx, TransactionPriority priority);
+    void RemoveTransaction(const uint256& txid);
+    std::vector<Transaction> GetTransactionsByPriority(TransactionPriority priority);
+    void SaveToDisk(const std::string& filename);
+    void LoadFromDisk(const std::string& filename);
+};
+```
+
+### Persistence Format
+
+```
+┌──────────────────────────────────────┐
+│ Header (Magic + Version + Checksum) │
+├──────────────────────────────────────┤
+│ Transaction Count (uint32_t)        │
+├──────────────────────────────────────┤
+│ ┌──────────────────────────────────┐ │
+│ │ Transaction 1                    │ │
+│ │  - Serialized TX data            │ │
+│ │  - Priority level                │ │
+│ │  - Fee information               │ │
+│ │  - Entry timestamp               │ │
+│ │  - Dependencies (parent TXIDs)   │ │
+│ └──────────────────────────────────┘ │
+│ ┌──────────────────────────────────┐ │
+│ │ Transaction 2                    │ │
+│ │  ...                             │ │
+│ └──────────────────────────────────┘ │
+│ ...                                  │
+└──────────────────────────────────────┘
+```
+
+### Eviction Policy
+
+Priority-based eviction order:
+1. Expired transactions (> 72 hours)
+2. LOW priority (lowest fee first)
+3. NORMAL priority (lowest fee first)
+4. HIGH priority (only if extreme memory pressure)
+5. HTLC, BRIDGE, CRITICAL - **never evicted**
+
+**Files**: `src/mempool/mempool.cpp`, `include/intcoin/mempool.h`
+
+---
+
+## Mobile and SPV Architecture
+
+*New in v1.2.0-beta*
+
+### SPV Client Architecture
+
+```
+┌────────────────────────────────────────────────────┐
+│              Mobile Wallet (iOS/Android)           │
+│  ┌──────────────┐    ┌────────────────────────┐   │
+│  │  UI Layer    │◄───┤  Wallet Logic          │   │
+│  └──────────────┘    └────────────────────────┘   │
+│         ▲                      ▲                   │
+│  ┌──────────────────────────────────────────┐     │
+│  │         SPV Client Core                  │     │
+│  │  ┌────────────┐    ┌──────────────────┐  │     │
+│  │  │ Bloom      │    │  Merkle Proof    │  │     │
+│  │  │ Filter     │    │  Verifier        │  │     │
+│  │  └────────────┘    └──────────────────┘  │     │
+│  │  ┌────────────┐    ┌──────────────────┐  │     │
+│  │  │ Header     │    │  Checkpoint      │  │     │
+│  │  │ Chain      │    │  Validator       │  │     │
+│  │  └────────────┘    └──────────────────┘  │     │
+│  └──────────────────────────────────────────┘     │
+│                      ▲                             │
+│  ┌──────────────────────────────────────────┐     │
+│  │        Network Protocol Handler           │     │
+│  │   filterload | getdata | merkleblock      │     │
+│  └──────────────────────────────────────────┘     │
+└────────────────────────────────────────────────────┘
+                      ▲
+                      │ P2P Network
+                      ▼
+┌────────────────────────────────────────────────────┐
+│              Full Node (intcoind)                  │
+│  - Maintains full blockchain                       │
+│  - Serves filtered blocks to SPV clients           │
+│  - Provides merkle proofs                          │
+└────────────────────────────────────────────────────┘
+```
+
+### Bloom Filter Implementation
+
+```cpp
+class BloomFilter {
+private:
+    std::vector<uint8_t> data_;      // Bit array
+    uint32_t num_hash_funcs_;        // k hash functions
+    uint32_t tweak_;                 // Randomization
+    uint8_t flags_;                  // Update mode
+
+public:
+    // Create filter: n elements, p false positive rate
+    BloomFilter(uint32_t n, double p, uint32_t tweak, uint8_t flags);
+
+    void Insert(const std::vector<uint8_t>& element);
+    bool Contains(const std::vector<uint8_t>& element) const;
+    bool IsRelevantAndUpdate(const Transaction& tx);
+};
+```
+
+**Bandwidth Savings**: 99.9% reduction vs full node
+- Full node: 100+ GB initial + 1-5 GB/day
+- SPV client: ~50 MB headers + <1 MB/day
+
+**Files**: `src/bloom.cpp`, `src/spv.cpp`, `mobile/ios/`, `mobile/android/`
+
+---
+
+## Monitoring and Metrics Architecture
+
+*New in v1.2.0-beta*
+
+### Metrics Collection System
+
+```
+┌────────────────────────────────────────────────────┐
+│              INTcoin Core Daemon                   │
+│  ┌──────────────────────────────────────────────┐  │
+│  │  Blockchain  │  Mempool  │  Network  │ Mining│  │
+│  └───────┬──────┴─────┬─────┴────┬──────┴───┬───┘  │
+│          │            │          │          │      │
+│  ┌───────▼────────────▼──────────▼──────────▼───┐  │
+│  │         Metrics Registry                     │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌─────────┐│  │
+│  │  │  Counters  │  │   Gauges   │  │Histograms│  │
+│  │  └────────────┘  └────────────┘  └─────────┘│  │
+│  │  - blocks_processed  - height    - duration │  │
+│  │  - tx_processed      - mempool   - fees     │  │
+│  │  - bytes_sent        - peers     - sizes    │  │
+│  └──────────────────────────────────────────────┘  │
+│                      │                             │
+│  ┌──────────────────▼──────────────────────────┐  │
+│  │      HTTP Metrics Server (port 9090)        │  │
+│  │  GET /metrics → Prometheus text format      │  │
+│  └──────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────┘
+                      │
+                      │ HTTP GET /metrics
+                      ▼
+┌────────────────────────────────────────────────────┐
+│              Prometheus Server                     │
+│  - Scrapes metrics every 15s                       │
+│  - Stores time series data                         │
+│  - Evaluates alert rules                           │
+└────────────────────────────────────────────────────┘
+                      │
+                      ▼
+┌────────────────────────────────────────────────────┐
+│              Grafana Dashboards                    │
+│  - Visualizes metrics                              │
+│  - Real-time monitoring                            │
+│  - Alert notifications                             │
+└────────────────────────────────────────────────────┘
+```
+
+### Metrics Categories
+
+1. **Blockchain**: blocks, transactions, difficulty, height
+2. **Mempool**: size, fees, priority breakdown, acceptance rate
+3. **Network**: peers, bandwidth, message latency
+4. **Mining**: hashrate, blocks mined, duration
+5. **SPV**: header sync, bloom filters loaded
+6. **System**: memory, CPU, disk I/O
+
+**Files**: `src/metrics/`, `include/intcoin/metrics.h`
+
+---
+
+## Cross-Chain Architecture
+
+*New in v1.2.0-beta*
+
+### Atomic Swap Flow
+
+```
+Chain A (INTcoin)                    Chain B (Bitcoin)
+     │                                      │
+     │  1. Generate secret S                │
+     │  2. Create HTLC: hash(S), locktime   │
+     │─────────────────────────────────────►│
+     │                                      │
+     │◄─────────────────────────────────────│
+     │  3. Create HTLC: hash(S), locktime/2 │
+     │                                      │
+     │  4. Claim with secret S              │
+     │─────────────────────────────────────►│
+     │                                      │
+     │  (S is now revealed on Chain B)      │
+     │                                      │
+     │◄─────────────────────────────────────│
+     │  5. Claim with revealed secret S     │
+     │                                      │
+     │  ✅ Swap Complete                    │
+```
+
+### Bridge Architecture
+
+```
+┌────────────────────────────────────────────────────┐
+│              INTcoin Blockchain                    │
+│  ┌──────────────────────────────────────────────┐  │
+│  │  User deposits INT to bridge contract        │  │
+│  └─────────────┬────────────────────────────────┘  │
+└────────────────┼───────────────────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────┐
+│           Bridge Validator Network                 │
+│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐  │
+│  │Valid 1 │  │Valid 2 │  │Valid 3 │  │Valid 4 │  │
+│  └────────┘  └────────┘  └────────┘  └────────┘  │
+│  Multi-sig: 3 of 5 validators required            │
+│  - Monitor deposit events                          │
+│  - Verify merkle proofs                            │
+│  - Sign mint transactions                          │
+└────────────────┬───────────────────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────┐
+│         Ethereum Smart Contract                    │
+│  ┌──────────────────────────────────────────────┐  │
+│  │  Mint wINT (ERC-20) to user's ETH address   │  │
+│  └──────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────┘
+```
+
+### Security Features
+
+- **Multi-sig validation**: 3 of 5 validators must approve
+- **Rate limiting**: Maximum $100K per hour
+- **Circuit breaker**: Emergency pause mechanism
+- **Merkle proof verification**: Cryptographic proof of deposits
+- **Replay protection**: Each bridge transaction has unique nonce
+
+**Supported Networks**:
+- Ethereum (ERC-20 wINT)
+- Bitcoin (HTLC-based)
+- Binance Smart Chain (BEP-20 wINT)
+
+**Files**: `src/bridge/`, `src/atomic_swap/`, `contracts/`
+
+---
+
 ## Performance Considerations
 
 ### Scalability
@@ -440,13 +741,26 @@ Implements BOLT (Basis of Lightning Technology) specifications:
 
 ## Future Enhancements
 
-- **Confidential Transactions**: Hide transaction amounts
-- **Schnorr Signatures**: Aggregate signatures
+### Implemented in v1.2.0-beta ✅
+- ✅ **Cross-Chain Atomic Swaps**: HTLC-based trustless swaps
+- ✅ **Cross-Chain Bridges**: Ethereum, Bitcoin, BSC integration
+- ✅ **Mobile Wallets**: iOS and Android SPV clients
+- ✅ **Enterprise Monitoring**: Prometheus + Grafana
+
+### Planned for v1.3.0
+- **Additional Bridge Networks**: Polygon, Arbitrum, Avalanche
+- **Lightning Network Mobile**: Mobile Lightning wallet integration
+- **Hardware Wallet Support**: Ledger, Trezor integration
+- **Enhanced Privacy**: Confidential Transactions
+
+### Planned for v2.0+
+- **Schnorr Signatures**: Aggregate signatures for efficiency
 - **Taproot**: Advanced scripting privacy
-- **Cross-Chain Atomic Swaps**: Trade with other chains
-- **Sidechains**: Experimental features
+- **Sidechains**: Experimental feature deployment
+- **Zero-Knowledge Proofs**: Enhanced privacy layer
+- **Smart Contracts**: Layer 2 smart contract platform (under consideration)
 
 ---
 
-**Last Updated**: January 2025
-**Version**: 1.0.0
+**Last Updated**: January 2, 2026
+**Version**: 1.2.0-beta

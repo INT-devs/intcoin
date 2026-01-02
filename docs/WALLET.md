@@ -1,8 +1,16 @@
 # INTcoin Wallet System
 
-**Author**: INTcoin Core Development Team
-**Date**: December 18, 2025
-**Status**: Implementation Complete (90%)
+**Version**: 1.2.0-beta
+**Last Updated**: January 2, 2026
+**Status**: Production Beta
+
+## What's New in v1.2.0-beta
+
+- 📱 **Mobile Wallets**: Native iOS and Android SPV wallets
+- 🔍 **SPV Technology**: Lightweight mobile clients with Bloom filters
+- 📲 **Mobile SDKs**: Swift (iOS) and Kotlin (Android) development kits
+- 🔗 **Cross-Chain**: Atomic swap and bridge support in desktop wallet
+- 📊 **Enhanced Monitoring**: Integration with Prometheus metrics
 
 ---
 
@@ -28,15 +36,32 @@
 
 The INTcoin wallet implements a hierarchical deterministic (HD) wallet based on BIP32, BIP39, and BIP44 standards, adapted for post-quantum cryptography using CRYSTALS-Dilithium3 signatures.
 
+### Wallet Types
+
+INTcoin v1.2.0-beta offers three wallet implementations:
+
+1. **Desktop Qt Wallet** - Full-featured GUI wallet with Lightning Network support
+2. **Mobile Wallets (NEW)** - iOS and Android SPV wallets for on-the-go usage
+3. **CLI Wallet** - Command-line interface for advanced users and automation
+
 ### Key Features
 
 - **HD Wallet**: Deterministic key derivation from a single seed
 - **BIP39 Mnemonic**: 12/24-word recovery phrases
 - **BIP44 Derivation**: Standard derivation paths (m/44'/2210'/0'/...)
 - **Post-Quantum Keys**: Dilithium3 signatures (NIST Level 3)
+- **SPV Support (Mobile)**: Lightweight verification with Bloom filters **(New in v1.2.0)**
 - **RocksDB Storage**: Persistent, fast key-value storage
 - **Encryption**: Optional wallet encryption with passphrase
 - **Backup/Restore**: Full wallet backup and recovery
+- **Cross-Chain**: Atomic swaps and bridge operations **(New in v1.2.0)**
+
+### Related Documentation
+
+- **Mobile Wallets**: See [MOBILE_WALLET.md](MOBILE_WALLET.md) for iOS/Android usage
+- **Mobile Development**: See [MOBILE_SDK.md](MOBILE_SDK.md) for SDK documentation
+- **SPV Technical Details**: See [SPV_AND_BLOOM_FILTERS.md](SPV_AND_BLOOM_FILTERS.md)
+- **Qt Desktop Wallet**: See [QT_WALLET_GUIDE.md](QT_WALLET_GUIDE.md)
 
 ### Architecture
 
