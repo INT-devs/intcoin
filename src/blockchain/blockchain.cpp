@@ -346,10 +346,17 @@ Result<void> Blockchain::AddBlock(const Block& block) {
         }
 
         // Index transaction-to-block mapping
-        auto index_result = impl_->db_->IndexTransactionBlock(tx.GetHash(), block_hash);
-        if (index_result.IsError()) {
+        auto index_block_result = impl_->db_->IndexTransactionBlock(tx.GetHash(), block_hash);
+        if (index_block_result.IsError()) {
             impl_->db_->AbortBatch();
-            return index_result;
+            return index_block_result;
+        }
+
+        // Index transaction by address (for address lookups)
+        auto index_tx_result = impl_->db_->IndexTransaction(tx);
+        if (index_tx_result.IsError()) {
+            impl_->db_->AbortBatch();
+            return index_tx_result;
         }
     }
 

@@ -350,6 +350,9 @@ set(INTCOIN_CORE_SOURCES
     # Mempool (priority queues, persistence)
     src/mempool/mempool.cpp
 
+    # Metrics and Monitoring (Prometheus)
+    src/metrics/metrics.cpp
+
     # Testnet Faucet
     src/faucet/faucet.cpp
 )
