@@ -352,6 +352,7 @@ set(INTCOIN_CORE_SOURCES
 
     # Metrics and Monitoring (Prometheus)
     src/metrics/metrics.cpp
+    src/metrics/metrics_server.cpp
 
     # Testnet Faucet
     src/faucet/faucet.cpp

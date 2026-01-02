@@ -78,6 +78,10 @@ target_link_libraries(test_bloom intcoin_core ${ROCKSDB_LIB})
 add_executable(test_metrics test_metrics.cpp)
 target_link_libraries(test_metrics intcoin_core ${ROCKSDB_LIB})
 
+# Test: Metrics Server (Prometheus HTTP endpoint)
+add_executable(test_metrics_server test_metrics_server.cpp)
+target_link_libraries(test_metrics_server intcoin_core ${ROCKSDB_LIB})
+
 # Register tests with CTest
 add_test(NAME CryptoTest COMMAND test_crypto)
 add_test(NAME RandomXTest COMMAND test_randomx)
@@ -97,6 +101,7 @@ add_test(NAME BridgeTest COMMAND test_bridge)
 add_test(NAME MempoolTest COMMAND test_mempool)
 add_test(NAME BloomTest COMMAND test_bloom)
 add_test(NAME MetricsTest COMMAND test_metrics)
+add_test(NAME MetricsServerTest COMMAND test_metrics_server)
 
 # Install test executables (optional)
 install(TARGETS
@@ -118,5 +123,6 @@ install(TARGETS
     test_mempool
     test_bloom
     test_metrics
+    test_metrics_server
     DESTINATION bin/tests
 )
