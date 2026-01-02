@@ -11,17 +11,33 @@
  * - Performance measurement
  */
 
-#include <intcoin/ibd/parallel_validation.h>
-#include <intcoin/ibd/assume_utxo.h>
 #include <iostream>
 #include <cassert>
 #include <thread>
 #include <chrono>
 #include <vector>
 
-using namespace intcoin::ibd;
+// Define mocks BEFORE including IBD headers
+namespace intcoin {
 
-// Mock CBlock and CBlockIndex
+// Simple uint256 mock for testing
+class uint256 {
+public:
+    uint64_t data[4] = {0, 0, 0, 0};
+
+    uint256() = default;
+    uint256(uint64_t val) { data[0] = val; }
+
+    bool operator==(const uint256& other) const {
+        return data[0] == other.data[0] && data[1] == other.data[1] &&
+               data[2] == other.data[2] && data[3] == other.data[3];
+    }
+
+    bool operator!=(const uint256& other) const {
+        return !(*this == other);
+    }
+};
+
 class CBlock {
 public:
     uint32_t nHeight{0};
@@ -38,6 +54,17 @@ public:
     uint32_t nHeight{0};
     CBlockIndex(uint32_t height) : nHeight(height) {}
 };
+
+} // namespace intcoin
+
+using intcoin::CBlock;
+using intcoin::CBlockIndex;
+
+// Now include IBD headers (after mocks are defined)
+#include <intcoin/ibd/parallel_validation.h>
+#include <intcoin/ibd/assume_utxo.h>
+
+using namespace intcoin::ibd;
 
 struct TestResult {
     std::string test_name;
@@ -72,7 +99,7 @@ INTEGRATION_TEST(test_parallel_validation_performance) {
     auto start = std::chrono::steady_clock::now();
 
     // Submit blocks for validation
-    std::vector<std::future<ValidationResult>> futures;
+    std::vector<ValidationFuture> futures;
     for (int i = 0; i < NUM_BLOCKS; i++) {
         CBlock block(i);
         CBlockIndex index(i);
@@ -106,12 +133,14 @@ INTEGRATION_TEST(test_assumeutxo_fast_sync) {
 
     // Create a snapshot (in real implementation, this would serialize UTXO set)
     bool created = manager.CreateSnapshot("/tmp/test_snapshot_100k.dat");
+    assert(created);
 
     std::cout << "  → Loading snapshot..." << std::endl;
     auto load_start = std::chrono::steady_clock::now();
 
     // Load the snapshot
     bool loaded = manager.LoadSnapshot("/tmp/test_snapshot_100k.dat");
+    assert(loaded);
 
     auto load_end = std::chrono::steady_clock::now();
     auto load_duration = std::chrono::duration_cast<std::chrono::seconds>(load_end - load_start).count();
@@ -138,7 +167,7 @@ INTEGRATION_TEST(test_parallel_validation_correctness) {
     serial_config.num_threads = 1;
     ParallelBlockProcessor serial_processor(serial_config);
 
-    std::vector<uint64_t> serial_hashes;
+    std::vector<intcoin::uint256> serial_hashes;
     for (int i = 0; i < NUM_BLOCKS; i++) {
         CBlock block(i);
         CBlockIndex index(i);
@@ -152,8 +181,8 @@ INTEGRATION_TEST(test_parallel_validation_correctness) {
     parallel_config.num_threads = 8;
     ParallelBlockProcessor parallel_processor(parallel_config);
 
-    std::vector<uint64_t> parallel_hashes;
-    std::vector<std::future<ValidationResult>> futures;
+    std::vector<intcoin::uint256> parallel_hashes;
+    std::vector<ValidationFuture> futures;
 
     for (int i = 0; i < NUM_BLOCKS; i++) {
         CBlock block(i);
@@ -190,13 +219,11 @@ INTEGRATION_TEST(test_snapshot_verification) {
 
     // Create a test snapshot
     UTXOSnapshot snapshot;
-    snapshot.block_height = 100000;
-    snapshot.block_hash = 0x1234567890ABCDEF;
-    snapshot.num_utxos = 1000000;
-    snapshot.total_amount = 21000000 * 100000000ULL; // 21M coins
-    snapshot.utxo_set_hash = 0xFEDCBA0987654321;
+    snapshot.metadata.block_height = 100000;
+    snapshot.metadata.num_utxos = 1000000;
+    snapshot.metadata.total_amount = 21000000 * 100000000ULL; // 21M coins
 
-    std::cout << "  → Verifying snapshot at height " << snapshot.block_height << "..." << std::endl;
+    std::cout << "  → Verifying snapshot at height " << snapshot.metadata.block_height << "..." << std::endl;
 
     auto result = manager.VerifySnapshot(snapshot);
 

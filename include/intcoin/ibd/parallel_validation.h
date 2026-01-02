@@ -72,7 +72,7 @@ public:
      */
     template<typename F, typename... Args>
     auto Submit(F&& task, Args&&... args)
-        -> std::future<typename std::result_of<F(Args...)>::type>;
+        -> std::future<std::invoke_result_t<F, Args...>>;
 
     /**
      * Get number of active threads
@@ -101,12 +101,13 @@ public:
      * Configuration for parallel processing
      */
     struct Config {
-        uint32_t num_threads{0};        // 0 = auto-detect
-        uint32_t max_queue_size{1000};  // Maximum pending blocks
-        bool enable_out_of_order{true}; // Allow out-of-order validation
+        uint32_t num_threads = 0;        // 0 = auto-detect
+        uint32_t max_queue_size = 1000;  // Maximum pending blocks
+        bool enable_out_of_order = true; // Allow out-of-order validation
     };
 
-    explicit ParallelBlockProcessor(const Config& config = Config());
+    ParallelBlockProcessor();
+    explicit ParallelBlockProcessor(const Config& config);
     ~ParallelBlockProcessor();
 
     /**
