@@ -64,11 +64,11 @@ INTEGRATION_TEST(test_realtime_statistics) {
     auto stats = analytics.GetCurrentStats();
 
     std::cout << "  → " << NUM_TRANSACTIONS << " transactions added in " << duration << "ms" << std::endl;
-    std::cout << "  → Total size: " << stats.total_size << " bytes" << std::endl;
-    std::cout << "  → Average fee rate: " << stats.average_fee_rate << " sat/byte" << std::endl;
+    std::cout << "  → Total size: " << stats.bytes << " bytes" << std::endl;
+    std::cout << "  → Average fee rate: " << stats.avg_fee_rate << " sat/byte" << std::endl;
 
     // Assertions
-    assert(stats.transaction_count == NUM_TRANSACTIONS);
+    assert(stats.size == NUM_TRANSACTIONS);
     assert(duration < 100); // Must complete in <100ms
 
     return true;
@@ -116,7 +116,11 @@ INTEGRATION_TEST(test_fee_estimation) {
         BlockData block;
         block.height = 100000 + i;
         block.timestamp = 1704067200 + (i * 600); // 10 min blocks
-        block.median_fee = 10.0 + (i % 20);
+        block.total_size = 1000000; // 1MB blocks
+        // Simulate fee rates for transactions in the block
+        for (int j = 0; j < 100; j++) {
+            block.fee_rates.push_back(10.0 + (i % 20) + (j % 5));
+        }
         training_data.push_back(block);
     }
 
@@ -170,7 +174,7 @@ INTEGRATION_TEST(test_transaction_flow) {
 
     std::cout << "  → Inflow rate: " << flow.inflow_rate << " tx/sec" << std::endl;
     std::cout << "  → Outflow rate: " << flow.outflow_rate << " tx/sec" << std::endl;
-    std::cout << "  → Net flow: " << flow.net_flow << " tx/sec" << std::endl;
+    std::cout << "  → Net flow: " << (flow.inflow_rate - flow.outflow_rate) << " tx/sec" << std::endl;
 
     assert(flow.inflow_rate > 0);
 
@@ -191,10 +195,10 @@ INTEGRATION_TEST(test_concurrent_access) {
 
     // Spawn concurrent threads
     for (int i = 0; i < NUM_THREADS; i++) {
-        threads.emplace_back([&analytics, &successful_queries, QUERIES_PER_THREAD]() {
+        threads.emplace_back([&analytics, &successful_queries]() {
             for (int j = 0; j < QUERIES_PER_THREAD; j++) {
                 auto stats = analytics.GetCurrentStats();
-                if (stats.transaction_count >= 0) {
+                if (stats.size >= 0) {
                     successful_queries++;
                 }
             }
