@@ -195,6 +195,7 @@ bool test_cancel_payment() {
     );
 
     bool cancelled = manager.CancelPayment(payment_id);
+    (void)cancelled;  // Suppress unused warning
 
     // Cancellation may or may not succeed depending on state
     TEST_ASSERT(true, "Cancel operation completed");
@@ -263,6 +264,7 @@ bool test_retry_failed() {
     );
 
     bool retried = manager.RetryFailedParts(payment_id);
+    (void)retried;  // Suppress unused warning
 
     // Retry may or may not succeed
     TEST_ASSERT(true, "Retry operation completed");

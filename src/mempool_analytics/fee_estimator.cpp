@@ -6,6 +6,7 @@
 #include <cmath>
 #include <chrono>
 #include <fstream>
+#include <map>
 
 namespace intcoin {
 namespace mempool_analytics {

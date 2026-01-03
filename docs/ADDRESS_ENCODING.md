@@ -39,14 +39,27 @@ Bech32 (BIP-173) is a superior address format offering:
 
 ```
 # Mainnet P2PKH (version 0)
-int11qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqegtg5n
-└─┘└──────────────────── data + checksum ────────────────────────┘
-HRP
+int1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6sqhdx
+└───┘└──────────────────── data + checksum ───────────────────────┘
+ HRP
 
-# Different address
-int11qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vycz5q8vzx
+# Mainnet - Different address
+int1qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vycz5qm7xte8
 
-# Length: 58-60 characters typically
+# Testnet P2PKH (version 0)
+tint1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9c9vae
+└────┘└──────────────────── data + checksum ───────────────────────┘
+  HRP
+
+# Testnet - Different address
+tint1qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vyczsr5hxv2
+
+# Lightning Invoice (for Lightning payments)
+lint1qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vyczswk9eaj
+└────┘└──────────────────── data + checksum ───────────────────────┘
+  HRP
+
+# Length: 57-61 characters typically
 ```
 
 ---
@@ -59,13 +72,18 @@ int11qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vycz5q8vzx
 <HRP> + "1" + <version> + <pubkey_hash> + <checksum>
 ```
 
-| Component | Description | Example |
-|-----------|-------------|---------|
-| **HRP** | Human-Readable Part | `int1` |
-| **Separator** | Always "1" | `1` |
-| **Version** | Address type (0 = P2PKH) | `q` (= 0 in base32) |
-| **Pubkey Hash** | SHA3-256(PublicKey), 32 bytes | 52 base32 characters |
-| **Checksum** | BCH code, 6 characters | 6 base32 characters |
+| Component | Description | Mainnet | Testnet | Lightning |
+|-----------|-------------|---------|---------|-----------|
+| **HRP** | Human-Readable Part | `int` | `tint` | `lint` |
+| **Separator** | Always "1" | `1` | `1` | `1` |
+| **Version** | Address type (0 = P2PKH) | `q` (= 0) | `q` (= 0) | `q` (= 0) |
+| **Pubkey Hash** | SHA3-256(PublicKey), 32 bytes | 52 chars | 52 chars | 52 chars |
+| **Checksum** | BCH code, 6 characters | 6 chars | 6 chars | 6 chars |
+
+**Network Prefixes**:
+- **Mainnet**: `int1` - for production transactions with real value
+- **Testnet**: `tint1` - for testing purposes only (coins have no value)
+- **Lightning**: `lint1` - for Lightning Network invoices and payments
 
 ### Character Set
 
@@ -99,13 +117,16 @@ qpzry9x8gf2tvdw0s3jn54khce6mua7l
    - Results in ~53 base32 digits
 
 3. Create checksum:
-   - Expand HRP ("int1")
+   - Expand HRP ("int" for mainnet, "tint" for testnet, "lint" for Lightning)
    - Combine with data
    - Calculate BCH polymod
    - Generate 6-character checksum
 
 4. Encode:
    - HRP + "1" + base32(data) + base32(checksum)
+   - Mainnet: "int" + "1" + data + checksum
+   - Testnet: "tint" + "1" + data + checksum
+   - Lightning: "lint" + "1" + data + checksum
 ```
 
 ### Step-by-Step Example
@@ -123,16 +144,35 @@ data = [0x00] + pubkey_hash  // 33 bytes
 data_5bit = ConvertBits(data, from=8, to=5, pad=true)
 // Result: [0, 0, 0, 0, ..., 0] (53 digits)
 
-// Step 3: Calculate checksum
-checksum = CreateChecksum("int1", data_5bit)
-// Result: [14, 6, 29, 6, 21, 19] (example)
+// Step 3: Calculate checksum (Mainnet)
+checksum_mainnet = CreateChecksum("int", data_5bit)
+// Result: [6, 24, 2, 13, 27] (example)
 
-// Step 4: Encode to Bech32
-result = "int1" + "1"
-for digit in (data_5bit + checksum):
-    result += CHARSET[digit]
+// Step 3b: Calculate checksum (Testnet)
+checksum_testnet = CreateChecksum("tint", data_5bit)
+// Result: [9, 3, 9, 31, 28, 14] (example - different from mainnet!)
 
-// Final: int11qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqegtg5n
+// Step 3c: Calculate checksum (Lightning)
+checksum_lightning = CreateChecksum("lint", data_5bit)
+// Result: [24, 22, 30, 9, 14, 28] (example - different from others!)
+
+// Step 4: Encode to Bech32 (Mainnet)
+result_mainnet = "int" + "1"
+for digit in (data_5bit + checksum_mainnet):
+    result_mainnet += CHARSET[digit]
+// Final: int1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6sqhdx
+
+// Step 4b: Encode to Bech32 (Testnet)
+result_testnet = "tint" + "1"
+for digit in (data_5bit + checksum_testnet):
+    result_testnet += CHARSET[digit]
+// Final: tint1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9c9vae
+
+// Step 4c: Encode to Bech32 (Lightning)
+result_lightning = "lint" + "1"
+for digit in (data_5bit + checksum_lightning):
+    result_lightning += CHARSET[digit]
+// Final: lint1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqdj2mnl
 ```
 
 ### BCH Checksum
@@ -264,24 +304,32 @@ The Bech32 checksum provides:
 ### Validation Examples
 
 ```cpp
-// Valid address
-std::string valid = "int11qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqegtg5n";
-assert(AddressEncoder::ValidateAddress(valid) == true);
+// Valid mainnet address
+std::string valid_mainnet = "int1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6sqhdx";
+assert(AddressEncoder::ValidateAddress(valid_mainnet) == true);
 
-// Invalid: wrong HRP
-std::string wrong_hrp = "btc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqegtg5n";
+// Valid testnet address
+std::string valid_testnet = "tint1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq9c9vae";
+assert(AddressEncoder::ValidateAddress(valid_testnet) == true);
+
+// Valid Lightning address
+std::string valid_lightning = "lint1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqdj2mnl";
+assert(AddressEncoder::ValidateAddress(valid_lightning) == true);
+
+// Invalid: wrong HRP (Bitcoin address)
+std::string wrong_hrp = "bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6sqhdx";
 assert(AddressEncoder::ValidateAddress(wrong_hrp) == false);
 
 // Invalid: corrupted checksum (changed last character)
-std::string corrupted = "int11qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqegtg5m";
+std::string corrupted = "int1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6sqhdz";
 assert(AddressEncoder::ValidateAddress(corrupted) == false);
 
 // Invalid: contains excluded character 'b'
-std::string bad_char = "int1bqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqegtg5n";
+std::string bad_char = "int1bqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6sqhdx";
 assert(AddressEncoder::ValidateAddress(bad_char) == false);
 
 // Invalid: mixed case
-std::string mixed = "int11QQQQQQQQQQQQQQQQqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqegtg5n";
+std::string mixed = "int1QQQQQQQQQQQQQQQQqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6sqhdx";
 assert(AddressEncoder::ValidateAddress(mixed) == false);
 ```
 
@@ -300,7 +348,7 @@ PublicKey pubkey = keypair_result.value->public_key;
 
 // Method 1: Direct conversion
 std::string address = PublicKeyToAddress(pubkey);
-// Result: int11qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vycz5q8vzx
+// Result: int1qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vycz5qm7xte8
 
 // Method 2: Step-by-step
 uint256 pubkey_hash = PublicKeyToHash(pubkey);
@@ -316,7 +364,7 @@ if (addr_result.IsOk()) {
 ### 2. Validate Address
 
 ```cpp
-std::string user_input = "int11qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vycz5q8vzx";
+std::string user_input = "int1qrzw0r5k56aghxrht9n7ewk9nekzhemg39pm96v84tp8pm7t0vycz5qm7xte8";
 
 if (AddressEncoder::ValidateAddress(user_input)) {
     std::cout << "Address is valid!" << std::endl;
@@ -332,24 +380,28 @@ if (AddressEncoder::ValidateAddress(user_input)) {
 }
 ```
 
-### 3. Handle Different Address Versions
+### 3. Handle Different Networks
 
 ```cpp
-std::string address = "int11qrzw...";  // version 0 (P2PKH)
+std::string mainnet_addr = "int1qrzw...";  // Mainnet address
+std::string testnet_addr = "tint1qrzw..."; // Testnet address
+std::string lightning_addr = "lint1qrzw..."; // Lightning address
 
-auto decode_result = AddressEncoder::DecodeAddress(address);
-if (decode_result.IsError()) {
-    if (decode_result.error == "Unsupported address version") {
-        std::cout << "This address version is not yet supported" << std::endl;
-    }
+// Detect network from address
+if (mainnet_addr.substr(0, 4) == "int1") {
+    std::cout << "Mainnet address" << std::endl;
+} else if (mainnet_addr.substr(0, 5) == "tint1") {
+    std::cout << "Testnet address" << std::endl;
+} else if (mainnet_addr.substr(0, 5) == "lint1") {
+    std::cout << "Lightning address" << std::endl;
 }
 ```
 
 ### 4. Case Insensitivity
 
 ```cpp
-std::string lowercase = "int11qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqegtg5n";
-std::string uppercase = "INT11QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQEGTG5N";
+std::string lowercase = "int1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq6sqhdx";
+std::string uppercase = "INT1QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ6SQHDX";
 
 // Both decode to the same hash
 auto hash1 = AddressEncoder::DecodeAddress(lowercase);
@@ -357,7 +409,7 @@ auto hash2 = AddressEncoder::DecodeAddress(uppercase);
 assert(*hash1.value == *hash2.value);
 
 // But mixed case is invalid
-std::string mixed = "int11QQQQqqqq...";
+std::string mixed = "int1QQQQqqqq...";
 assert(AddressEncoder::ValidateAddress(mixed) == false);
 ```
 
@@ -437,13 +489,14 @@ cd build
 
 | Feature | Bech32 (INTcoin) | Base58Check (Bitcoin Legacy) |
 |---------|------------------|------------------------------|
-| **Example** | `int11qrzw0r5k...` | `1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa` |
+| **Example** | `int1qrzw0r5k...` | `1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa` |
 | **Charset** | 32 chars (no 0, O, I, l, 1, b, i, o) | 58 chars (all alphanumeric) |
 | **Case** | Case-insensitive | Case-sensitive |
 | **Error Detection** | All single errors | ~29% single errors |
 | **QR Efficiency** | Better (alphanumeric) | Worse (mixed case) |
-| **Length** | 58-60 chars | 26-35 chars |
+| **Length** | 57-61 chars | 26-35 chars |
 | **Readability** | High (no confusing chars) | Medium (0/O, l/1 confusion) |
+| **Networks** | int1/tint1/lint1 | Different version bytes |
 
 ### Migration from Legacy Formats
 

@@ -163,6 +163,7 @@ bool test_cancel_swap() {
     auto swap = manager.CreateSwapIn(100000, "bc1qrefund...");
 
     bool cancelled = manager.CancelSwap(swap.swap_id);
+    (void)cancelled;  // Suppress unused variable warning
 
     // Cancellation may or may not succeed
     TEST_ASSERT(true, "Cancel operation completed");

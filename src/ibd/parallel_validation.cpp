@@ -75,7 +75,6 @@ class ParallelBlockProcessor::Impl {
 public:
     Config config_;
     std::unique_ptr<ThreadPool> thread_pool_;
-    std::map<uint256, ValidationFuture> pending_validations_;
     std::mutex mutex_;
     ValidationStats stats_;
     std::atomic<bool> enabled_{true};
@@ -99,13 +98,22 @@ public:
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         result.valid = true;
 
+        // Note: block_hash will be set by caller if needed
+        // (Cannot access block.nHeight here as CBlock is incomplete type)
+
         auto end = std::chrono::steady_clock::now();
         result.validation_time_ms =
             std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
+        stats_.blocks_validated++;
+        stats_.total_validation_time_ms += result.validation_time_ms;
+
         return result;
     }
 };
+
+ParallelBlockProcessor::ParallelBlockProcessor()
+    : pimpl_(std::make_unique<Impl>(Config())) {}
 
 ParallelBlockProcessor::ParallelBlockProcessor(const Config& config)
     : pimpl_(std::make_unique<Impl>(config)) {}

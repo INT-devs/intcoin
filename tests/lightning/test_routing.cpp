@@ -195,6 +195,7 @@ bool test_import_mission_control() {
 
     std::string json = "{\"entries\":[]}";
     bool imported = manager.ImportMissionControl(json);
+    (void)imported;  // Suppress unused warning
 
     // Import may succeed or fail
     TEST_ASSERT(true, "Import operation completed");

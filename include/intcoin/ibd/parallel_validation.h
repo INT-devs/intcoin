@@ -9,13 +9,13 @@
 #include <memory>
 #include <functional>
 #include <future>
+#include <intcoin/uint256.h>
 
 namespace intcoin {
 
 // Forward declarations
 class CBlock;
 class CBlockIndex;
-class uint256;
 
 namespace ibd {
 
@@ -24,7 +24,7 @@ namespace ibd {
  */
 struct ValidationResult {
     bool valid{false};
-    uint256 block_hash;
+    uint256 block_hash{};  // Default-initialized (will be set by test code)
     std::string error_message;
     uint64_t validation_time_ms{0};
 };

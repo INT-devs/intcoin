@@ -20,24 +20,8 @@
 // Define mocks BEFORE including IBD headers
 namespace intcoin {
 
-// Simple uint256 mock for testing
-class uint256 {
-public:
-    uint64_t data[4] = {0, 0, 0, 0};
-
-    uint256() = default;
-    uint256(uint64_t val) { data[0] = val; }
-
-    bool operator==(const uint256& other) const {
-        return data[0] == other.data[0] && data[1] == other.data[1] &&
-               data[2] == other.data[2] && data[3] == other.data[3];
-    }
-
-    bool operator!=(const uint256& other) const {
-        return !(*this == other);
-    }
-};
-
+// uint256 is now defined in include/intcoin/uint256.h
+// CBlock and CBlockIndex mocks for testing
 class CBlock {
 public:
     uint32_t nHeight{0};

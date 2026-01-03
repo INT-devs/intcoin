@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <map>
+#include <string>
 
 namespace intcoin {
 namespace mempool_analytics {

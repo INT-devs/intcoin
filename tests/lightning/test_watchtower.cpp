@@ -90,6 +90,7 @@ bool test_backup_channel() {
         42,
         blob
     );
+    (void)backed_up;  // Suppress unused variable warning
 
     // Backup may fail without active session
     TEST_ASSERT(true, "Backup operation completed");

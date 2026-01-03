@@ -32,7 +32,7 @@ Traditional cryptocurrencies like Bitcoin use ECDSA cryptography, which will be 
 - **Consensus**: Proof-of-Work (RandomX algorithm)
 - **Block Time**: 2 minutes
 - **Total Supply**: 221,000,000,000,000 INT (221 Trillion)
-- **Address Format**: Bech32 (int1 prefix for mainnet, intc1 for testnet)
+- **Address Format**: Bech32 (int1 for mainnet, tint1 for testnet, lint1 for Lightning)
 - **Transaction Model**: UTXO (Unspent Transaction Output)
 - **Scripting**: Bitcoin-style transaction scripts
 
@@ -135,7 +135,7 @@ make -j$(sysctl -n hw.ncpu)
 # Solo mining (using GetBlockTemplate RPC)
 ./build/bin/intcoin-miner \
   --solo \
-  --address=int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh \
+  --address=int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh6vqhvn \
   --rpc-user=user \
   --rpc-password=pass \
   --threads=4
@@ -251,7 +251,7 @@ intcoin/
 - **Difficulty Adjustment**: Digishield V3 (every block, 60 block averaging window)
 - **Transaction Model**: UTXO
 - **Script System**: Bitcoin-compatible opcodes
-- **Address Encoding**: Bech32 (int1/intc1)
+- **Address Encoding**: Bech32 (int1 mainnet / tint1 testnet / lint1 Lightning)
 
 ### Cryptography
 

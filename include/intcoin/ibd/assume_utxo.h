@@ -9,11 +9,9 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <intcoin/uint256.h>
 
 namespace intcoin {
-
-// Forward declarations
-class uint256;
 
 namespace ibd {
 
