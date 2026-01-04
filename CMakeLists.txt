@@ -10,7 +10,7 @@ else()
 endif()
 
 project(INTcoin
-    VERSION 1.2.0
+    VERSION 1.3.0
     DESCRIPTION "Quantum-Resistant Cryptocurrency"
     LANGUAGES CXX
 )
@@ -62,16 +62,6 @@ elseif(UNIX AND NOT APPLE)
     message(STATUS "Note: Ensure your distribution is supported (see docs/BUILDING.md)")
 endif()
 
-# ============================================================================
-# C++ Standard Configuration
-# ============================================================================
-# Current: C++23 (required)
-# TODO: Upgrade to latest C++ standard (C++26) when widely available
-# NOTE: C++17 and C++18 support has been DROPPED as of v1.0.0
-#       - C++17 is deprecated and no longer supported
-#       - C++18 does not exist (C++20 was next after C++17)
-#       - Minimum requirement is now C++23 for post-quantum crypto features
-# ============================================================================
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -85,11 +75,11 @@ option(BUILD_MINER "Build miner" ON)
 option(BUILD_POOL_SERVER "Build mining pool server" OFF)
 option(BUILD_EXPLORER "Build block explorer" ON)
 option(BUILD_FAUCET "Build testnet faucet" ON)
-option(ENABLE_LIGHTNING "Enable Lightning Network" OFF)  # Deferred
+option(ENABLE_LIGHTNING "Enable Lightning Network" ON)
 option(ENABLE_TOR "Enable Tor support" OFF)
 option(ENABLE_I2P "Enable I2P support" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
-option(RELAXED_DEPENDENCIES "Allow older dependency versions for CI builds" OFF)
+option(RELAXED_DEPENDENCIES "Allow older dependency versions for CI builds" ON)
 
 # Compiler flags
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -129,7 +119,7 @@ if(RELAXED_DEPENDENCIES)
     )
     find_package(OpenSSL)
 else()
-    find_package(Boost 1.74.0 COMPONENTS
+    find_package(Boost 1.90.0 COMPONENTS
         system
         filesystem
         thread
@@ -143,7 +133,7 @@ find_package(Threads REQUIRED)
 if(RELAXED_DEPENDENCIES)
     find_package(RocksDB)
 else()
-    find_package(RocksDB 6.11.4)
+    find_package(RocksDB 10.7.5)
 endif()
 
 # liboqs (Open Quantum Safe) - 0.12.0+ (latest stable)
@@ -324,6 +314,12 @@ set(INTCOIN_CORE_SOURCES
     src/lightning/bolt_transport.cpp
     src/lightning/bolt_onion.cpp
     src/lightning/bolt_invoice.cpp
+    src/lightning/v2/channel_rebalancing.cpp
+    src/lightning/v2/multipath_payments.cpp
+    src/lightning/v2/routing.cpp
+    src/lightning/v2/network_explorer.cpp
+    src/lightning/v2/submarine_swaps.cpp
+    src/lightning/v2/watchtower.cpp
 
     # SPV (Simplified Payment Verification)
     src/spv/spv.cpp
@@ -350,9 +346,27 @@ set(INTCOIN_CORE_SOURCES
     # Mempool (priority queues, persistence)
     src/mempool/mempool.cpp
 
+    # Mempool Analytics (v1.3.0)
+    src/mempool_analytics/analytics.cpp
+    src/mempool_analytics/fee_estimator.cpp
+
+    # IBD Optimization (v1.3.0)
+    src/ibd/parallel_validation.cpp
+    src/ibd/assume_utxo.cpp
+
     # Metrics and Monitoring (Prometheus)
     src/metrics/metrics.cpp
     src/metrics/metrics_server.cpp
+
+    # DeFi Primitives (v1.4.0 framework)
+    src/defi/amm.cpp
+    src/defi/lending.cpp
+    src/defi/staking.cpp
+
+    # Privacy Features (v1.4.0 framework)
+    src/privacy/ring_signatures.cpp
+    src/privacy/stealth_addresses.cpp
+    src/privacy/confidential_transactions.cpp
 
     # Testnet Faucet
     src/faucet/faucet.cpp
