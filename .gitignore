@@ -1,6 +1,6 @@
 # Symlinks to external folders
 website/
-website-files/
+website-files
 web-wallet/
 desktop-wallet/
 mobile-wallet/
