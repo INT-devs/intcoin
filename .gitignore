@@ -96,3 +96,218 @@ audits/
 # Ignore all files in security_audit/ except the script
 security_audit/*
 !security_audit/run_audit.sh
+
+# Additional build artifacts
+cmake-build-*/
+out/
+dist/
+_deps/
+*.cmake
+!CMakeLists.txt
+install_manifest.txt
+CTestTestfile.cmake
+compile_commands.json
+
+# Compiled artifacts
+*.slo
+*.lo
+*.obj
+*.ko
+*.elf
+*.gch
+*.pch
+*.lai
+*.la
+*.lib
+*.dll
+*.i*86
+*.x86_64
+*.hex
+
+# Additional executables
+intcoin-tx
+intcoin-wallet
+test_*
+*_test
+*.test
+tests/test_*
+
+# IDE - Additional
+*.code-workspace
+.history/
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.pbxuser
+DerivedData/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.opendb
+*.autosave
+*.qm
+*.pro.user
+*.pro.user.*
+qrc_*.cpp
+
+# OS - Additional
+._*
+.Spotlight-V100
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+.directory
+.Trash-*
+.nfs*
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Blockchain data directories
+blocks/
+chainstate/
+indexes/
+.lock
+banlist.dat
+peers.dat
+wallet.dat
+wallet.dat.bak
+mempool.dat
+fee_estimates.dat
+testnet3/
+testnet/
+regtest/
+.intcoin/
+intcoin.conf
+*.pid
+
+# RocksDB database files
+*.sst
+CURRENT
+IDENTITY
+LOCK
+LOG*
+MANIFEST-*
+OPTIONS-*
+
+# Package managers
+node_modules/
+package-lock.json
+yarn.lock
+vcpkg_installed/
+
+# Python (if used in build scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+*.egg-info/
+*.egg
+
+# Rust (if any tools use Rust)
+target/
+Cargo.lock
+**/*.rs.bk
+
+# Documentation build artifacts
+docs/_build/
+docs/.buildinfo
+site/
+
+# Coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage/
+.coverage
+htmlcov/
+
+# Profiling data
+*.prof
+*.gprof
+perf.data
+perf.data.old
+callgrind.out.*
+cachegrind.out.*
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Core dumps
+core
+core.*
+*.core
+
+# Archives
+*.zip
+*.tar.gz
+*.tgz
+*.tar
+*.rar
+*.7z
+
+# Certificates & Private Keys (CRITICAL: Never commit!)
+*.key
+*.pem
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
+privkey.dat
+*.keystore
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+*.secret
+
+# Benchmark results
+benchmark_results/
+*.bench
+
+# Release packages
+*.deb
+*.rpm
+*.dmg
+*.pkg
+*.msi
+*.AppImage
+
+# Keep important dotfiles
+!.gitignore
+!.gitattributes
+!.editorconfig
+!.clang-format
