@@ -2,19 +2,17 @@
 
 **Version**: 1.3.0-beta
 **Platform**: FreeBSD 13.x, 14.x
-**Last Updated**: January 3, 2026
+**Last Updated**: January 8, 2026
 
 ---
 
 ## Table of Contents
 
 1. [System Requirements](#system-requirements)
-2. [Quick Install (Package)](#quick-install-package)
-3. [Building from Ports](#building-from-ports)
-4. [Building from Source](#building-from-source)
-5. [Post-Installation Setup](#post-installation-setup)
-6. [Running INTcoin](#running-intcoin)
-7. [Troubleshooting](#troubleshooting)
+2. [Building from Source](#building-from-source)
+3. [Post-Installation Setup](#post-installation-setup)
+4. [Running INTcoin](#running-intcoin)
+5. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -33,70 +31,6 @@
 - **RAM**: 8GB+
 - **Disk**: 1TB SSD
 - **Network**: Unmetered connection
-
----
-
-## Quick Install (Package)
-
-### Using pkg
-
-```sh
-# Update package repository
-pkg update
-
-# Install INTcoin
-pkg install intcoin
-
-# Verify installation
-intcoin --version
-```
-
-**Note**: Binary packages may not be available immediately after release. Use ports or build from source if package is unavailable.
-
----
-
-## Building from Ports
-
-### 1. Update Ports Tree
-
-```sh
-# Using portsnap (traditional)
-portsnap fetch update
-
-# Or using Git (modern method)
-cd /usr/ports
-git pull
-```
-
-### 2. Install from Ports
-
-```sh
-# Navigate to INTcoin port
-cd /usr/ports/finance/intcoin
-
-# View build options
-make config
-
-# Build and install
-make install clean
-
-# Verify installation
-intcoin --version
-```
-
-### Port Build Options
-
-Use `make config` to configure build options:
-
-- **WALLET**: Enable wallet functionality (default: ON)
-- **GUI**: Build Qt6 GUI wallet (default: ON)
-- **DAEMON**: Build daemon (default: ON)
-- **CLI**: Build command-line interface (default: ON)
-- **LIGHTNING**: Enable Lightning Network support (default: OFF)
-- **TOR**: Tor support for privacy (default: OFF)
-- **I2P**: I2P support for privacy (default: OFF)
-- **TESTS**: Build test suite (default: OFF)
-- **DOCS**: Install documentation (default: ON)
 
 ---
 
@@ -606,9 +540,7 @@ intcoin-cli backupwallet ~/intcoin-wallet-backup.dat
 intcoin-cli stop
 # Or: sudo service intcoind stop
 
-# 3. Install new version
-pkg install intcoin
-# Or rebuild from ports/source
+# 3. Build and install new version from source (see Building from Source section)
 
 # 4. Start new version
 intcoind -daemon
@@ -622,30 +554,6 @@ intcoin-cli getblockchaininfo | grep version
 
 ## Uninstalling
 
-### Package Installation
-
-```sh
-# Remove package
-sudo pkg delete intcoin
-
-# Remove data directory (WARNING: deletes wallet!)
-rm -rf ~/.intcoin
-```
-
-### Ports Installation
-
-```sh
-# Deinstall
-cd /usr/ports/finance/intcoin
-sudo make deinstall
-
-# Clean
-sudo make clean
-
-# Remove data
-rm -rf ~/.intcoin
-```
-
 ### Source Installation
 
 ```sh
@@ -657,13 +565,13 @@ sudo cmake --build . --target uninstall
 sudo rm /usr/local/bin/intcoin*
 sudo rm -rf /usr/local/share/intcoin
 
-# Remove data
+# Remove data directory (WARNING: deletes wallet!)
 rm -rf ~/.intcoin
 ```
 
 ---
 
-**Installation Guide Version**: 1.0
+**Installation Guide Version**: 1.1
 **For INTcoin**: v1.3.0-beta
 **Platform**: FreeBSD
-**Last Updated**: January 3, 2026
+**Last Updated**: January 8, 2026

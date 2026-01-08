@@ -2,7 +2,7 @@
 
 **Version**: 1.3.0-beta
 **Platform**: Windows 10/11 (64-bit)
-**Last Updated**: January 3, 2026
+**Last Updated**: January 8, 2026
 
 ---
 

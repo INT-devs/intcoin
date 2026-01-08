@@ -2,18 +2,17 @@
 
 **Version**: 1.3.0-beta
 **Platform**: Linux (Debian, Ubuntu, Fedora, Arch, etc.)
-**Last Updated**: January 3, 2026
+**Last Updated**: January 8, 2026
 
 ---
 
 ## Table of Contents
 
 1. [System Requirements](#system-requirements)
-2. [Quick Install (Binary)](#quick-install-binary)
-3. [Building from Source](#building-from-source)
-4. [Post-Installation Setup](#post-installation-setup)
-5. [Running INTcoin](#running-intcoin)
-6. [Troubleshooting](#troubleshooting)
+2. [Building from Source](#building-from-source)
+3. [Post-Installation Setup](#post-installation-setup)
+4. [Running INTcoin](#running-intcoin)
+5. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -32,73 +31,6 @@
 - **RAM**: 8GB+
 - **Disk**: 1TB SSD
 - **Network**: Unmetered connection
-
----
-
-## Quick Install (Binary)
-
-### Debian / Ubuntu (apt)
-
-```bash
-# Add INTcoin repository GPG key
-wget -qO- https://intcoin.org/keys/release.asc | sudo gpg --dearmor -o /usr/share/keyrings/intcoin-archive-keyring.gpg
-
-# Add repository
-echo "deb [signed-by=/usr/share/keyrings/intcoin-archive-keyring.gpg] https://apt.intcoin.org/debian stable main" | sudo tee /etc/apt/sources.list.d/intcoin.list
-
-# Update package list
-sudo apt update
-
-# Install INTcoin
-sudo apt install intcoin
-
-# Verify installation
-intcoin --version
-```
-
-### Fedora / RHEL / CentOS (dnf/yum)
-
-```bash
-# Add INTcoin repository
-sudo dnf copr enable intcoin/intcoin
-
-# Install INTcoin
-sudo dnf install intcoin
-
-# Verify installation
-intcoin --version
-```
-
-### Arch Linux (AUR)
-
-```bash
-# Using yay
-yay -S intcoin
-
-# Or using makepkg
-git clone https://aur.archlinux.org/intcoin.git
-cd intcoin
-makepkg -si
-
-# Verify installation
-intcoin --version
-```
-
-### AppImage (Universal)
-
-```bash
-# Download AppImage
-wget https://intcoin.org/downloads/intcoin-1.3.0-beta-x86_64.AppImage
-
-# Make executable
-chmod +x intcoin-1.3.0-beta-x86_64.AppImage
-
-# Run
-./intcoin-1.3.0-beta-x86_64.AppImage
-
-# Optional: Install to system
-sudo mv intcoin-1.3.0-beta-x86_64.AppImage /usr/local/bin/intcoin
-```
 
 ---
 
@@ -641,37 +573,24 @@ intcoin-cli getblockchaininfo | grep version
 
 ## Uninstalling
 
-### Binary Installation
-
-```bash
-# Debian/Ubuntu
-sudo apt remove intcoin
-sudo apt purge intcoin  # Also removes config
-
-# Fedora
-sudo dnf remove intcoin
-
-# Remove data directory (WARNING: deletes wallet!)
-rm -rf ~/.intcoin
-```
-
 ### Source Installation
 
 ```bash
 # From build directory
 cd build
-sudo make uninstall
+sudo cmake --build . --target uninstall
 
 # Or manually
 sudo rm /usr/local/bin/intcoin*
+sudo rm -rf /usr/local/share/intcoin
 
-# Remove data
+# Remove data directory (WARNING: deletes wallet!)
 rm -rf ~/.intcoin
 ```
 
 ---
 
-**Installation Guide Version**: 1.0
+**Installation Guide Version**: 1.1
 **For INTcoin**: v1.3.0-beta
 **Platform**: Linux
-**Last Updated**: January 3, 2026
+**Last Updated**: January 8, 2026
