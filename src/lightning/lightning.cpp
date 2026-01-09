@@ -198,7 +198,7 @@ Result<ShutdownMsg> ShutdownMsg::Deserialize(const std::vector<uint8_t>& data) {
     std::copy(data.begin(), data.begin() + 32, msg.channel_id.begin());
 
     uint16_t script_len = (data[32] << 8) | data[33];
-    if (data.size() < 34 + script_len) {
+    if (data.size() < 34 + static_cast<size_t>(script_len)) {
         return Result<ShutdownMsg>::Error("Invalid script length");
     }
 
@@ -414,7 +414,7 @@ Result<UpdateFailHTLCMsg> UpdateFailHTLCMsg::Deserialize(const std::vector<uint8
     uint16_t reason_len = (static_cast<uint16_t>(data[40]) << 8) | data[41];
 
     // Parse reason
-    if (data.size() < 42 + reason_len) {
+    if (data.size() < 42 + static_cast<size_t>(reason_len)) {
         return Result<UpdateFailHTLCMsg>::Error("Invalid reason data");
     }
     msg.reason.assign(data.begin() + 42, data.begin() + 42 + reason_len);
@@ -1015,7 +1015,11 @@ Result<CommitmentTransaction> CommitmentTransaction::Build(
             // Then by script (lexicographic)
             auto a_bytes = a.script_pubkey.Serialize();
             auto b_bytes = b.script_pubkey.Serialize();
-            return a_bytes < b_bytes;
+            // Use explicit lexicographic compare to avoid GCC false positive
+            // stringop-overread warning with vector operator<
+            return std::lexicographical_compare(
+                a_bytes.begin(), a_bytes.end(),
+                b_bytes.begin(), b_bytes.end());
         });
 
     return Result<CommitmentTransaction>::Ok(commitment);

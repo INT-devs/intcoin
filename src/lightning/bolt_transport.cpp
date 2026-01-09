@@ -615,7 +615,7 @@ Result<LightningMessage> LightningMessage::Deserialize(const std::vector<uint8_t
     LightningMessage msg;
     msg.length = (static_cast<uint16_t>(data[0]) << 8) | static_cast<uint16_t>(data[1]);
 
-    if (data.size() < 2 + msg.length) {
+    if (data.size() < 2 + static_cast<size_t>(msg.length)) {
         return Result<LightningMessage>::Error("Incomplete message");
     }
 
