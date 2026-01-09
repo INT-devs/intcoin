@@ -371,6 +371,7 @@ set(INTCOIN_CORE_SOURCES
     # Smart Contracts (IntSC VM)
     src/contracts/vm.cpp
     src/contracts/storage.cpp
+    src/contracts/transaction.cpp
 
     # SPV (Simplified Payment Verification)
     src/spv/spv.cpp
