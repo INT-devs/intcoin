@@ -49,8 +49,8 @@ public:
 
         if (elapsed > 0) {
             // Calculate rates before resetting
-            current_flow_inflow_ = static_cast<double>(transactions_added_window_) / std::max(elapsed, 1ULL);
-            current_flow_outflow_ = static_cast<double>(transactions_removed_window_) / std::max(elapsed, 1ULL);
+            current_flow_inflow_ = static_cast<double>(transactions_added_window_) / std::max(elapsed, uint64_t{1});
+            current_flow_outflow_ = static_cast<double>(transactions_removed_window_) / std::max(elapsed, uint64_t{1});
 
             // Reset window counters
             transactions_added_window_ = 0;
@@ -98,8 +98,8 @@ FlowMetrics MempoolAnalytics::AnalyzeTransactionFlow() const {
 
     if (pimpl_->transactions_added_window_ > 0 || pimpl_->transactions_removed_window_ > 0) {
         // Use recent window data
-        metrics.inflow_rate = static_cast<double>(pimpl_->transactions_added_window_) / std::max(elapsed, 1ULL);
-        metrics.outflow_rate = static_cast<double>(pimpl_->transactions_removed_window_) / std::max(elapsed, 1ULL);
+        metrics.inflow_rate = static_cast<double>(pimpl_->transactions_added_window_) / std::max(elapsed, uint64_t{1});
+        metrics.outflow_rate = static_cast<double>(pimpl_->transactions_removed_window_) / std::max(elapsed, uint64_t{1});
     } else {
         // Fallback to stored flow rates
         metrics.inflow_rate = pimpl_->current_flow_inflow_;
@@ -180,18 +180,36 @@ void MempoolAnalytics::OnTransactionRemoved(
 
     // Update priority distribution
     switch (priority) {
-        case 0: if (pimpl_->current_stats_.priority_dist.low_count > 0)
-                    pimpl_->current_stats_.priority_dist.low_count--; break;
-        case 1: if (pimpl_->current_stats_.priority_dist.normal_count > 0)
-                    pimpl_->current_stats_.priority_dist.normal_count--; break;
-        case 2: if (pimpl_->current_stats_.priority_dist.high_count > 0)
-                    pimpl_->current_stats_.priority_dist.high_count--; break;
-        case 3: if (pimpl_->current_stats_.priority_dist.htlc_count > 0)
-                    pimpl_->current_stats_.priority_dist.htlc_count--; break;
-        case 4: if (pimpl_->current_stats_.priority_dist.bridge_count > 0)
-                    pimpl_->current_stats_.priority_dist.bridge_count--; break;
-        case 5: if (pimpl_->current_stats_.priority_dist.critical_count > 0)
-                    pimpl_->current_stats_.priority_dist.critical_count--; break;
+        case 0:
+            if (pimpl_->current_stats_.priority_dist.low_count > 0) {
+                pimpl_->current_stats_.priority_dist.low_count--;
+            }
+            break;
+        case 1:
+            if (pimpl_->current_stats_.priority_dist.normal_count > 0) {
+                pimpl_->current_stats_.priority_dist.normal_count--;
+            }
+            break;
+        case 2:
+            if (pimpl_->current_stats_.priority_dist.high_count > 0) {
+                pimpl_->current_stats_.priority_dist.high_count--;
+            }
+            break;
+        case 3:
+            if (pimpl_->current_stats_.priority_dist.htlc_count > 0) {
+                pimpl_->current_stats_.priority_dist.htlc_count--;
+            }
+            break;
+        case 4:
+            if (pimpl_->current_stats_.priority_dist.bridge_count > 0) {
+                pimpl_->current_stats_.priority_dist.bridge_count--;
+            }
+            break;
+        case 5:
+            if (pimpl_->current_stats_.priority_dist.critical_count > 0) {
+                pimpl_->current_stats_.priority_dist.critical_count--;
+            }
+            break;
     }
 
     pimpl_->UpdateFlowMetrics();
