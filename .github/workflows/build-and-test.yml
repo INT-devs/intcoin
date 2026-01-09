@@ -108,13 +108,13 @@ jobs:
           build/bin/intcoin-qt
 
   # ============================================================================
-  # Linux Build (Debian 12)
+  # Linux Build (Debian 13 Trixie)
   # ============================================================================
   build-debian:
-    name: Debian 12
+    name: Debian 13
     runs-on: ubuntu-latest
     container:
-      image: debian:12
+      image: debian:trixie
 
     steps:
     - name: Install git for checkout
@@ -181,7 +181,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: intcoin-debian-12
+        name: intcoin-debian-13
         path: |
           build/bin/intcoind
           build/bin/intcoin-cli
@@ -502,8 +502,8 @@ jobs:
       run: |
         cd intcoin-ubuntu-24.04
         tar -czf ../intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz *
-        cd ../intcoin-debian-12
-        tar -czf ../intcoin-${{ github.ref_name }}-debian-12.tar.gz *
+        cd ../intcoin-debian-13
+        tar -czf ../intcoin-${{ github.ref_name }}-debian-13.tar.gz *
         cd ../intcoin-fedora-40
         tar -czf ../intcoin-${{ github.ref_name }}-fedora-40.tar.gz *
         cd ../intcoin-macos-latest
@@ -517,7 +517,7 @@ jobs:
       with:
         files: |
           intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz
-          intcoin-${{ github.ref_name }}-debian-12.tar.gz
+          intcoin-${{ github.ref_name }}-debian-13.tar.gz
           intcoin-${{ github.ref_name }}-fedora-40.tar.gz
           intcoin-${{ github.ref_name }}-macos-latest.tar.gz
           intcoin-${{ github.ref_name }}-windows-2022.zip
