@@ -108,6 +108,166 @@ jobs:
           build/bin/intcoin-qt
 
   # ============================================================================
+  # Linux Build (Debian 12)
+  # ============================================================================
+  build-debian:
+    name: Debian 12
+    runs-on: ubuntu-latest
+    container:
+      image: debian:12
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        apt-get update
+        apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libssl-dev \
+          libboost-all-dev \
+          librocksdb-dev \
+          libcurl4-openssl-dev \
+          libsodium-dev \
+          libjsoncpp-dev \
+          libzmq3-dev \
+          libevent-dev \
+          qt6-base-dev \
+          qt6-tools-dev \
+          libqt6svg6-dev \
+          git \
+          ca-certificates
+
+    - name: Build liboqs
+      run: |
+        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs-src
+        cd /tmp/liboqs-src
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
+        ninja
+        ninja install
+
+    - name: Build RandomX
+      run: |
+        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git /tmp/randomx-src
+        cd /tmp/randomx-src
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
+        make -j$(nproc)
+        make install
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -DBUILD_TESTS=ON \
+          -DBUILD_WALLET_QT=ON \
+          -GNinja
+
+    - name: Build
+      run: cmake --build build --config $BUILD_TYPE -j$(nproc)
+
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure -C $BUILD_TYPE
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: intcoin-debian-12
+        path: |
+          build/bin/intcoind
+          build/bin/intcoin-cli
+          build/bin/intcoin-wallet
+          build/bin/intcoin-miner
+          build/bin/intcoin-pool-server
+          build/bin/intcoin-qt
+
+  # ============================================================================
+  # Linux Build (Fedora 40)
+  # ============================================================================
+  build-fedora:
+    name: Fedora 40
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:40
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        dnf install -y \
+          gcc-c++ \
+          cmake \
+          ninja-build \
+          openssl-devel \
+          boost-devel \
+          rocksdb-devel \
+          libcurl-devel \
+          libsodium-devel \
+          jsoncpp-devel \
+          zeromq-devel \
+          libevent-devel \
+          qt6-qtbase-devel \
+          qt6-qttools-devel \
+          qt6-qtsvg-devel \
+          git
+
+    - name: Build liboqs
+      run: |
+        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs-src
+        cd /tmp/liboqs-src
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
+        ninja
+        ninja install
+
+    - name: Build RandomX
+      run: |
+        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git /tmp/randomx-src
+        cd /tmp/randomx-src
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
+        make -j$(nproc)
+        make install
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -DBUILD_TESTS=ON \
+          -DBUILD_WALLET_QT=ON \
+          -GNinja
+
+    - name: Build
+      run: cmake --build build --config $BUILD_TYPE -j$(nproc)
+
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure -C $BUILD_TYPE
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: intcoin-fedora-40
+        path: |
+          build/bin/intcoind
+          build/bin/intcoin-cli
+          build/bin/intcoin-wallet
+          build/bin/intcoin-miner
+          build/bin/intcoin-pool-server
+          build/bin/intcoin-qt
+
+  # ============================================================================
   # macOS Build
   # ============================================================================
   build-macos:
@@ -328,7 +488,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-ubuntu, build-macos, build-windows]
+    needs: [build-ubuntu, build-debian, build-fedora, build-macos, build-windows]
 
     steps:
     - name: Download all artifacts
@@ -338,6 +498,10 @@ jobs:
       run: |
         cd intcoin-ubuntu-24.04
         tar -czf ../intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz *
+        cd ../intcoin-debian-12
+        tar -czf ../intcoin-${{ github.ref_name }}-debian-12.tar.gz *
+        cd ../intcoin-fedora-40
+        tar -czf ../intcoin-${{ github.ref_name }}-fedora-40.tar.gz *
         cd ../intcoin-macos-latest
         tar -czf ../intcoin-${{ github.ref_name }}-macos-latest.tar.gz *
         cd ../intcoin-windows-2022
@@ -349,6 +513,8 @@ jobs:
       with:
         files: |
           intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz
+          intcoin-${{ github.ref_name }}-debian-12.tar.gz
+          intcoin-${{ github.ref_name }}-fedora-40.tar.gz
           intcoin-${{ github.ref_name }}-macos-latest.tar.gz
           intcoin-${{ github.ref_name }}-windows-2022.zip
         draft: false
