@@ -278,22 +278,22 @@ if(NOT QRENCODE_FOUND)
 endif()
 
 # hidapi (for hardware wallet USB communication)
-if(PKG_CONFIG_FOUND)
+# On macOS, pkg_check_modules doesn't provide full library paths,
+# so we always try find_library as a fallback
+find_library(HIDAPI_LIB hidapi
+    PATHS
+        /opt/homebrew/lib
+        /usr/local/lib
+        $ENV{HOME}/.local/lib
+)
+find_path(HIDAPI_INCLUDE_DIR hidapi/hidapi.h
+    PATHS
+        /opt/homebrew/include
+        /usr/local/include
+        $ENV{HOME}/.local/include
+)
+if(NOT HIDAPI_LIB AND PKG_CONFIG_FOUND)
     pkg_check_modules(HIDAPI hidapi)
-endif()
-if(NOT HIDAPI_FOUND)
-    find_library(HIDAPI_LIB hidapi
-        PATHS
-            /opt/homebrew/lib
-            /usr/local/lib
-            $ENV{HOME}/.local/lib
-    )
-    find_path(HIDAPI_INCLUDE_DIR hidapi/hidapi.h
-        PATHS
-            /opt/homebrew/include
-            /usr/local/include
-            $ENV{HOME}/.local/include
-    )
 endif()
 
 # Qt6 (optional) - 6.2.4
@@ -645,12 +645,15 @@ if(BUILD_WALLET_QT)
     )
 
     # Link optional Qt wallet dependencies
-    if(HIDAPI_FOUND OR HIDAPI_LIB)
-        if(HIDAPI_FOUND)
+    if(HIDAPI_LIB OR HIDAPI_FOUND)
+        if(HIDAPI_LIB)
+            target_link_libraries(intcoin-qt ${HIDAPI_LIB})
+            if(HIDAPI_INCLUDE_DIR)
+                target_include_directories(intcoin-qt PRIVATE ${HIDAPI_INCLUDE_DIR})
+            endif()
+        else()
             target_link_libraries(intcoin-qt ${HIDAPI_LIBRARIES})
             target_include_directories(intcoin-qt PRIVATE ${HIDAPI_INCLUDE_DIRS})
-        else()
-            target_link_libraries(intcoin-qt ${HIDAPI_LIB})
         endif()
     endif()
     install(TARGETS intcoin-qt DESTINATION bin)
