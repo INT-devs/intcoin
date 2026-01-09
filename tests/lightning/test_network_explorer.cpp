@@ -43,11 +43,11 @@ bool test_explorer_init() {
 bool test_network_stats() {
     NetworkExplorer explorer;
 
-    auto stats = explorer.GetNetworkStats();
+    [[maybe_unused]] auto stats = explorer.GetNetworkStats();
 
-    TEST_ASSERT(stats.num_nodes >= 0, "Number of nodes should be non-negative");
-    TEST_ASSERT(stats.num_channels >= 0, "Number of channels should be non-negative");
-    TEST_ASSERT(stats.total_capacity >= 0, "Total capacity should be non-negative");
+    TEST_ASSERT(true, "Number of nodes accessible"); // unsigned field
+    TEST_ASSERT(true, "Number of channels accessible"); // unsigned field
+    TEST_ASSERT(true, "Total capacity accessible"); // unsigned field
 
     return true;
 }
@@ -58,7 +58,7 @@ bool test_get_all_nodes() {
 
     auto nodes = explorer.GetAllNodes();
 
-    TEST_ASSERT(nodes.size() >= 0, "Nodes should be accessible");
+    TEST_ASSERT(true, "Nodes should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -69,7 +69,7 @@ bool test_get_all_channels() {
 
     auto channels = explorer.GetAllChannels();
 
-    TEST_ASSERT(channels.size() >= 0, "Channels should be accessible");
+    TEST_ASSERT(true, "Channels should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -137,7 +137,7 @@ bool test_node_channels() {
 
     auto channels = explorer.GetNodeChannels("03node...");
 
-    TEST_ASSERT(channels.size() >= 0, "Node channels should be accessible");
+    TEST_ASSERT(true, "Node channels should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -148,7 +148,7 @@ bool test_node_peers() {
 
     auto peers = explorer.GetNodePeers("03node...");
 
-    TEST_ASSERT(peers.size() >= 0, "Node peers should be accessible");
+    TEST_ASSERT(true, "Node peers should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -160,7 +160,7 @@ bool test_find_path() {
     auto path = explorer.FindPath("03source...", "03dest...");
 
     // Path may be empty without network
-    TEST_ASSERT(path.nodes.size() >= 0, "Path should be accessible");
+    TEST_ASSERT(true, "Path should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -171,7 +171,7 @@ bool test_node_neighbors() {
 
     auto neighbors = explorer.GetNodeNeighbors("03node...", 2);
 
-    TEST_ASSERT(neighbors.size() >= 0, "Neighbors should be accessible");
+    TEST_ASSERT(true, "Neighbors should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -202,9 +202,9 @@ bool test_network_topology() {
 bool test_refresh_graph() {
     NetworkExplorer explorer;
 
-    uint32_t updates = explorer.RefreshNetworkGraph();
+    [[maybe_unused]] uint32_t updates = explorer.RefreshNetworkGraph();
 
-    TEST_ASSERT(updates >= 0, "Updates should be non-negative");
+    TEST_ASSERT(true, "Updates accessible"); // unsigned field
 
     return true;
 }
@@ -215,7 +215,7 @@ bool test_zombie_channels() {
 
     auto zombies = explorer.GetZombieChannels(14);
 
-    TEST_ASSERT(zombies.size() >= 0, "Zombie channels should be accessible");
+    TEST_ASSERT(true, "Zombie channels should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -282,9 +282,9 @@ bool test_export_channel() {
 bool test_graph_timestamp() {
     NetworkExplorer explorer;
 
-    uint64_t timestamp = explorer.GetGraphTimestamp();
+    [[maybe_unused]] uint64_t timestamp = explorer.GetGraphTimestamp();
 
-    TEST_ASSERT(timestamp >= 0, "Timestamp should be non-negative");
+    TEST_ASSERT(true, "Timestamp accessible"); // unsigned field
 
     return true;
 }
@@ -312,7 +312,7 @@ bool test_channel_filter() {
 
     auto channels = explorer.GetAllChannels(filter);
 
-    TEST_ASSERT(channels.size() >= 0, "Filtered channels should be accessible");
+    TEST_ASSERT(true, "Filtered channels should be accessible"); // size() is unsigned
 
     return true;
 }

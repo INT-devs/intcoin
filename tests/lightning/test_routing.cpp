@@ -161,7 +161,7 @@ bool test_mission_control() {
 
     auto entries = manager.GetMissionControlEntries();
 
-    TEST_ASSERT(entries.size() >= 0, "Mission control entries should be accessible");
+    TEST_ASSERT(true, "Mission control entries should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -225,10 +225,10 @@ bool test_configuration() {
 bool test_statistics() {
     RoutingManager manager;
 
-    auto stats = manager.GetStatistics();
+    [[maybe_unused]] auto stats = manager.GetStatistics();
 
-    TEST_ASSERT(stats.routes_found >= 0, "Routes found should be non-negative");
-    TEST_ASSERT(stats.successful_payments >= 0, "Successful payments should be non-negative");
+    TEST_ASSERT(true, "Routes found accessible"); // unsigned field
+    TEST_ASSERT(true, "Successful payments accessible"); // unsigned field
 
     return true;
 }
