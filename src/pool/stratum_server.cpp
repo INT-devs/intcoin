@@ -6,16 +6,26 @@
 
 #include "intcoin/pool.h"
 #include "intcoin/util.h"
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <thread>
 #include <map>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#define close closesocket
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
+#endif
 
 // OpenSSL includes for TLS/SSL support
 #ifdef STRATUM_USE_SSL

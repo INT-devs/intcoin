@@ -217,6 +217,11 @@ Result<std::vector<T>> DeserializeVector(const std::vector<uint8_t>& data, size_
 // Logging
 // ============================================================================
 
+// Windows defines ERROR as a macro - undefine it to avoid conflicts
+#ifdef ERROR
+#undef ERROR
+#endif
+
 enum class LogLevel {
     TRACE,
     DEBUG,

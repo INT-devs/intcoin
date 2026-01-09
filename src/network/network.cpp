@@ -9,17 +9,28 @@
 #include "intcoin/util.h"
 #include <sstream>
 #include <algorithm>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <cstring>
 #include <cerrno>
 #include <mutex>
 #include <unordered_map>
 #include <fstream>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <io.h>
+#pragma comment(lib, "ws2_32.lib")
+#define close closesocket
+#else
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
+#endif
 
 namespace intcoin {
 
