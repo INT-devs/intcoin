@@ -339,6 +339,7 @@ set(INTCOIN_CORE_SOURCES
     src/rpc/htlc_rpc.cpp
     src/rpc/swap_rpc.cpp
     src/rpc/bridge_rpc.cpp
+    src/rpc/contracts_rpc.cpp
 
     # Wallet
     src/wallet/wallet.cpp

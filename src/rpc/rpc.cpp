@@ -610,6 +610,7 @@ void RPCServer::RegisterAllMethods() {
     UtilityRPC::RegisterMethods(*this);
     RawTransactionRPC::RegisterMethods(*this, impl_->blockchain);
     FeeEstimationRPC::RegisterMethods(*this, impl_->blockchain);
+    ContractsRPC::RegisterMethods(*this);
 }
 
 RPCResponse RPCServer::HandleRequest(const RPCRequest& request) {

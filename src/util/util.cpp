@@ -851,4 +851,113 @@ uint256 DoubleSHA3_256(const std::vector<uint8_t>& data) {
     return SHA3::DoubleHash(data);
 }
 
+// ============================================================================
+// Bech32 Encoding
+// ============================================================================
+
+namespace {
+    const char* BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+    uint32_t Bech32Polymod(const std::vector<uint8_t>& values) {
+        uint32_t c = 1;
+        for (uint8_t v : values) {
+            uint8_t c0 = c >> 25;
+            c = ((c & 0x1ffffff) << 5) ^ v;
+            if (c0 & 1) c ^= 0x3b6a57b2;
+            if (c0 & 2) c ^= 0x26508e6d;
+            if (c0 & 4) c ^= 0x1ea119fa;
+            if (c0 & 8) c ^= 0x3d4233dd;
+            if (c0 & 16) c ^= 0x2a1462b3;
+        }
+        return c;
+    }
+
+    std::vector<uint8_t> ExpandHRP(const std::string& hrp) {
+        std::vector<uint8_t> result;
+        result.reserve(hrp.size() * 2 + 1);
+        for (char c : hrp) {
+            result.push_back(c >> 5);
+        }
+        result.push_back(0);
+        for (char c : hrp) {
+            result.push_back(c & 31);
+        }
+        return result;
+    }
+
+    std::vector<uint8_t> CreateChecksum(const std::string& hrp, const std::vector<uint8_t>& data) {
+        std::vector<uint8_t> values = ExpandHRP(hrp);
+        values.insert(values.end(), data.begin(), data.end());
+        values.resize(values.size() + 6);
+        uint32_t polymod = Bech32Polymod(values) ^ 1;
+
+        std::vector<uint8_t> checksum(6);
+        for (int i = 0; i < 6; ++i) {
+            checksum[i] = (polymod >> (5 * (5 - i))) & 31;
+        }
+        return checksum;
+    }
+
+    std::vector<uint8_t> ConvertBits(const std::vector<uint8_t>& data,
+                                     int frombits, int tobits, bool pad) {
+        std::vector<uint8_t> result;
+        int acc = 0;
+        int bits = 0;
+        int maxv = (1 << tobits) - 1;
+        int max_acc = (1 << (frombits + tobits - 1)) - 1;
+
+        for (uint8_t value : data) {
+            if ((value >> frombits) != 0) {
+                return {}; // Invalid input
+            }
+            acc = ((acc << frombits) | value) & max_acc;
+            bits += frombits;
+            while (bits >= tobits) {
+                bits -= tobits;
+                result.push_back((acc >> bits) & maxv);
+            }
+        }
+
+        if (pad) {
+            if (bits > 0) {
+                result.push_back((acc << (tobits - bits)) & maxv);
+            }
+        } else if (bits >= frombits || ((acc << (tobits - bits)) & maxv)) {
+            return {}; // Invalid padding
+        }
+
+        return result;
+    }
+}
+
+std::string Bech32Encode(const std::string& hrp, const std::vector<uint8_t>& data) {
+    // Convert from 8-bit to 5-bit
+    std::vector<uint8_t> data_5bit = ConvertBits(data, 8, 5, true);
+    if (data_5bit.empty()) {
+        return ""; // Encoding failed
+    }
+
+    // Create checksum
+    std::vector<uint8_t> checksum = CreateChecksum(hrp, data_5bit);
+
+    // Combine data and checksum
+    data_5bit.insert(data_5bit.end(), checksum.begin(), checksum.end());
+
+    // Encode to Bech32 string
+    std::string result = hrp + "1";
+    for (uint8_t value : data_5bit) {
+        if (value >= 32) {
+            return ""; // Invalid value
+        }
+        result += BECH32_CHARSET[value];
+    }
+
+    return result;
+}
+
+Result<std::pair<std::string, std::vector<uint8_t>>> Bech32Decode(const std::string& encoded) {
+    // Implementation stub for now
+    return Result<std::pair<std::string, std::vector<uint8_t>>>::Error("Bech32Decode not yet implemented");
+}
+
 } // namespace intcoin

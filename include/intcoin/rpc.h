@@ -338,6 +338,25 @@ public:
     static JSONValue pool_gettopminers(const JSONValue& params, MiningPoolServer& pool);
 };
 
+class ContractsRPC {
+public:
+    static void RegisterMethods(RPCServer& server);
+
+    // Smart contract methods
+    static JSONValue deploycontract(const JSONValue& params);
+    static JSONValue callcontract(const JSONValue& params);
+    static JSONValue callcontractstatic(const JSONValue& params);
+    static JSONValue getcontractinfo(const JSONValue& params);
+    static JSONValue getcontractcode(const JSONValue& params);
+    static JSONValue getcontractreceipt(const JSONValue& params);
+    static JSONValue estimatecontractgas(const JSONValue& params);
+    static JSONValue getcontractlogs(const JSONValue& params);
+    static JSONValue listcontracts(const JSONValue& params);
+    static JSONValue getcontractstorage(const JSONValue& params);
+    static JSONValue compilesolidity(const JSONValue& params);
+    static JSONValue verifycontract(const JSONValue& params);
+};
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
