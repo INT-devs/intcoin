@@ -36,7 +36,7 @@ bool test_client_init() {
     // Client is enabled by default (ready to connect to towers)
     TEST_ASSERT(client.IsEnabled(), "Client should be enabled by default");
 
-    auto stats = client.GetStatistics();
+    [[maybe_unused]] auto stats = client.GetStatistics();
     TEST_ASSERT(true, "Statistics accessible"); // active_towers is unsigned
 
     return true;
@@ -125,7 +125,7 @@ bool test_get_backups() {
 bool test_client_statistics() {
     WatchtowerClient client;
 
-    auto stats = client.GetStatistics();
+    [[maybe_unused]] auto stats = client.GetStatistics();
 
     TEST_ASSERT(true, "Backed up channels count"); // unsigned field
     TEST_ASSERT(true, "Breaches count"); // unsigned field
@@ -160,7 +160,7 @@ bool test_server_config() {
 bool test_server_statistics() {
     WatchtowerServer server;
 
-    auto stats = server.GetStatistics();
+    [[maybe_unused]] auto stats = server.GetStatistics();
 
     TEST_ASSERT(true, "Active sessions count"); // unsigned field
     TEST_ASSERT(true, "Total blobs count"); // unsigned field

@@ -48,7 +48,7 @@ bool test_get_quote() {
     auto quote = manager.GetQuote(SwapType::SWAP_IN, 100000);
 
     TEST_ASSERT(quote.amount == 100000, "Quote amount should match");
-    TEST_ASSERT(quote.total_fee >= 0, "Total fee should be non-negative");
+    TEST_ASSERT(true, "Total fee accessible"); // unsigned field
 
     return true;
 }
@@ -105,7 +105,7 @@ bool test_active_swaps() {
 
     auto active = manager.GetActiveSwaps();
 
-    TEST_ASSERT(active.size() >= 0, "Active swaps should be accessible");
+    TEST_ASSERT(true, "Active swaps should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -125,9 +125,9 @@ bool test_swap_history() {
 bool test_estimate_fees() {
     SubmarineSwapManager manager;
 
-    uint64_t fees = manager.EstimateFees(SwapType::SWAP_IN, 100000);
+    [[maybe_unused]] uint64_t fees = manager.EstimateFees(SwapType::SWAP_IN, 100000);
 
-    TEST_ASSERT(fees >= 0, "Fees should be non-negative");
+    TEST_ASSERT(true, "Fees accessible"); // unsigned field
 
     return true;
 }
@@ -148,10 +148,10 @@ bool test_swap_limits() {
 bool test_statistics() {
     SubmarineSwapManager manager;
 
-    auto stats = manager.GetStatistics();
+    [[maybe_unused]] auto stats = manager.GetStatistics();
 
-    TEST_ASSERT(stats.total_swaps >= 0, "Total swaps should be non-negative");
-    TEST_ASSERT(stats.total_fees_paid >= 0, "Total fees should be non-negative");
+    TEST_ASSERT(true, "Total swaps accessible"); // unsigned field
+    TEST_ASSERT(true, "Total fees accessible"); // unsigned field
 
     return true;
 }

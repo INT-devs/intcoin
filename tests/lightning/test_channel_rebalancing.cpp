@@ -48,7 +48,7 @@ bool test_get_balances() {
 
     auto balances = manager.GetChannelBalances();
 
-    TEST_ASSERT(balances.size() >= 0, "Balances should be accessible");
+    TEST_ASSERT(true, "Balances should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -121,7 +121,7 @@ bool test_active_operations() {
 
     auto active = manager.GetActiveOperations();
 
-    TEST_ASSERT(active.size() >= 0, "Active operations should be accessible");
+    TEST_ASSERT(true, "Active operations should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -141,14 +141,14 @@ bool test_history() {
 bool test_estimate_fee() {
     ChannelRebalancingManager manager;
 
-    uint64_t fee = manager.EstimateFee(
+    [[maybe_unused]] uint64_t fee = manager.EstimateFee(
         "channel_1",
         "channel_2",
         100000,
         RebalanceMethod::CIRCULAR
     );
 
-    TEST_ASSERT(fee >= 0, "Fee should be non-negative");
+    TEST_ASSERT(true, "Fee accessible"); // unsigned field
 
     return true;
 }
@@ -157,12 +157,12 @@ bool test_estimate_fee() {
 bool test_optimal_amount() {
     ChannelRebalancingManager manager;
 
-    uint64_t amount = manager.CalculateOptimalAmount(
+    [[maybe_unused]] uint64_t amount = manager.CalculateOptimalAmount(
         "channel_1",
         "channel_2"
     );
 
-    TEST_ASSERT(amount >= 0, "Amount should be non-negative");
+    TEST_ASSERT(true, "Amount accessible"); // unsigned field
 
     return true;
 }
@@ -178,7 +178,7 @@ bool test_circular_route() {
     );
 
     // Route may be empty without actual network
-    TEST_ASSERT(route.size() >= 0, "Route should be accessible");
+    TEST_ASSERT(true, "Route should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -205,10 +205,10 @@ bool test_configuration() {
 bool test_statistics() {
     ChannelRebalancingManager manager;
 
-    auto stats = manager.GetStatistics();
+    [[maybe_unused]] auto stats = manager.GetStatistics();
 
-    TEST_ASSERT(stats.total_rebalances >= 0, "Total rebalances should be non-negative");
-    TEST_ASSERT(stats.total_fees_paid >= 0, "Total fees should be non-negative");
+    TEST_ASSERT(true, "Total rebalances accessible"); // unsigned field
+    TEST_ASSERT(true, "Total fees accessible"); // unsigned field
 
     return true;
 }
