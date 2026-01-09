@@ -1,16 +1,44 @@
 // Copyright (c) 2026 The INTcoin Core developers
 // Distributed under the MIT software license
 
-// Define mock CBlock and CBlockIndex BEFORE including headers
+#include <cstdint>
+#include <cstddef>
+#include <vector>
+
+// Define mock Block and CBlockIndex BEFORE including headers
 namespace intcoin {
-    class CBlock {
+    // Forward declare uint256 from types.h
+    using uint256 = std::array<uint8_t, 32>;
+    class Block {
     public:
-        CBlock() = default;
-        CBlock(const CBlock&) = default;
-        CBlock(CBlock&&) = default;
-        CBlock& operator=(const CBlock&) = default;
-        CBlock& operator=(CBlock&&) = default;
-        ~CBlock() = default;
+        Block() = default;
+        Block(const Block&) = default;
+        Block(Block&&) = default;
+        Block& operator=(const Block&) = default;
+        Block& operator=(Block&&) = default;
+        ~Block() = default;
+
+        // Mock methods required by parallel_validation
+        uint256 GetHash() const { return uint256{}; }
+        uint256 CalculateMerkleRoot() const { return uint256{}; }
+        size_t GetSerializedSize() const { return 1000; }
+
+        struct Header {
+            uint32_t version{1};
+            uint64_t timestamp{0};
+            uint256 randomx_hash{};
+            uint32_t bits{0x1e0ffff0};
+            uint256 merkle_root{};
+        } header;
+
+        struct Transaction {
+            bool IsCoinbase() const { return true; }
+            size_t GetSerializedSize() const { return 250; }
+            std::vector<int> inputs;
+            std::vector<int> outputs{1}; // At least one output
+        };
+
+        std::vector<Transaction> transactions{{}}; // Start with one coinbase tx
     };
 
     class CBlockIndex {
@@ -30,7 +58,7 @@ namespace intcoin {
 #include <chrono>
 
 using namespace intcoin::ibd;
-using intcoin::CBlock;
+using intcoin::Block;
 using intcoin::CBlockIndex;
 
 // Test helpers
@@ -73,7 +101,7 @@ bool test_processor_init() {
 // Test: Single block submission
 bool test_single_block_submission() {
     ParallelBlockProcessor processor;
-    CBlock block;
+    Block block;
     CBlockIndex index;
 
     auto future = processor.SubmitBlock(block, &index);
@@ -91,7 +119,7 @@ bool test_multiple_blocks_submission() {
     std::vector<ValidationFuture> futures;
 
     for (int i = 0; i < 10; i++) {
-        CBlock block;
+        Block block;
         CBlockIndex index;
         futures.push_back(processor.SubmitBlock(block, &index));
     }
@@ -112,7 +140,7 @@ bool test_validation_statistics() {
     ParallelBlockProcessor processor;
 
     for (int i = 0; i < 10; i++) {
-        CBlock block;
+        Block block;
         CBlockIndex index;
         auto future = processor.SubmitBlock(block, &index);
         future.get();
@@ -132,7 +160,7 @@ bool test_concurrent_processing() {
 
     // Submit 100 blocks
     for (int i = 0; i < 100; i++) {
-        CBlock block;
+        Block block;
         CBlockIndex index;
         futures.push_back(processor.SubmitBlock(block, &index));
     }

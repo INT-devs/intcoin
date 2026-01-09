@@ -205,6 +205,44 @@ if(NOT JSONCPP_FOUND)
     )
 endif()
 
+# libqrencode (for QR code generation in Qt wallet)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(QRENCODE libqrencode)
+endif()
+if(NOT QRENCODE_FOUND)
+    find_library(QRENCODE_LIB qrencode
+        PATHS
+            /opt/homebrew/lib
+            /usr/local/lib
+            $ENV{HOME}/.local/lib
+    )
+    find_path(QRENCODE_INCLUDE_DIR qrencode.h
+        PATHS
+            /opt/homebrew/include
+            /usr/local/include
+            $ENV{HOME}/.local/include
+    )
+endif()
+
+# hidapi (for hardware wallet USB communication)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(HIDAPI hidapi)
+endif()
+if(NOT HIDAPI_FOUND)
+    find_library(HIDAPI_LIB hidapi
+        PATHS
+            /opt/homebrew/lib
+            /usr/local/lib
+            $ENV{HOME}/.local/lib
+    )
+    find_path(HIDAPI_INCLUDE_DIR hidapi/hidapi.h
+        PATHS
+            /opt/homebrew/include
+            /usr/local/include
+            $ENV{HOME}/.local/include
+    )
+endif()
+
 # Qt6 (optional) - 6.2.4
 if(BUILD_WALLET_QT)
     find_package(Qt6 6.2.4 COMPONENTS
@@ -248,6 +286,14 @@ if(EVENT_INCLUDE_DIR)
     include_directories(${EVENT_INCLUDE_DIR})
 endif()
 
+if(QRENCODE_INCLUDE_DIR)
+    include_directories(${QRENCODE_INCLUDE_DIR})
+endif()
+
+if(HIDAPI_INCLUDE_DIR)
+    include_directories(${HIDAPI_INCLUDE_DIR})
+endif()
+
 # Source files
 set(INTCOIN_CORE_SOURCES
     # Core
@@ -274,6 +320,7 @@ set(INTCOIN_CORE_SOURCES
 
     # Cryptography
     src/crypto/crypto.cpp
+    src/crypto/qrcode.cpp
 
     # Consensus
     src/consensus/consensus.cpp
@@ -418,6 +465,16 @@ if(EVENT_LIB)
     target_link_libraries(intcoin_core ${EVENT_LIB})
 endif()
 
+if(QRENCODE_FOUND OR QRENCODE_LIB)
+    if(QRENCODE_FOUND)
+        target_link_libraries(intcoin_core ${QRENCODE_LINK_LIBRARIES})
+        target_include_directories(intcoin_core PRIVATE ${QRENCODE_INCLUDE_DIRS})
+    else()
+        target_link_libraries(intcoin_core ${QRENCODE_LIB})
+        target_include_directories(intcoin_core PRIVATE ${QRENCODE_INCLUDE_DIR})
+    endif()
+endif()
+
 if(SODIUM_FOUND)
     link_directories(${SODIUM_LIBRARY_DIRS})
     target_link_libraries(intcoin_core ${SODIUM_LIBRARIES})
@@ -498,6 +555,10 @@ if(BUILD_WALLET_QT)
         src/qt/lightningpage.cpp
         src/qt/settingspage.cpp
         src/qt/mnemonicDialog.cpp
+        src/qt/qrcodedialog.cpp
+        src/qt/hardware_wallet.cpp
+        src/qt/pdf_invoice.cpp
+        src/qt/miningpage.cpp
         include/intcoin/qt/mainwindow.h
         include/intcoin/qt/overviewpage.h
         include/intcoin/qt/sendcoinspage.h
@@ -507,6 +568,10 @@ if(BUILD_WALLET_QT)
         include/intcoin/qt/lightningpage.h
         include/intcoin/qt/settingspage.h
         include/intcoin/qt/mnemonicDialog.h
+        include/intcoin/qt/qrcodedialog.h
+        include/intcoin/qt/hardware_wallet.h
+        include/intcoin/qt/pdf_invoice.h
+        include/intcoin/qt/miningpage.h
     )
     target_link_libraries(intcoin-qt
         intcoin_core
@@ -517,6 +582,15 @@ if(BUILD_WALLET_QT)
         Qt6::Gui
         Qt6::PrintSupport
     )
+
+    # Link optional Qt wallet dependencies
+    if(HIDAPI_FOUND OR HIDAPI_LIB)
+        if(HIDAPI_FOUND)
+            target_link_libraries(intcoin-qt ${HIDAPI_LINK_LIBRARIES})
+        else()
+            target_link_libraries(intcoin-qt ${HIDAPI_LIB})
+        endif()
+    endif()
     install(TARGETS intcoin-qt DESTINATION bin)
 endif()
 

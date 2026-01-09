@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <array>
 
 namespace intcoin {
 namespace lightning {
@@ -25,6 +26,18 @@ enum class SplitStrategy {
 };
 
 /**
+ * Payment status
+ */
+enum class PaymentStatus {
+    PENDING,
+    IN_FLIGHT,
+    SUCCEEDED,
+    FAILED,
+    TIMEOUT,
+    PARTIALLY_FAILED
+};
+
+/**
  * Route information for payment path
  */
 struct PaymentRoute {
@@ -34,6 +47,8 @@ struct PaymentRoute {
     uint64_t fee_msat{0};            // Fee for this route
     uint32_t cltv_delta{0};          // CLTV delta
     double success_probability{0.0}; // Estimated success rate (0.0-1.0)
+    PaymentStatus status{PaymentStatus::PENDING};  // Route status
+    std::string payment_hash;        // Payment hash for this part (AMP uses unique hashes)
     std::string preimage_secret;     // Payment preimage secret
 };
 
@@ -50,23 +65,12 @@ struct MPPConfig {
 };
 
 /**
- * Payment status
- */
-enum class PaymentStatus {
-    PENDING,
-    IN_FLIGHT,
-    SUCCEEDED,
-    FAILED,
-    TIMEOUT,
-    PARTIALLY_FAILED
-};
-
-/**
  * Multi-path payment state
  */
 struct MPPayment {
     std::string payment_id;
     std::string payment_hash;
+    std::string destination;            // Destination node pubkey
     uint64_t total_amount_msat{0};
     uint64_t total_fee_msat{0};
     std::vector<PaymentRoute> routes;
@@ -76,6 +80,8 @@ struct MPPayment {
     uint64_t created_at{0};
     uint64_t completed_at{0};
     std::string error_message;
+    bool is_amp{false};                 // True if AMP payment
+    std::array<uint8_t, 32> amp_root_secret;  // Root secret for AMP
 };
 
 /**
@@ -229,6 +235,8 @@ public:
         uint64_t total_payments{0};
         uint64_t successful_payments{0};
         uint64_t failed_payments{0};
+        uint64_t mpp_payments{0};       // MPP payments sent
+        uint64_t amp_payments{0};       // AMP payments sent
         uint64_t total_amount_msat{0};
         uint64_t total_fees_msat{0};
         double average_success_rate{0.0};

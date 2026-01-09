@@ -67,11 +67,13 @@ void TestHTLCScriptCreation() {
     // Verify preimage
     bool valid = HTLCScript::VerifyPreimage(preimage, payment_hash, HTLCHashAlgorithm::SHA3_256);
     assert(valid);
+    (void)valid; // Suppress unused variable warning in release builds
 
     // Test invalid preimage
     std::vector<uint8_t> wrong_preimage(32, 0xBB);
     bool invalid = HTLCScript::VerifyPreimage(wrong_preimage, payment_hash, HTLCHashAlgorithm::SHA3_256);
     assert(!invalid);
+    (void)invalid; // Suppress unused variable warning in release builds
 
     std::cout << "PASSED" << std::endl;
 }
@@ -93,10 +95,12 @@ void TestBitcoinHashes() {
     // Verify SHA-256 preimage
     bool sha256_valid = HTLCScript::VerifyPreimage(preimage, sha256_hash, HTLCHashAlgorithm::SHA256);
     assert(sha256_valid);
+    (void)sha256_valid; // Suppress unused variable warning in release builds
 
     // Verify RIPEMD-160 preimage
     bool ripemd160_valid = HTLCScript::VerifyPreimage(preimage, ripemd160_hash, HTLCHashAlgorithm::RIPEMD160);
     assert(ripemd160_valid);
+    (void)ripemd160_valid; // Suppress unused variable warning in release builds
 
     std::cout << "PASSED" << std::endl;
 }
@@ -350,6 +354,7 @@ void TestLocktimeSafetyBuffer() {
     // Verify 24-hour safety buffer
     uint64_t safety_buffer = offer.initiator_locktime - offer.participant_locktime;
     assert(safety_buffer >= 24 * 3600);  // At least 24 hours
+    (void)safety_buffer; // Suppress unused variable warning in release builds
 
     std::cout << "PASSED" << std::endl;
 }

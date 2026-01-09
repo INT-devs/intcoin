@@ -312,3 +312,7 @@ benchmark_results/
 !.gitattributes
 !.editorconfig
 !.clang-format
+!.claude/
+
+# Keep important files
+! CLAUDE.md 

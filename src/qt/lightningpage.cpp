@@ -7,6 +7,7 @@
 #include "intcoin/network.h"
 #include "intcoin/lightning.h"
 #include "intcoin/util.h"
+#include "intcoin/qrcode.h"
 
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -524,13 +525,47 @@ void LightningPage::createInvoice() {
     invoiceDisplay_->setText(invoice);
     copyInvoiceBtn_->setEnabled(true);
 
-    // TODO: Generate QR code (requires QR code library)
-    QPixmap qrCode(200, 200);
-    qrCode.fill(Qt::white);
-    QPainter painter(&qrCode);
-    painter.setPen(Qt::black);
-    painter.drawText(qrCode.rect(), Qt::AlignCenter, "QR\nCode\n(TODO)");
-    qrCodeLabel_->setPixmap(qrCode);
+    // Generate QR code for Lightning invoice
+    auto qr_data = QRCode::GenerateLightningInvoice(result.value->Encode());
+    if (qr_data) {
+        // Render QR code to pixmap
+        int module_size = 4;
+        int border = 4;
+        int width = qr_data->width;
+        int img_size = (width + 2 * border) * module_size;
+
+        QImage img(img_size, img_size, QImage::Format_RGB32);
+        img.fill(Qt::white);
+
+        QPainter painter(&img);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(Qt::black);
+
+        for (int y = 0; y < width; y++) {
+            for (int x = 0; x < width; x++) {
+                if (qr_data->GetModule(x, y)) {
+                    int px = (border + x) * module_size;
+                    int py = (border + y) * module_size;
+                    painter.drawRect(px, py, module_size, module_size);
+                }
+            }
+        }
+
+        QPixmap qrCode = QPixmap::fromImage(img);
+        qrCodeLabel_->setPixmap(qrCode.scaled(
+            200, 200,
+            Qt::KeepAspectRatio,
+            Qt::SmoothTransformation
+        ));
+    } else {
+        // Fallback if QR generation fails
+        QPixmap qrCode(200, 200);
+        qrCode.fill(Qt::white);
+        QPainter painter(&qrCode);
+        painter.setPen(Qt::black);
+        painter.drawText(qrCode.rect(), Qt::AlignCenter, "QR\nGeneration\nFailed");
+        qrCodeLabel_->setPixmap(qrCode);
+    }
 
     QMessageBox::information(this, tr("Invoice Created"),
         tr("Lightning invoice generated successfully!\nAmount: %1 INTS")

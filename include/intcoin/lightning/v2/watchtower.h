@@ -91,6 +91,7 @@ struct BreachEvent {
     uint64_t detected_at{0};
     uint64_t resolved_at{0};
     uint32_t block_height{0};
+    std::string error_message;           // Error message if breach handling failed
 };
 
 /**

@@ -9,12 +9,12 @@
 #include <memory>
 #include <functional>
 #include <future>
-#include <intcoin/uint256.h>
+#include <intcoin/types.h>
 
 namespace intcoin {
 
 // Forward declarations
-class CBlock;
+class Block;
 class CBlockIndex;
 
 namespace ibd {
@@ -84,6 +84,13 @@ public:
      */
     size_t GetQueueSize() const;
 
+    /**
+     * Submit task to thread pool
+     *
+     * @param task Task function to execute
+     */
+    void SubmitTask(std::function<void()> task);
+
 private:
     class Impl;
     std::unique_ptr<Impl> pimpl_;
@@ -118,7 +125,7 @@ public:
      * @return Future for validation result
      */
     ValidationFuture SubmitBlock(
-        const CBlock& block,
+        const Block& block,
         CBlockIndex* index
     );
 

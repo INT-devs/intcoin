@@ -9,7 +9,7 @@
 #include <string>
 #include <memory>
 #include <map>
-#include <intcoin/uint256.h>
+#include <intcoin/types.h>
 
 namespace intcoin {
 
@@ -38,7 +38,8 @@ struct SnapshotMetadata {
     uint64_t num_utxos{0};
     uint64_t timestamp{0};
     std::string source_url;
-    std::vector<uint8_t> signature;
+    std::vector<uint8_t> signature;      // Dilithium3 signature (3309 bytes)
+    std::vector<uint8_t> public_key;     // Dilithium3 public key (1952 bytes)
 };
 
 /**
@@ -168,6 +169,15 @@ private:
      * Compute UTXO set hash
      */
     uint256 ComputeUTXOHash(const std::vector<UTXOEntry>& utxos) const;
+
+    /**
+     * Sign snapshot metadata with Dilithium3
+     *
+     * @param metadata Metadata to sign
+     * @param secret_key Dilithium3 secret key
+     * @return True if signing succeeded
+     */
+    bool SignSnapshot(SnapshotMetadata& metadata, const std::vector<uint8_t>& secret_key) const;
 
     /**
      * Verify snapshot signature

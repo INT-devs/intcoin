@@ -144,10 +144,12 @@ void TestMetricsRegistry() {
     Counter* retrieved_counter = registry.GetCounter("reg_counter");
     assert(retrieved_counter != nullptr);
     assert(retrieved_counter->Value() == 10.0);
+    (void)retrieved_counter; // Suppress unused variable warning in release builds
 
     Gauge* retrieved_gauge = registry.GetGauge("reg_gauge");
     assert(retrieved_gauge != nullptr);
     assert(retrieved_gauge->Value() == 20.0);
+    (void)retrieved_gauge; // Suppress unused variable warning in release builds
 
     // Test export
     std::string export_str = registry.ExportPrometheus();

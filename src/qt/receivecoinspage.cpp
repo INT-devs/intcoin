@@ -2,8 +2,10 @@
 // MIT License
 
 #include "intcoin/qt/receivecoinspage.h"
+#include "intcoin/qt/qrcodedialog.h"
 #include "intcoin/wallet.h"
 #include "intcoin/util.h"
+#include "intcoin/qrcode.h"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -146,8 +148,38 @@ void ReceiveCoinsPage::copyAddress() {
 }
 
 void ReceiveCoinsPage::showQRCode() {
-    QMessageBox::information(this, tr("QR Code"),
-        tr("QR code generation not yet implemented."));
+    QString address = currentAddressEdit_->text();
+    if (address.isEmpty()) {
+        QMessageBox::warning(this, tr("No Address"),
+            tr("Please generate an address first."));
+        return;
+    }
+
+    // Get amount if specified
+    double amount = amountSpinBox_->value();
+    std::string label = labelEdit_->text().toStdString();
+
+    // Generate payment URI
+    std::string uri;
+    if (amount > 0.0 || !label.empty()) {
+        uri = QRCode::GenerateAddress(
+            address.toStdString(),
+            amount,
+            label
+        ) ? address.toStdString() : "";
+    } else {
+        uri = "intcoin:" + address.toStdString();
+    }
+
+    if (uri.empty()) {
+        QMessageBox::warning(this, tr("QR Code Error"),
+            tr("Failed to generate QR code."));
+        return;
+    }
+
+    // Show QR code in dialog
+    QRCodeDialog dialog(uri, tr("Receive Address QR Code"), this);
+    dialog.exec();
 }
 
 void ReceiveCoinsPage::updateAddressList() {
