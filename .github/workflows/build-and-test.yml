@@ -205,6 +205,9 @@ jobs:
       image: fedora:40
 
     steps:
+    - name: Install git for checkout
+      run: dnf install -y git
+
     - name: Checkout code
       uses: actions/checkout@v4
       with:
@@ -297,6 +300,89 @@ jobs:
         if-no-files-found: error
 
   # ============================================================================
+  # Windows Build
+  # ============================================================================
+  build-windows:
+    name: Windows 11
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
+    - name: Install vcpkg dependencies
+      run: |
+        vcpkg install boost-system:x64-windows boost-filesystem:x64-windows boost-thread:x64-windows boost-program-options:x64-windows boost-serialization:x64-windows boost-random:x64-windows boost-test:x64-windows
+        vcpkg install rocksdb:x64-windows openssl:x64-windows curl:x64-windows libsodium:x64-windows jsoncpp:x64-windows zeromq:x64-windows libevent:x64-windows qrencode:x64-windows
+
+    - name: Cache liboqs
+      id: cache-liboqs-windows
+      uses: actions/cache@v4
+      with:
+        path: C:/liboqs
+        key: windows-liboqs-0.15.0
+
+    - name: Build liboqs
+      if: steps.cache-liboqs-windows.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git C:/liboqs-src
+        cd C:/liboqs-src
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=C:/liboqs -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+        cmake --build . --config Release --parallel
+        cmake --install . --config Release
+
+    - name: Cache RandomX
+      id: cache-randomx-windows
+      uses: actions/cache@v4
+      with:
+        path: C:/randomx
+        key: windows-randomx-1.2.1
+
+    - name: Build RandomX
+      if: steps.cache-randomx-windows.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git C:/randomx-src
+        cd C:/randomx-src
+        mkdir build
+        cd build
+        cmake -DCMAKE_INSTALL_PREFIX=C:/randomx -DCMAKE_BUILD_TYPE=Release ..
+        cmake --build . --config Release --parallel
+        cmake --install . --config Release
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -DCMAKE_BUILD_TYPE=$env:BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_PREFIX_PATH="C:/liboqs;C:/randomx" -DBUILD_TESTS=ON -DBUILD_WALLET_QT=OFF
+
+    - name: Build
+      run: cmake --build build --config $env:BUILD_TYPE --parallel
+
+    - name: Run tests
+      working-directory: build
+      timeout-minutes: 30
+      run: ctest --output-on-failure -C $env:BUILD_TYPE --timeout 300 -E "(MetricsServerTest|IBDIntegrationTest)"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: intcoin-windows-latest
+        path: |
+          build/bin/Release/intcoind.exe
+          build/bin/Release/intcoin-cli.exe
+          build/bin/Release/intcoin-wallet.exe
+          build/bin/Release/intcoin-miner.exe
+          build/bin/Release/intcoin-pool-server.exe
+        if-no-files-found: error
+
+  # ============================================================================
   # Code Quality Checks
   # ============================================================================
   code-quality:
@@ -336,7 +422,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-ubuntu, build-macos, build-fedora]
+    needs: [build-ubuntu, build-macos, build-fedora, build-windows]
     permissions:
       contents: write
 
@@ -355,6 +441,8 @@ jobs:
         tar -czf ../intcoin-${{ github.ref_name }}-macos-latest.tar.gz *
         cd ../intcoin-fedora-40
         tar -czf ../intcoin-${{ github.ref_name }}-fedora-40.tar.gz *
+        cd ../intcoin-windows-latest
+        zip -r ../intcoin-${{ github.ref_name }}-windows.zip *
         cd ..
 
     - name: Create GitHub Release
@@ -364,6 +452,7 @@ jobs:
           intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz
           intcoin-${{ github.ref_name }}-macos-latest.tar.gz
           intcoin-${{ github.ref_name }}-fedora-40.tar.gz
+          intcoin-${{ github.ref_name }}-windows.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
       env:
