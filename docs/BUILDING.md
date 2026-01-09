@@ -818,7 +818,7 @@ Compress-Archive -Path 'dist-windows\*' -DestinationPath 'intcoin-windows-x64.zi
 
 **Supported Distributions**:
 - Ubuntu 24.04 LTS
-- Debian 12 (Bookworm)
+- Debian 13 (Trixie)
 - Fedora 40+
 - CentOS/RHEL 9+, Rocky Linux 9+, AlmaLinux 9+
 - Arch Linux/Manjaro (rolling release)

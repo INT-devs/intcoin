@@ -57,7 +57,7 @@ This policy ensures:
 
 | Version | Codename | Status | Support Until |
 |---------|----------|--------|---------------|
-| **Debian 12** | Bookworm | ✅ Supported | ~2028 |
+| **Debian 13** | Trixie | ✅ Supported | ~2028 |
 | **Debian 11** | Bullseye | ✅ Minimum Required | ~2026 |
 | Debian 10 | Buster | ❌ Not Supported | EOL June 2024 |
 | Debian 9 | Stretch | ❌ Not Supported | EOL June 2022 |

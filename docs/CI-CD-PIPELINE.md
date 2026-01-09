@@ -20,7 +20,7 @@ The pipeline consists of 4 main stages:
 ### Platforms
 
 - **Ubuntu 24.04** (primary, stable)
-- **Debian 12** (enterprise)
+- **Debian 13** (enterprise)
 
 ### Build Outputs
 

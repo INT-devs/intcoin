@@ -66,7 +66,7 @@ This document outlines compatibility requirements, version dependencies, and int
 | **Ubuntu 24.04 LTS** | x86_64, ARM64 | ✅ Fully Supported | Recommended |
 | **Ubuntu 22.04 LTS** | x86_64, ARM64 | ❌ Deprecated | Outdated toolchain |
 | **Debian 11 (Bullseye)** | x86_64, ARM64 | ✅ Supported | |
-| **Debian 12 (Bookworm)** | x86_64, ARM64 | ✅ Fully Supported | Recommended |
+| **Debian 13 (Trixie)** | x86_64, ARM64 | ✅ Fully Supported | Recommended |
 | **Fedora 38+** | x86_64, ARM64 | ✅ Supported | |
 | **Arch Linux** | x86_64, ARM64 | ✅ Supported | Rolling release |
 | **macOS 12 (Monterey)** | Intel, Apple Silicon | ✅ Supported | |

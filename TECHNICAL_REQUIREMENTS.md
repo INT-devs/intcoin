@@ -20,7 +20,7 @@
 
 #### Supported Platforms
 - **macOS**: 13 (Ventura) and later
-- **Linux**: Ubuntu 24.04+, Debian 12+, Fedora 40+, Arch (rolling)
+- **Linux**: Ubuntu 24.04+, Debian 13+, Fedora 40+, Arch (rolling)
 - **FreeBSD**: 13.0 and later
 - **Unix-like**: Any system with modern C++23 compiler
 
