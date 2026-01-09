@@ -2,6 +2,7 @@
 // Distributed under the MIT software license
 
 #include <intcoin/defi/lending.h>
+#include <algorithm>
 #include <map>
 #include <mutex>
 #include <cmath>
