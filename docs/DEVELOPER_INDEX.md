@@ -101,19 +101,26 @@
    - Routing and payments
    - Watchtower integration
 
-7. **[POOL_SETUP.md](POOL_SETUP.md)** - Mining pool
+7. **[SMART_CONTRACTS_SPEC.md](SMART_CONTRACTS_SPEC.md)** - Smart Contracts (NEW v1.4.0)
+   - IntSC Virtual Machine (EVM-compatible)
+   - 60+ standard opcodes + 4 PQC opcodes
+   - Contract deployment and execution
+   - Solidity compatibility
+   - ABI encoding/decoding
+
+8. **[POOL_SETUP.md](POOL_SETUP.md)** - Mining pool
    - Pool server configuration
    - Stratum protocol
    - VarDiff algorithm
    - Payout systems
 
-8. **[RPC.md](RPC.md)** - RPC API
+9. **[RPC.md](RPC.md)** - RPC API
    - 70+ RPC methods (23 new in v1.2.0)
    - Method categories
    - Usage examples
    - Error codes
 
-9. **[CI-CD-PIPELINE.md](CI-CD-PIPELINE.md)** - CI/CD
+10. **[CI-CD-PIPELINE.md](CI-CD-PIPELINE.md)** - CI/CD
    - GitHub Actions workflows
    - Build matrix
    - Testing automation
@@ -232,6 +239,7 @@ cd build && ctest
 intcoin/
 ├── src/                    # Implementation files
 │   ├── blockchain/         # Blockchain core (blocks, transactions, validation)
+│   ├── contracts/          # Smart Contract VM (IntSC) - NEW v1.4.0
 │   ├── crypto/             # Post-quantum cryptography (Dilithium3, Kyber768)
 │   ├── lightning/          # Lightning Network implementation
 │   ├── network/            # P2P networking
@@ -241,6 +249,10 @@ intcoin/
 │
 ├── include/intcoin/        # Public header files
 │   ├── blockchain.h
+│   ├── contracts/          # Smart contract headers - NEW v1.4.0
+│   │   ├── vm.h
+│   │   ├── storage.h
+│   │   └── transaction.h
 │   ├── crypto.h
 │   ├── lightning.h
 │   ├── network.h
@@ -339,12 +351,19 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed workflow.
 
 ## Release Information
 
-**Current Version**: v1.2.0-beta
-**Release Date**: January 2, 2026
-**Status**: Production Beta
-**Next Milestone**: v1.3.0 (Q2 2026)
+**Current Version**: v1.4.0-dev
+**Development Status**: Smart Contract VM Implementation (In Progress)
+**Previous Release**: v1.2.0-beta (January 2, 2026)
+**Next Milestone**: v1.4.0 (Q1 2026)
 
-**What's New in v1.2.0-beta**:
+**What's New in v1.4.0-dev** (In Progress):
+- 🤖 IntSC Smart Contract VM (EVM-compatible with PQC)
+- 📝 Contract deployment and execution
+- ⚡ 60+ standard opcodes + 4 PQC opcodes
+- 🔐 Quantum-resistant contract signatures
+- 📊 Gas metering and fee calculation
+
+**Previous Release (v1.2.0-beta)**:
 - 📊 Enhanced Mempool with 6-level priority system
 - 📈 Prometheus metrics (40+ endpoints)
 - 🔄 Atomic swaps (BTC, LTC, XMR)
