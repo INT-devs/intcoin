@@ -502,27 +502,380 @@ Result<void> ContractDatabase::DeleteContractStorage(
     }
 }
 
+//
+// Receipt serialization
+//
+
+static std::vector<uint8_t> SerializeReceipt(const TransactionReceipt& receipt) {
+    std::vector<uint8_t> data;
+
+    // Transaction ID (32 bytes)
+    data.insert(data.end(), receipt.txid.begin(), receipt.txid.end());
+
+    // Contract address (length-prefixed)
+    uint32_t addr_len = receipt.contract_address.size();
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((addr_len >> (i * 8)) & 0xff);
+    }
+    data.insert(data.end(), receipt.contract_address.begin(), receipt.contract_address.end());
+
+    // From address (length-prefixed)
+    uint32_t from_len = receipt.from.size();
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((from_len >> (i * 8)) & 0xff);
+    }
+    data.insert(data.end(), receipt.from.begin(), receipt.from.end());
+
+    // To address (length-prefixed)
+    uint32_t to_len = receipt.to.size();
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((to_len >> (i * 8)) & 0xff);
+    }
+    data.insert(data.end(), receipt.to.begin(), receipt.to.end());
+
+    // Gas used (8 bytes)
+    for (int i = 7; i >= 0; --i) {
+        data.push_back((receipt.gas_used >> (i * 8)) & 0xff);
+    }
+
+    // Gas price (8 bytes)
+    for (int i = 7; i >= 0; --i) {
+        data.push_back((receipt.gas_price >> (i * 8)) & 0xff);
+    }
+
+    // Total fee (8 bytes)
+    for (int i = 7; i >= 0; --i) {
+        data.push_back((receipt.total_fee >> (i * 8)) & 0xff);
+    }
+
+    // Status (1 byte)
+    data.push_back(static_cast<uint8_t>(receipt.status));
+
+    // Return data (length-prefixed)
+    uint32_t return_len = receipt.return_data.size();
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((return_len >> (i * 8)) & 0xff);
+    }
+    data.insert(data.end(), receipt.return_data.begin(), receipt.return_data.end());
+
+    // Number of logs (4 bytes)
+    uint32_t log_count = receipt.logs.size();
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((log_count >> (i * 8)) & 0xff);
+    }
+
+    // Block number (8 bytes)
+    for (int i = 7; i >= 0; --i) {
+        data.push_back((receipt.block_number >> (i * 8)) & 0xff);
+    }
+
+    // Block timestamp (8 bytes)
+    for (int i = 7; i >= 0; --i) {
+        data.push_back((receipt.block_timestamp >> (i * 8)) & 0xff);
+    }
+
+    // Transaction index (4 bytes)
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((receipt.tx_index >> (i * 8)) & 0xff);
+    }
+
+    return data;
+}
+
+static Result<TransactionReceipt> DeserializeReceipt(const std::vector<uint8_t>& data) {
+    if (data.size() < 32) {
+        return Result<TransactionReceipt>::Error("Invalid data size");
+    }
+
+    TransactionReceipt receipt;
+    size_t offset = 0;
+
+    // Transaction ID
+    std::copy(data.begin(), data.begin() + 32, receipt.txid.begin());
+    offset += 32;
+
+    // Contract address
+    if (offset + 4 > data.size()) return Result<TransactionReceipt>::Error("Invalid contract address");
+    uint32_t addr_len = 0;
+    for (int i = 0; i < 4; ++i) {
+        addr_len = (addr_len << 8) | data[offset++];
+    }
+    if (offset + addr_len > data.size()) return Result<TransactionReceipt>::Error("Invalid contract address length");
+    receipt.contract_address = std::string(data.begin() + offset, data.begin() + offset + addr_len);
+    offset += addr_len;
+
+    // From address
+    if (offset + 4 > data.size()) return Result<TransactionReceipt>::Error("Invalid from address");
+    uint32_t from_len = 0;
+    for (int i = 0; i < 4; ++i) {
+        from_len = (from_len << 8) | data[offset++];
+    }
+    if (offset + from_len > data.size()) return Result<TransactionReceipt>::Error("Invalid from address length");
+    receipt.from = std::string(data.begin() + offset, data.begin() + offset + from_len);
+    offset += from_len;
+
+    // To address
+    if (offset + 4 > data.size()) return Result<TransactionReceipt>::Error("Invalid to address");
+    uint32_t to_len = 0;
+    for (int i = 0; i < 4; ++i) {
+        to_len = (to_len << 8) | data[offset++];
+    }
+    if (offset + to_len > data.size()) return Result<TransactionReceipt>::Error("Invalid to address length");
+    receipt.to = std::string(data.begin() + offset, data.begin() + offset + to_len);
+    offset += to_len;
+
+    // Gas used
+    if (offset + 8 > data.size()) return Result<TransactionReceipt>::Error("Invalid gas used");
+    receipt.gas_used = 0;
+    for (int i = 0; i < 8; ++i) {
+        receipt.gas_used = (receipt.gas_used << 8) | data[offset++];
+    }
+
+    // Gas price
+    if (offset + 8 > data.size()) return Result<TransactionReceipt>::Error("Invalid gas price");
+    receipt.gas_price = 0;
+    for (int i = 0; i < 8; ++i) {
+        receipt.gas_price = (receipt.gas_price << 8) | data[offset++];
+    }
+
+    // Total fee
+    if (offset + 8 > data.size()) return Result<TransactionReceipt>::Error("Invalid total fee");
+    receipt.total_fee = 0;
+    for (int i = 0; i < 8; ++i) {
+        receipt.total_fee = (receipt.total_fee << 8) | data[offset++];
+    }
+
+    // Status
+    if (offset >= data.size()) return Result<TransactionReceipt>::Error("Invalid status");
+    receipt.status = static_cast<ExecutionResult>(data[offset++]);
+
+    // Return data
+    if (offset + 4 > data.size()) return Result<TransactionReceipt>::Error("Invalid return data");
+    uint32_t return_len = 0;
+    for (int i = 0; i < 4; ++i) {
+        return_len = (return_len << 8) | data[offset++];
+    }
+    if (offset + return_len > data.size()) return Result<TransactionReceipt>::Error("Invalid return data length");
+    receipt.return_data = std::vector<uint8_t>(data.begin() + offset, data.begin() + offset + return_len);
+    offset += return_len;
+
+    // Log count (we don't deserialize logs here, they're stored separately)
+    if (offset + 4 > data.size()) return Result<TransactionReceipt>::Error("Invalid log count");
+    offset += 4; // Skip log count
+
+    // Block number
+    if (offset + 8 > data.size()) return Result<TransactionReceipt>::Error("Invalid block number");
+    receipt.block_number = 0;
+    for (int i = 0; i < 8; ++i) {
+        receipt.block_number = (receipt.block_number << 8) | data[offset++];
+    }
+
+    // Block timestamp
+    if (offset + 8 > data.size()) return Result<TransactionReceipt>::Error("Invalid block timestamp");
+    receipt.block_timestamp = 0;
+    for (int i = 0; i < 8; ++i) {
+        receipt.block_timestamp = (receipt.block_timestamp << 8) | data[offset++];
+    }
+
+    // Transaction index
+    if (offset + 4 > data.size()) return Result<TransactionReceipt>::Error("Invalid tx index");
+    receipt.tx_index = 0;
+    for (int i = 0; i < 4; ++i) {
+        receipt.tx_index = (receipt.tx_index << 8) | data[offset++];
+    }
+
+    return Result<TransactionReceipt>::Ok(std::move(receipt));
+}
+
+//
+// Event log serialization
+//
+
+static std::vector<uint8_t> SerializeEventLog(const EventLogEntry& log) {
+    std::vector<uint8_t> data;
+
+    // Contract address (length-prefixed)
+    uint32_t addr_len = log.contract_address.size();
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((addr_len >> (i * 8)) & 0xff);
+    }
+    data.insert(data.end(), log.contract_address.begin(), log.contract_address.end());
+
+    // Number of topics (4 bytes)
+    uint32_t topic_count = log.topics.size();
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((topic_count >> (i * 8)) & 0xff);
+    }
+
+    // Topics (32 bytes each)
+    for (const auto& topic : log.topics) {
+        data.insert(data.end(), topic.begin(), topic.end());
+    }
+
+    // Data (length-prefixed)
+    uint32_t data_len = log.data.size();
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((data_len >> (i * 8)) & 0xff);
+    }
+    data.insert(data.end(), log.data.begin(), log.data.end());
+
+    // Block number (8 bytes)
+    for (int i = 7; i >= 0; --i) {
+        data.push_back((log.block_number >> (i * 8)) & 0xff);
+    }
+
+    // Transaction hash (32 bytes)
+    data.insert(data.end(), log.transaction_hash.begin(), log.transaction_hash.end());
+
+    // Log index (4 bytes)
+    for (int i = 3; i >= 0; --i) {
+        data.push_back((log.log_index >> (i * 8)) & 0xff);
+    }
+
+    return data;
+}
+
+static Result<EventLogEntry> DeserializeEventLog(const std::vector<uint8_t>& data) {
+    if (data.size() < 4) {
+        return Result<EventLogEntry>::Error("Invalid data size");
+    }
+
+    EventLogEntry log;
+    size_t offset = 0;
+
+    // Contract address
+    uint32_t addr_len = 0;
+    for (int i = 0; i < 4; ++i) {
+        addr_len = (addr_len << 8) | data[offset++];
+    }
+    if (offset + addr_len > data.size()) return Result<EventLogEntry>::Error("Invalid address length");
+    log.contract_address = std::string(data.begin() + offset, data.begin() + offset + addr_len);
+    offset += addr_len;
+
+    // Topic count
+    if (offset + 4 > data.size()) return Result<EventLogEntry>::Error("Invalid topic count");
+    uint32_t topic_count = 0;
+    for (int i = 0; i < 4; ++i) {
+        topic_count = (topic_count << 8) | data[offset++];
+    }
+
+    // Topics
+    for (uint32_t i = 0; i < topic_count; ++i) {
+        if (offset + 32 > data.size()) return Result<EventLogEntry>::Error("Invalid topic");
+        uint256 topic;
+        std::copy(data.begin() + offset, data.begin() + offset + 32, topic.begin());
+        log.topics.push_back(topic);
+        offset += 32;
+    }
+
+    // Data
+    if (offset + 4 > data.size()) return Result<EventLogEntry>::Error("Invalid data length");
+    uint32_t data_len = 0;
+    for (int i = 0; i < 4; ++i) {
+        data_len = (data_len << 8) | data[offset++];
+    }
+    if (offset + data_len > data.size()) return Result<EventLogEntry>::Error("Invalid data");
+    log.data = std::vector<uint8_t>(data.begin() + offset, data.begin() + offset + data_len);
+    offset += data_len;
+
+    // Block number
+    if (offset + 8 > data.size()) return Result<EventLogEntry>::Error("Invalid block number");
+    log.block_number = 0;
+    for (int i = 0; i < 8; ++i) {
+        log.block_number = (log.block_number << 8) | data[offset++];
+    }
+
+    // Transaction hash
+    if (offset + 32 > data.size()) return Result<EventLogEntry>::Error("Invalid tx hash");
+    std::copy(data.begin() + offset, data.begin() + offset + 32, log.transaction_hash.begin());
+    offset += 32;
+
+    // Log index
+    if (offset + 4 > data.size()) return Result<EventLogEntry>::Error("Invalid log index");
+    log.log_index = 0;
+    for (int i = 0; i < 4; ++i) {
+        log.log_index = (log.log_index << 8) | data[offset++];
+    }
+
+    return Result<EventLogEntry>::Ok(std::move(log));
+}
+
 Result<void> ContractDatabase::PutReceipt(const TransactionReceipt& receipt) {
-    // TODO: Implement receipt serialization and storage
-    (void)receipt;
-    return Result<void>::Error("PutReceipt not yet implemented");
+    if (!impl_->db) {
+        return Result<void>::Error("Database not open");
+    }
+
+    std::string key = MakeReceiptKey(receipt.txid);
+    std::vector<uint8_t> value = SerializeReceipt(receipt);
+
+    rocksdb::Status status;
+    if (impl_->batch_active && impl_->batch) {
+        impl_->batch->Put(key, rocksdb::Slice(reinterpret_cast<const char*>(value.data()), value.size()));
+        return Result<void>::Ok();
+    } else {
+        status = impl_->db->Put(rocksdb::WriteOptions(), key,
+            rocksdb::Slice(reinterpret_cast<const char*>(value.data()), value.size()));
+
+        if (!status.ok()) {
+            return Result<void>::Error("Failed to write receipt: " + status.ToString());
+        }
+        return Result<void>::Ok();
+    }
 }
 
 Result<TransactionReceipt> ContractDatabase::GetReceipt(const uint256& txid) {
-    // TODO: Implement receipt deserialization
-    (void)txid;
-    return Result<TransactionReceipt>::Error("GetReceipt not yet implemented");
+    if (!impl_->db) {
+        return Result<TransactionReceipt>::Error("Database not open");
+    }
+
+    std::string key = MakeReceiptKey(txid);
+    std::string value_str;
+
+    rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), key, &value_str);
+    if (!status.ok()) {
+        if (status.IsNotFound()) {
+            return Result<TransactionReceipt>::Error("Receipt not found");
+        }
+        return Result<TransactionReceipt>::Error("Database read error: " + status.ToString());
+    }
+
+    std::vector<uint8_t> value(value_str.begin(), value_str.end());
+    return DeserializeReceipt(value);
 }
 
 bool ContractDatabase::ReceiptExists(const uint256& txid) {
-    (void)txid;
-    return false;
+    if (!impl_->db) {
+        return false;
+    }
+
+    std::string key = MakeReceiptKey(txid);
+    std::string value;
+
+    rocksdb::Status status = impl_->db->Get(rocksdb::ReadOptions(), key, &value);
+    return status.ok();
 }
 
 Result<void> ContractDatabase::PutEventLog(const EventLogEntry& log) {
-    // TODO: Implement event log storage
-    (void)log;
-    return Result<void>::Error("PutEventLog not yet implemented");
+    if (!impl_->db) {
+        return Result<void>::Error("Database not open");
+    }
+
+    std::string key = MakeEventLogKey(log.block_number, log.transaction_hash, log.log_index);
+    std::vector<uint8_t> value = SerializeEventLog(log);
+
+    rocksdb::Status status;
+    if (impl_->batch_active && impl_->batch) {
+        impl_->batch->Put(key, rocksdb::Slice(reinterpret_cast<const char*>(value.data()), value.size()));
+        return Result<void>::Ok();
+    } else {
+        status = impl_->db->Put(rocksdb::WriteOptions(), key,
+            rocksdb::Slice(reinterpret_cast<const char*>(value.data()), value.size()));
+
+        if (!status.ok()) {
+            return Result<void>::Error("Failed to write event log: " + status.ToString());
+        }
+        return Result<void>::Ok();
+    }
 }
 
 Result<std::vector<EventLogEntry>> ContractDatabase::QueryEventLogs(
@@ -531,13 +884,71 @@ Result<std::vector<EventLogEntry>> ContractDatabase::QueryEventLogs(
     uint64_t to_block,
     const std::vector<uint256>& topics) {
 
-    // TODO: Implement event log querying
-    (void)contract_address;
-    (void)from_block;
-    (void)to_block;
-    (void)topics;
+    if (!impl_->db) {
+        return Result<std::vector<EventLogEntry>>::Error("Database not open");
+    }
 
-    return Result<std::vector<EventLogEntry>>::Ok(std::vector<EventLogEntry>{});
+    std::vector<EventLogEntry> results;
+
+    // Construct search range using block numbers
+    std::string start_key(1, db_prefix::EVENT_LOG);
+    for (int i = 7; i >= 0; --i) {
+        start_key += static_cast<char>((from_block >> (i * 8)) & 0xff);
+    }
+
+    std::string end_key(1, db_prefix::EVENT_LOG);
+    for (int i = 7; i >= 0; --i) {
+        end_key += static_cast<char>((to_block >> (i * 8)) & 0xff);
+    }
+    // Add max values to make this inclusive
+    for (int i = 0; i < 32 + 4; ++i) {
+        end_key += static_cast<char>(0xff);
+    }
+
+    // Iterate through event logs in the block range
+    rocksdb::Iterator* it = impl_->db->NewIterator(rocksdb::ReadOptions());
+    for (it->Seek(start_key); it->Valid() && it->key().ToString() < end_key; it->Next()) {
+        std::string value_str = it->value().ToString();
+        std::vector<uint8_t> value(value_str.begin(), value_str.end());
+
+        auto log_result = DeserializeEventLog(value);
+        if (!log_result.IsOk()) {
+            continue; // Skip invalid logs
+        }
+
+        EventLogEntry log = log_result.GetValue();
+
+        // Filter by contract address if specified
+        if (!contract_address.empty() && log.contract_address != contract_address) {
+            continue;
+        }
+
+        // Filter by topics if specified
+        bool topic_match = true;
+        for (size_t i = 0; i < topics.size() && i < log.topics.size(); ++i) {
+            // Empty topic means "match any"
+            bool is_empty = true;
+            for (uint8_t byte : topics[i]) {
+                if (byte != 0) {
+                    is_empty = false;
+                    break;
+                }
+            }
+
+            if (!is_empty && topics[i] != log.topics[i]) {
+                topic_match = false;
+                break;
+            }
+        }
+
+        if (topic_match) {
+            results.push_back(std::move(log));
+        }
+    }
+
+    delete it;
+
+    return Result<std::vector<EventLogEntry>>::Ok(std::move(results));
 }
 
 void ContractDatabase::BeginBatch() {
@@ -586,17 +997,35 @@ Result<ContractDatabase::Stats> ContractDatabase::GetStats() {
     Stats stats{};
 
     // Count contracts
-    std::string prefix(1, db_prefix::CONTRACT_ACCOUNT);
+    std::string contract_prefix(1, db_prefix::CONTRACT_ACCOUNT);
     rocksdb::Iterator* it = impl_->db->NewIterator(rocksdb::ReadOptions());
-    for (it->Seek(prefix); it->Valid() && it->key().starts_with(prefix); it->Next()) {
+    for (it->Seek(contract_prefix); it->Valid() && it->key().starts_with(contract_prefix); it->Next()) {
         stats.total_contracts++;
     }
     delete it;
 
-    // TODO: Count receipts and logs
-    stats.total_receipts = 0;
-    stats.total_logs = 0;
-    stats.db_size_bytes = 0;
+    // Count receipts
+    std::string receipt_prefix(1, db_prefix::TX_RECEIPT);
+    it = impl_->db->NewIterator(rocksdb::ReadOptions());
+    for (it->Seek(receipt_prefix); it->Valid() && it->key().starts_with(receipt_prefix); it->Next()) {
+        stats.total_receipts++;
+    }
+    delete it;
+
+    // Count logs
+    std::string log_prefix(1, db_prefix::EVENT_LOG);
+    it = impl_->db->NewIterator(rocksdb::ReadOptions());
+    for (it->Seek(log_prefix); it->Valid() && it->key().starts_with(log_prefix); it->Next()) {
+        stats.total_logs++;
+    }
+    delete it;
+
+    // Get approximate database size
+    std::string size_str;
+    impl_->db->GetProperty("rocksdb.total-sst-files-size", &size_str);
+    if (!size_str.empty()) {
+        stats.db_size_bytes = std::stoull(size_str);
+    }
 
     return Result<Stats>::Ok(stats);
 }
