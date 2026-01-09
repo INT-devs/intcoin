@@ -96,7 +96,8 @@ jobs:
 
     - name: Run tests
       working-directory: build
-      run: ctest --output-on-failure -C $BUILD_TYPE
+      timeout-minutes: 30
+      run: ctest --output-on-failure -C $BUILD_TYPE --timeout 300
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -178,7 +179,8 @@ jobs:
 
     - name: Run tests
       working-directory: build
-      run: ctest --output-on-failure -C $BUILD_TYPE
+      timeout-minutes: 30
+      run: ctest --output-on-failure -C $BUILD_TYPE --timeout 300
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
