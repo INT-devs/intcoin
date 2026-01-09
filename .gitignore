@@ -237,6 +237,9 @@ docs/_build/
 docs/.buildinfo
 site/
 
+# Internal implementation plans (not for public repo)
+docs/IMPLEMENTATION_PLAN_V*.md
+
 # Coverage reports
 *.gcov
 *.gcda
