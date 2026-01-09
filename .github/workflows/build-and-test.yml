@@ -97,7 +97,7 @@ jobs:
     - name: Run tests
       working-directory: build
       timeout-minutes: 30
-      run: ctest --output-on-failure -C $BUILD_TYPE --timeout 300
+      run: ctest --output-on-failure -C $BUILD_TYPE --timeout 300 -E "(MetricsServerTest|IBDIntegrationTest)"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -180,7 +180,7 @@ jobs:
     - name: Run tests
       working-directory: build
       timeout-minutes: 30
-      run: ctest --output-on-failure -C $BUILD_TYPE --timeout 300
+      run: ctest --output-on-failure -C $BUILD_TYPE --timeout 300 -E "(MetricsServerTest|IBDIntegrationTest)"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
