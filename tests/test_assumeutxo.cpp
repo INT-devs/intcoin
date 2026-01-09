@@ -55,8 +55,8 @@ bool test_manager_init() {
 bool test_trusted_snapshots() {
     auto snapshots = AssumeUTXOManager::GetTrustedSnapshots();
 
-    // Currently empty in implementation
-    TEST_ASSERT(snapshots.size() >= 0, "Should return vector of trusted snapshots");
+    // Currently empty in implementation - vector exists and is accessible
+    TEST_ASSERT(true, "Should return vector of trusted snapshots");
 
     return true;
 }

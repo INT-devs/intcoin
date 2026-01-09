@@ -154,7 +154,7 @@ bool test_active_payments() {
     auto active = manager.GetActivePayments();
 
     // Active payments list should be accessible
-    TEST_ASSERT(active.size() >= 0, "Active payments should be accessible");
+    TEST_ASSERT(true, "Active payments should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -176,7 +176,7 @@ bool test_statistics() {
 
     auto stats = manager.GetStatistics();
 
-    TEST_ASSERT(stats.total_payments >= 0, "Total payments should be non-negative");
+    TEST_ASSERT(true, "Total payments count"); // unsigned field
     TEST_ASSERT(stats.average_success_rate >= 0.0 && stats.average_success_rate <= 1.0,
                 "Success rate should be 0.0-1.0");
 

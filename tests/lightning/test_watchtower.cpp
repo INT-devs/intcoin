@@ -37,7 +37,7 @@ bool test_client_init() {
     TEST_ASSERT(client.IsEnabled(), "Client should be enabled by default");
 
     auto stats = client.GetStatistics();
-    TEST_ASSERT(stats.active_towers >= 0, "Active towers should be non-negative");
+    TEST_ASSERT(true, "Statistics accessible"); // active_towers is unsigned
 
     return true;
 }
@@ -105,7 +105,7 @@ bool test_get_sessions() {
 
     auto sessions = client.GetActiveSessions();
 
-    TEST_ASSERT(sessions.size() >= 0, "Sessions should be accessible");
+    TEST_ASSERT(true, "Sessions should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -116,7 +116,7 @@ bool test_get_backups() {
 
     auto backups = client.GetChannelBackups();
 
-    TEST_ASSERT(backups.size() >= 0, "Backups should be accessible");
+    TEST_ASSERT(true, "Backups should be accessible"); // size() is unsigned
 
     return true;
 }
@@ -127,8 +127,8 @@ bool test_client_statistics() {
 
     auto stats = client.GetStatistics();
 
-    TEST_ASSERT(stats.backed_up_channels >= 0, "Backed up channels count");
-    TEST_ASSERT(stats.breaches_detected >= 0, "Breaches count");
+    TEST_ASSERT(true, "Backed up channels count"); // unsigned field
+    TEST_ASSERT(true, "Breaches count"); // unsigned field
 
     return true;
 }
@@ -162,8 +162,8 @@ bool test_server_statistics() {
 
     auto stats = server.GetStatistics();
 
-    TEST_ASSERT(stats.active_sessions >= 0, "Active sessions count");
-    TEST_ASSERT(stats.total_blobs_stored >= 0, "Total blobs count");
+    TEST_ASSERT(true, "Active sessions count"); // unsigned field
+    TEST_ASSERT(true, "Total blobs count"); // unsigned field
 
     return true;
 }
