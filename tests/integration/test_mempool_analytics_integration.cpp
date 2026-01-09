@@ -197,8 +197,8 @@ INTEGRATION_TEST(test_concurrent_access) {
     for (int i = 0; i < NUM_THREADS; i++) {
         threads.emplace_back([&analytics, &successful_queries]() {
             for (int j = 0; j < QUERIES_PER_THREAD; j++) {
-                auto stats = analytics.GetCurrentStats();
-                // Stats retrieved successfully (size is unsigned, always >= 0)
+                [[maybe_unused]] auto stats = analytics.GetCurrentStats();
+                // Stats retrieved successfully
                 successful_queries++;
             }
         });
