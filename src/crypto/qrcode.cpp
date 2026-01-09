@@ -2,7 +2,11 @@
 // Distributed under the MIT software license
 
 #include <intcoin/qrcode.h>
+
+#ifdef HAVE_QRENCODE
 #include <qrencode.h>
+#endif
+
 #include <sstream>
 #include <iomanip>
 #include <cstring>
@@ -13,6 +17,7 @@ std::optional<QRCode::Data> QRCode::Generate(
     const std::string& text,
     ECLevel ec_level
 ) {
+#ifdef HAVE_QRENCODE
     if (text.empty()) {
         return std::nullopt;
     }
@@ -52,6 +57,12 @@ std::optional<QRCode::Data> QRCode::Generate(
     QRcode_free(qr);
 
     return result;
+#else
+    // QR code generation not available
+    (void)text;
+    (void)ec_level;
+    return std::nullopt;
+#endif
 }
 
 std::optional<QRCode::Data> QRCode::GenerateAddress(

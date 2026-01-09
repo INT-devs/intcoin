@@ -1,6 +1,12 @@
 // Copyright (c) 2024-2026 The INTcoin Core developers
 // Distributed under the MIT software license
 
+// Prevent Windows macro conflicts
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#endif
+
 #include <intcoin/blockchain_monitor.h>
 #include <intcoin/crypto.h>
 #include <intcoin/util.h>
@@ -14,6 +20,11 @@
 #include <atomic>
 #include <sstream>
 #include <iomanip>
+
+// Windows defines ERROR as a macro - undefine it to avoid conflicts with LogLevel::ERROR
+#ifdef ERROR
+#undef ERROR
+#endif
 
 namespace intcoin {
 namespace blockchain_monitor {

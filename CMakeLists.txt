@@ -541,6 +541,7 @@ if(EVENT_LIB)
 endif()
 
 if(QRENCODE_FOUND OR QRENCODE_LIB)
+    target_compile_definitions(intcoin_core PUBLIC HAVE_QRENCODE=1)
     if(QRENCODE_FOUND)
         target_link_libraries(intcoin_core ${QRENCODE_LINK_LIBRARIES})
         target_include_directories(intcoin_core PRIVATE ${QRENCODE_INCLUDE_DIRS})
