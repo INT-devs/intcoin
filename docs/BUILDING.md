@@ -62,9 +62,9 @@ Complete guide for building INTcoin on all supported platforms.
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| **CMake** | ≥ 3.28 | Build system (latest from Kitware) |
-| **OpenSSL** | ≥ 3.5.4 | SHA3-256 hashing (built from source) |
-| **liboqs** | ≥ 0.12.0 | Post-quantum cryptography (Dilithium3, Kyber768) |
+| **CMake** | ≥ 3.28 | Build system |
+| **OpenSSL** | ≥ 3.0 | SHA3-256 hashing, TLS |
+| **liboqs** | ≥ 0.10.0 | Post-quantum cryptography (Dilithium3, Kyber768) |
 | **RandomX** | ≥ 1.2.1 | ASIC-resistant Proof-of-Work |
 | **Threads** | System | Multi-threading support |
 
@@ -73,8 +73,8 @@ Complete guide for building INTcoin on all supported platforms.
 | Library | Version | Purpose |
 |---------|---------|---------|
 | **Boost** | ≥ 1.83.0 | Utilities, filesystem, threading |
-| **RocksDB** | ≥ 10.7 | Blockchain database |
-| **Qt6** | ≥ 6.8 | Desktop wallet GUI |
+| **RocksDB** | ≥ 8.0 | Blockchain database |
+| **Qt6** | ≥ 6.4 | Desktop wallet GUI |
 | **libzmq** | ≥ 4.3 | ZeroMQ messaging |
 | **libevent** | ≥ 2.1 | Event-driven networking |
 | **libtor** | Latest | Tor integration |

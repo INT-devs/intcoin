@@ -139,14 +139,14 @@ else()
 endif()
 find_package(Threads REQUIRED)
 
-# RocksDB (6.11.4+)
+# RocksDB (8.0+) - Ubuntu 24.04 provides 8.x
 if(RELAXED_DEPENDENCIES)
     find_package(RocksDB)
 else()
-    find_package(RocksDB 10.7.5)
+    find_package(RocksDB 8.0)
 endif()
 
-# liboqs (Open Quantum Safe) - 0.12.0+ (latest stable)
+# liboqs (Open Quantum Safe) - 0.10.0+ (built from source)
 find_library(OQS_LIB oqs)
 find_path(OQS_INCLUDE_DIR oqs/oqs.h)
 

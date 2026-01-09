@@ -101,11 +101,11 @@ cd build && ctest --output-on-failure
 | Library | Version | Purpose |
 |---------|---------|---------|
 | **Boost** | 1.83.0+ | System utilities, threading, filesystem |
-| **OpenSSL** | 1.1.1+ | SSL/TLS for network connections |
-| **RocksDB** | 6.11.4+ | High-performance key-value database |
-| **liboqs** | 0.15.0+ | Post-quantum cryptography (Dilithium3, Kyber768) |
+| **OpenSSL** | 3.0+ | SSL/TLS for network connections |
+| **RocksDB** | 8.0+ | High-performance key-value database |
+| **liboqs** | 0.10.0+ | Post-quantum cryptography (Dilithium3, Kyber768) |
 | **RandomX** | 1.2.1+ | ASIC-resistant proof-of-work |
-| **Qt** | 6.2+ | GUI wallet (optional, use `-DBUILD_WALLET_QT=ON`) |
+| **Qt** | 6.4+ | GUI wallet (optional, use `-DBUILD_WALLET_QT=ON`) |
 
 ---
 
