@@ -3,6 +3,7 @@
 
 #include "intcoin/qt/mnemonicDialog.h"
 
+#include <QtGlobal>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QCheckBox>
@@ -170,8 +171,13 @@ void MnemonicDialog::setupUI() {
         tr("I have written down my recovery phrase on paper and stored it securely")
     );
     confirmCheckBox_->setStyleSheet("QCheckBox { font-weight: bold; }");
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect(confirmCheckBox_, &QCheckBox::checkStateChanged,
+            this, &MnemonicDialog::onConfirmationChanged);
+#else
     connect(confirmCheckBox_, &QCheckBox::stateChanged,
             this, &MnemonicDialog::onConfirmationChanged);
+#endif
     mainLayout->addWidget(confirmCheckBox_);
 
     // Buttons
@@ -228,9 +234,15 @@ void MnemonicDialog::onPrintClicked() {
     printMnemonic();
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+void MnemonicDialog::onConfirmationChanged(Qt::CheckState state) {
+    closeButton_->setEnabled(state == Qt::Checked);
+}
+#else
 void MnemonicDialog::onConfirmationChanged(int state) {
     closeButton_->setEnabled(state == Qt::Checked);
 }
+#endif
 
 void MnemonicDialog::printMnemonic() {
     QPrinter printer(QPrinter::HighResolution);

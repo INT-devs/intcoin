@@ -4,6 +4,7 @@
 #ifndef INTCOIN_QT_MNEMONICDIALOG_H
 #define INTCOIN_QT_MNEMONICDIALOG_H
 
+#include <QtGlobal>
 #include <QDialog>
 #include <QTextEdit>
 #include <QPushButton>
@@ -63,7 +64,11 @@ public:
 
 private slots:
     void onPrintClicked();
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    void onConfirmationChanged(Qt::CheckState state);
+#else
     void onConfirmationChanged(int state);
+#endif
 
 private:
     void setupUI();
