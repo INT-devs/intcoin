@@ -44,7 +44,7 @@ struct HTLCTransaction {
     /// Output index containing HTLC
     uint32_t output_index;
 
-    /// HTLC amount (in satoshis/INTS)
+    /// HTLC amount (in ints)
     uint64_t amount;
 
     /// Number of confirmations

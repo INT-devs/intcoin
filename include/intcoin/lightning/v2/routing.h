@@ -40,7 +40,7 @@ struct RouteHop {
     std::string node_pubkey;
     std::string node_alias;
     std::string channel_id;
-    uint64_t amount_msat{0};         // Amount forward (millisatoshis)
+    uint64_t amount_msat{0};         // Amount forward (milli-ints)
     uint64_t fee_msat{0};            // Fee for this hop
     uint32_t cltv_delta{0};          // CLTV delta
     double success_probability{1.0}; // Estimated success rate
@@ -138,7 +138,7 @@ public:
      *
      * @param source Source node pubkey
      * @param destination Destination node pubkey
-     * @param amount_msat Amount in millisatoshis
+     * @param amount_msat Amount in milli-ints
      * @param constraints Route constraints
      * @return Best route
      */

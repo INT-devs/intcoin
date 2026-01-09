@@ -231,7 +231,7 @@ Result<void> INTcoinMempool::AddTransaction(const Transaction& tx, TxPriority pr
     // Add to priority queue
     impl_->priority_queues[priority].emplace(fee_per_byte, tx_key);
 
-    LogF(LogLevel::INFO, "Mempool: Added tx %s (priority: %s, fee: %lu sats)",
+    LogF(LogLevel::INFO, "Mempool: Added tx %s (priority: %s, fee: %lu ints)",
          tx_key.substr(0, 16).c_str(), TxPriorityToString(priority).c_str(), fee);
 
     return Result<void>::Ok();

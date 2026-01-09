@@ -116,7 +116,7 @@ SwapQuote SubmarineSwapManager::GetQuote(SwapType type, uint64_t amount) const {
     quote.type = type;
     quote.amount = amount;
     quote.service_fee = amount / 100;  // 1% service fee
-    quote.onchain_fee = 5000;          // ~5000 sats miner fee
+    quote.onchain_fee = 5000;          // ~5000 ints miner fee
     quote.total_fee = quote.service_fee + quote.onchain_fee;
     quote.fee_percentage = 1.0 + (static_cast<double>(quote.onchain_fee) / amount * 100.0);
     quote.timeout_blocks = pimpl_->config_.default_timeout;

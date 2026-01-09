@@ -71,7 +71,7 @@ struct MempoolStats {
 /// Mempool configuration
 struct MempoolConfig {
     uint64_t max_size_mb = 300;                    // Max mempool size in MB
-    uint64_t min_relay_fee_per_kb = 1000;          // Min fee to relay (satoshis/KB)
+    uint64_t min_relay_fee_per_kb = 1000;          // Min fee to relay (ints/KB)
     uint64_t max_orphan_tx = 100;                  // Max orphan transactions
     uint32_t expiry_hours = 72;                    // Expire transactions after 72h
     bool persist_on_shutdown = true;               // Save mempool to disk

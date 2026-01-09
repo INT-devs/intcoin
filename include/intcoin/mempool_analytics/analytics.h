@@ -109,7 +109,7 @@ public:
      * Update statistics with new transaction
      *
      * @param tx_size Transaction size in bytes
-     * @param fee_rate Fee rate in satoshis per byte
+     * @param fee_rate Fee rate in ints per byte
      * @param priority Priority level (0-5)
      */
     void OnTransactionAdded(uint64_t tx_size, double fee_rate, uint8_t priority);
@@ -118,7 +118,7 @@ public:
      * Update statistics when transaction is removed
      *
      * @param tx_size Transaction size in bytes
-     * @param fee_rate Fee rate in satoshis per byte
+     * @param fee_rate Fee rate in ints per byte
      * @param priority Priority level (0-5)
      */
     void OnTransactionRemoved(uint64_t tx_size, double fee_rate, uint8_t priority);

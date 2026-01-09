@@ -39,8 +39,8 @@ struct Contact {
     uint64_t created_at{0};          // Creation timestamp
     uint64_t last_used{0};           // Last transaction timestamp
     uint32_t transaction_count{0};   // Number of transactions
-    uint64_t total_sent{0};          // Total amount sent (satoshis)
-    uint64_t total_received{0};      // Total amount received (satoshis)
+    uint64_t total_sent{0};          // Total amount sent (ints)
+    uint64_t total_received{0};      // Total amount received (ints)
     std::vector<std::string> tags;   // Custom tags
 };
 

@@ -53,7 +53,7 @@ struct ChannelInfo {
     std::string short_channel_id;    // Block:Tx:Output format
     std::string node1_pubkey;
     std::string node2_pubkey;
-    uint64_t capacity{0};            // Capacity in satoshis
+    uint64_t capacity{0};            // Capacity in ints
 
     // Node 1 policy
     uint64_t node1_fee_base_msat{0};

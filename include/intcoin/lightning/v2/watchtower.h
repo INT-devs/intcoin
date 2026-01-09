@@ -59,9 +59,9 @@ struct WatchtowerSession {
     SessionType session_type{SessionType::ANCHOR};
     WatchtowerMode mode{WatchtowerMode::ALTRUIST};
     uint32_t max_updates{1000};
-    uint64_t reward_base{0};             // Base reward (satoshis)
+    uint64_t reward_base{0};             // Base reward (ints)
     uint32_t reward_rate{0};             // Reward rate (ppm)
-    uint32_t sweep_fee_rate{10};         // Fee rate for sweep (sat/vbyte)
+    uint32_t sweep_fee_rate{10};         // Fee rate for sweep (int/vbyte)
     uint64_t created_at{0};
     uint64_t expires_at{0};
     bool active{false};

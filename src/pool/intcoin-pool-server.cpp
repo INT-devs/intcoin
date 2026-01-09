@@ -53,7 +53,7 @@ void print_usage() {
     std::cout << "\n";
     std::cout << "Pool Configuration:\n";
     std::cout << "  --pool-address=<addr>          Pool's payout address (required)\n";
-    std::cout << "  --payout-threshold=<amount>    Minimum payout in satoshis (default: 1000000000)\n";
+    std::cout << "  --payout-threshold=<amount>    Minimum payout in ints (default: 1000000000)\n";
     std::cout << "  --pool-fee=<percent>           Pool fee percentage (default: 1.0)\n";
     std::cout << "  --payout-method=<method>       PPLNS, PPS, or PROP (default: PPLNS)\n";
     std::cout << "  --vardiff-min=<diff>           Minimum difficulty (default: 1000)\n";
@@ -312,7 +312,7 @@ int main(int argc, char* argv[]) {
         std::cout << "  Pool address: " << config.pool_address << "\n";
         std::cout << "  Payout method: " << config.payout_method << "\n";
         std::cout << "  Pool fee: " << config.pool_fee << "%\n";
-        std::cout << "  Payout threshold: " << config.payout_threshold << " satoshis\n";
+        std::cout << "  Payout threshold: " << config.payout_threshold << " ints\n";
         std::cout << "\n";
 
         std::cout << "Stratum Server:\n";

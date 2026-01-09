@@ -342,8 +342,8 @@ Counter& mempool_rejected = MetricsRegistry::Instance().RegisterCounter(
 );
 
 Histogram& mempool_tx_fee = MetricsRegistry::Instance().RegisterHistogram(
-    "intcoin_mempool_tx_fee_satoshis",
-    "Transaction fees in mempool (satoshis)",
+    "intcoin_mempool_tx_fee_ints",
+    "Transaction fees in mempool (ints)",
     FEE_BUCKETS
 );
 

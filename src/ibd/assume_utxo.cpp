@@ -257,7 +257,7 @@ bool AssumeUTXOManager::CreateSnapshot(const std::string& output_path) const {
     // In production, this would serialize the entire UTXO set
     uint32_t block_height = 100000;
     uint64_t num_utxos = 1000000;
-    uint64_t total_amount = 21000000ULL * 100000000ULL; // 21M coins in satoshis
+    uint64_t total_amount = 21000000ULL * 100000000ULL; // 21M coins in ints
     uint64_t timestamp = std::chrono::system_clock::now().time_since_epoch().count();
 
     file.write(reinterpret_cast<const char*>(&block_height), sizeof(uint32_t));

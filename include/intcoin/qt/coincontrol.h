@@ -19,7 +19,7 @@ namespace qt {
 struct CoinEntry {
     std::string txid;
     uint32_t vout{0};
-    uint64_t amount{0};              // Amount in satoshis
+    uint64_t amount{0};              // Amount in ints
     std::string address;
     uint32_t confirmations{0};
     uint32_t height{0};              // Block height
@@ -175,7 +175,7 @@ public:
      * Get total available balance
      *
      * @param include_frozen Include frozen coins
-     * @return Total balance in satoshis
+     * @return Total balance in ints
      */
     uint64_t GetTotalBalance(bool include_frozen = false) const;
 

@@ -302,16 +302,16 @@ std::string LightningInvoice::EncodeAmount(std::optional<uint64_t> amount_msat) 
     uint64_t msat = amount_msat.value();
 
     // Convert to smallest denomination
-    char multiplier = 'p';  // pico (0.001 satoshi)
+    char multiplier = 'p';  // pico (0.001 int)
     uint64_t value = msat / 10;
 
     if (value % 1000 == 0) {
         value /= 1000;
-        multiplier = 'n';  // nano (0.001 satoshi)
+        multiplier = 'n';  // nano (0.001 int)
     }
     if (value % 1000 == 0) {
         value /= 1000;
-        multiplier = 'u';  // micro (satoshi)
+        multiplier = 'u';  // micro (int)
     }
     if (value % 1000 == 0) {
         value /= 1000;

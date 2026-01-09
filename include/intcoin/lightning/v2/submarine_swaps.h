@@ -42,7 +42,7 @@ enum class SwapStatus {
  * Swap parameters
  */
 struct SwapParams {
-    uint64_t amount{0};              // Amount in satoshis
+    uint64_t amount{0};              // Amount in ints
     uint64_t fee{0};                 // Service fee
     uint64_t onchain_fee{0};         // On-chain miner fee
     uint32_t timeout_blocks{144};    // Timeout (blocks)
@@ -111,8 +111,8 @@ public:
     struct Config {
         std::string server_url{"https://swap.intcoin.org"};
         std::string server_pubkey;
-        uint64_t min_swap_amount{10000};      // Minimum 10k sats
-        uint64_t max_swap_amount{100000000};  // Maximum 1 BTC
+        uint64_t min_swap_amount{10000};      // Minimum 10k ints
+        uint64_t max_swap_amount{100000000};  // Maximum 1 INT
         uint32_t default_timeout{144};        // ~24 hours
         uint32_t confirmation_target{6};
     };
@@ -125,7 +125,7 @@ public:
      * Get swap quote
      *
      * @param type Swap type (in/out)
-     * @param amount Amount in satoshis
+     * @param amount Amount in ints
      * @return Swap quote with fees
      */
     SwapQuote GetQuote(SwapType type, uint64_t amount) const;
@@ -135,7 +135,7 @@ public:
      *
      * User sends on-chain funds, receives Lightning payment
      *
-     * @param amount Amount in satoshis
+     * @param amount Amount in ints
      * @param refund_address Refund address for timeout
      * @return Submarine swap details
      */
@@ -149,7 +149,7 @@ public:
      *
      * User sends Lightning payment, receives on-chain funds
      *
-     * @param amount Amount in satoshis
+     * @param amount Amount in ints
      * @param claim_address On-chain address to receive funds
      * @return Submarine swap details
      */

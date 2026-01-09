@@ -327,7 +327,7 @@ void TestStatsTracking() {
     std::cout << "✓ Stats tracking working correctly" << std::endl;
     std::cout << "  - Total transactions: " << stats.total_transactions << std::endl;
     std::cout << "  - Total size: " << stats.total_size_bytes << " bytes" << std::endl;
-    std::cout << "  - Total fees: " << stats.total_fees << " satoshis" << std::endl;
+    std::cout << "  - Total fees: " << stats.total_fees << " ints" << std::endl;
 }
 
 // Test 9: Eviction policy

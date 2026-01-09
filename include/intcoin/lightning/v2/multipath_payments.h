@@ -43,7 +43,7 @@ enum class PaymentStatus {
 struct PaymentRoute {
     std::string route_id;
     std::vector<std::string> hops;   // Node pubkeys in path
-    uint64_t amount_msat{0};         // Amount for this route (millisatoshis)
+    uint64_t amount_msat{0};         // Amount for this route (milli-ints)
     uint64_t fee_msat{0};            // Fee for this route
     uint32_t cltv_delta{0};          // CLTV delta
     double success_probability{0.0}; // Estimated success rate (0.0-1.0)
@@ -111,7 +111,7 @@ public:
      * Send multi-path payment
      *
      * @param destination Destination node pubkey
-     * @param amount_msat Total amount in millisatoshis
+     * @param amount_msat Total amount in milli-ints
      * @param payment_hash Payment hash
      * @param max_fee_msat Maximum acceptable fee
      * @return Payment ID
@@ -129,7 +129,7 @@ public:
      * AMP allows splitting without pre-shared payment hash
      *
      * @param destination Destination node pubkey
-     * @param amount_msat Total amount in millisatoshis
+     * @param amount_msat Total amount in milli-ints
      * @param max_fee_msat Maximum acceptable fee
      * @return Payment ID
      */

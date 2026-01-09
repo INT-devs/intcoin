@@ -892,7 +892,7 @@ Result<CommitmentTransaction> CommitmentTransaction::Build(
     commitment.local_balance = to_local_amount;
     commitment.remote_balance = to_remote_amount;
 
-    // Calculate fee (simplified - use 1000 sats per kw)
+    // Calculate fee (simplified - use 1000 ints per kw)
     uint64_t estimated_weight = 500 + (htlcs.size() * 200);  // Base + HTLCs
     commitment.fee = (estimated_weight * 1000) / 1000;  // Fee in INTS
 
@@ -4126,10 +4126,10 @@ uint64_t LightningNetwork::CalculateTransactionFee(size_t tx_size, uint32_t feer
     uint64_t tx_weight = tx_size * 4;
 
     // Calculate fee: fee = (weight / 1000) * feerate_per_kw
-    // This gives us fee in satoshis
+    // This gives us fee in ints
     uint64_t fee = (tx_weight * feerate_per_kw) / 1000;
 
-    // Ensure minimum fee (at least 1 satoshi per vbyte for small transactions)
+    // Ensure minimum fee (at least 1 int per vbyte for small transactions)
     uint64_t min_fee = tx_size;
     if (fee < min_fee) {
         fee = min_fee;

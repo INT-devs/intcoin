@@ -21,7 +21,7 @@ struct CoinControlSettings;
  */
 struct Recipient {
     std::string address;
-    uint64_t amount{0};              // Amount in satoshis
+    uint64_t amount{0};              // Amount in ints
     std::string label;
     std::string message;
 };
@@ -49,7 +49,7 @@ struct TransactionPreview {
     uint64_t change{0};
     std::string change_address;
     size_t transaction_size{0};      // Virtual size in bytes
-    double fee_rate{0.0};            // Satoshis per byte
+    double fee_rate{0.0};            // Ints per byte
     uint32_t estimated_confirmations{0};
     std::string raw_hex;
     std::string error_message;
@@ -213,7 +213,7 @@ public:
      * @param num_recipients Number of recipients
      * @param num_inputs Number of inputs (0 = auto)
      * @param fee_rate Fee rate (0 = auto)
-     * @return Estimated fee in satoshis
+     * @return Estimated fee in ints
      */
     uint64_t EstimateFee(
         size_t num_recipients,

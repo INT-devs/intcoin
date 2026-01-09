@@ -78,7 +78,7 @@ public:
     PublicKey payee_pubkey;
 
     // Optional fields with defaults
-    std::optional<uint64_t> amount_msat;           // Amount in millisatoshis
+    std::optional<uint64_t> amount_msat;           // Amount in milli-ints
     std::optional<std::string> description;        // Payment description
     std::optional<uint256> description_hash;       // Hash of description
     std::optional<uint32_t> expiry_seconds;        // Expiry (default 3600)

@@ -28,7 +28,7 @@ enum class PaymentStatus {
 struct LineItem {
     std::string description;
     uint32_t quantity{1};
-    uint64_t unit_price{0};          // Price per unit in satoshis
+    uint64_t unit_price{0};          // Price per unit in ints
     uint64_t total_price{0};         // Total = quantity * unit_price
 };
 
@@ -38,7 +38,7 @@ struct LineItem {
 struct PaymentRequest {
     std::string request_id;          // Unique ID
     std::string address;             // Payment address
-    uint64_t amount{0};              // Amount in satoshis
+    uint64_t amount{0};              // Amount in ints
     std::string label;               // Label for payment
     std::string message;             // Message to payer
     uint64_t expires_at{0};          // Expiration timestamp
@@ -67,7 +67,7 @@ public:
      * Create payment request
      *
      * @param address Payment address
-     * @param amount Amount in satoshis
+     * @param amount Amount in ints
      * @param label Label text
      * @param message Message to payer
      * @param expires_in_seconds Expiration time (0 = no expiry)
