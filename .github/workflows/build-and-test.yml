@@ -300,6 +300,110 @@ jobs:
         if-no-files-found: error
 
   # ============================================================================
+  # Linux Build (Debian)
+  # ============================================================================
+  build-debian:
+    name: Debian 13
+    runs-on: ubuntu-24.04
+    container:
+      image: debian:trixie
+
+    steps:
+    - name: Install git for checkout
+      run: apt-get update && apt-get install -y git
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        apt-get install -y \
+          build-essential \
+          cmake \
+          ninja-build \
+          libssl-dev \
+          libboost-all-dev \
+          librocksdb-dev \
+          libcurl4-openssl-dev \
+          libsodium-dev \
+          libjsoncpp-dev \
+          libzmq3-dev \
+          libevent-dev \
+          libqrencode-dev \
+          libhidapi-dev \
+          libxkbcommon-dev \
+          qt6-base-dev \
+          qt6-tools-dev \
+          qt6-tools-dev-tools \
+          libqt6svg6-dev
+
+    - name: Cache liboqs
+      id: cache-liboqs-debian
+      uses: actions/cache@v4
+      with:
+        path: ~/liboqs
+        key: debian-liboqs-0.15.0
+
+    - name: Build liboqs
+      if: steps.cache-liboqs-debian.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git ~/liboqs-src
+        cd ~/liboqs-src
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_INSTALL_PREFIX=$HOME/liboqs -DCMAKE_BUILD_TYPE=Release ..
+        ninja
+        ninja install
+
+    - name: Cache RandomX
+      id: cache-randomx-debian
+      uses: actions/cache@v4
+      with:
+        path: ~/randomx
+        key: debian-randomx-1.2.1
+
+    - name: Build RandomX
+      if: steps.cache-randomx-debian.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git ~/randomx-src
+        cd ~/randomx-src
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=$HOME/randomx -DCMAKE_BUILD_TYPE=Release ..
+        make -j$(nproc)
+        make install
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -DCMAKE_PREFIX_PATH="$HOME/liboqs;$HOME/randomx" \
+          -DBUILD_TESTS=ON \
+          -DBUILD_WALLET_QT=ON \
+          -GNinja
+
+    - name: Build
+      run: cmake --build build --config $BUILD_TYPE -j$(nproc)
+
+    - name: Run tests
+      working-directory: build
+      timeout-minutes: 30
+      run: ctest --output-on-failure -C $BUILD_TYPE --timeout 300 -E "(MetricsServerTest|IBDIntegrationTest)"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: intcoin-debian-13
+        path: |
+          build/bin/intcoind
+          build/bin/intcoin-cli
+          build/bin/intcoin-wallet
+          build/bin/intcoin-miner
+          build/bin/intcoin-pool-server
+          build/bin/intcoin-qt
+        if-no-files-found: error
+
+  # ============================================================================
   # Windows Build
   # ============================================================================
   build-windows:
@@ -422,7 +526,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-ubuntu, build-macos, build-fedora, build-windows]
+    needs: [build-ubuntu, build-macos, build-fedora, build-debian, build-windows]
     permissions:
       contents: write
 
@@ -441,6 +545,8 @@ jobs:
         tar -czf ../intcoin-${{ github.ref_name }}-macos-latest.tar.gz *
         cd ../intcoin-fedora-40
         tar -czf ../intcoin-${{ github.ref_name }}-fedora-40.tar.gz *
+        cd ../intcoin-debian-13
+        tar -czf ../intcoin-${{ github.ref_name }}-debian-13.tar.gz *
         cd ../intcoin-windows-latest
         zip -r ../intcoin-${{ github.ref_name }}-windows.zip *
         cd ..
@@ -452,6 +558,7 @@ jobs:
           intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz
           intcoin-${{ github.ref_name }}-macos-latest.tar.gz
           intcoin-${{ github.ref_name }}-fedora-40.tar.gz
+          intcoin-${{ github.ref_name }}-debian-13.tar.gz
           intcoin-${{ github.ref_name }}-windows.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
