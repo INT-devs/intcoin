@@ -196,6 +196,107 @@ jobs:
         if-no-files-found: error
 
   # ============================================================================
+  # Linux Build (Fedora)
+  # ============================================================================
+  build-fedora:
+    name: Fedora 40
+    runs-on: ubuntu-24.04
+    container:
+      image: fedora:40
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        dnf install -y \
+          gcc-c++ \
+          cmake \
+          ninja-build \
+          openssl-devel \
+          boost-devel \
+          rocksdb-devel \
+          libcurl-devel \
+          libsodium-devel \
+          jsoncpp-devel \
+          zeromq-devel \
+          libevent-devel \
+          qrencode-devel \
+          hidapi-devel \
+          libxkbcommon-devel \
+          qt6-qtbase-devel \
+          qt6-qttools-devel \
+          qt6-qtsvg-devel \
+          git
+
+    - name: Cache liboqs
+      id: cache-liboqs-fedora
+      uses: actions/cache@v4
+      with:
+        path: ~/liboqs
+        key: fedora-liboqs-0.15.0
+
+    - name: Build liboqs
+      if: steps.cache-liboqs-fedora.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git ~/liboqs-src
+        cd ~/liboqs-src
+        mkdir build && cd build
+        cmake -GNinja -DCMAKE_INSTALL_PREFIX=$HOME/liboqs -DCMAKE_BUILD_TYPE=Release ..
+        ninja
+        ninja install
+
+    - name: Cache RandomX
+      id: cache-randomx-fedora
+      uses: actions/cache@v4
+      with:
+        path: ~/randomx
+        key: fedora-randomx-1.2.1
+
+    - name: Build RandomX
+      if: steps.cache-randomx-fedora.outputs.cache-hit != 'true'
+      run: |
+        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git ~/randomx-src
+        cd ~/randomx-src
+        mkdir build && cd build
+        cmake -DCMAKE_INSTALL_PREFIX=$HOME/randomx -DCMAKE_BUILD_TYPE=Release ..
+        make -j$(nproc)
+        make install
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+          -DCMAKE_PREFIX_PATH="$HOME/liboqs;$HOME/randomx" \
+          -DBUILD_TESTS=ON \
+          -DBUILD_WALLET_QT=ON \
+          -GNinja
+
+    - name: Build
+      run: cmake --build build --config $BUILD_TYPE -j$(nproc)
+
+    - name: Run tests
+      working-directory: build
+      timeout-minutes: 30
+      run: ctest --output-on-failure -C $BUILD_TYPE --timeout 300 -E "(MetricsServerTest|IBDIntegrationTest)"
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: intcoin-fedora-40
+        path: |
+          build/bin/intcoind
+          build/bin/intcoin-cli
+          build/bin/intcoin-wallet
+          build/bin/intcoin-miner
+          build/bin/intcoin-pool-server
+          build/bin/intcoin-qt
+        if-no-files-found: error
+
+  # ============================================================================
   # Code Quality Checks
   # ============================================================================
   code-quality:
@@ -235,7 +336,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-ubuntu, build-macos]
+    needs: [build-ubuntu, build-macos, build-fedora]
     permissions:
       contents: write
 
@@ -252,6 +353,8 @@ jobs:
         tar -czf ../intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz *
         cd ../intcoin-macos-latest
         tar -czf ../intcoin-${{ github.ref_name }}-macos-latest.tar.gz *
+        cd ../intcoin-fedora-40
+        tar -czf ../intcoin-${{ github.ref_name }}-fedora-40.tar.gz *
         cd ..
 
     - name: Create GitHub Release
@@ -260,6 +363,7 @@ jobs:
         files: |
           intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz
           intcoin-${{ github.ref_name }}-macos-latest.tar.gz
+          intcoin-${{ github.ref_name }}-fedora-40.tar.gz
         draft: false
         prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
       env:
