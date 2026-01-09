@@ -56,7 +56,7 @@ INTcoin is a cryptocurrency implementing:
 
 ### Dependencies
 - **CMake** 4.2.0+
-- **Boost** 1.89.0+
+- **Boost** 1.83.0+
 - **RocksDB** 10.7+ (persistent storage)
 - **liboqs** 0.10.0+ (post-quantum crypto)
 - **RandomX** 1.2.0+ (PoW algorithm)

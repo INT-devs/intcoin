@@ -35,6 +35,11 @@ jobs:
           libssl-dev \
           libboost-all-dev \
           librocksdb-dev \
+          libcurl4-openssl-dev \
+          libsodium-dev \
+          libjsoncpp-dev \
+          libzmq3-dev \
+          libevent-dev \
           qt6-base-dev \
           qt6-tools-dev \
           qt6-tools-dev-tools \
@@ -118,7 +123,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew update
-        brew install cmake ninja openssl boost rocksdb qt@6
+        brew install cmake ninja openssl boost rocksdb qt@6 curl libsodium jsoncpp zeromq libevent
 
     - name: Cache liboqs
       id: cache-liboqs-macos
@@ -206,6 +211,11 @@ jobs:
         vcpkg install openssl:x64-windows
         vcpkg install boost:x64-windows
         vcpkg install rocksdb:x64-windows
+        vcpkg install curl:x64-windows
+        vcpkg install libsodium:x64-windows
+        vcpkg install jsoncpp:x64-windows
+        vcpkg install zeromq:x64-windows
+        vcpkg install libevent:x64-windows
         vcpkg install qt6:x64-windows
 
     - name: Cache liboqs

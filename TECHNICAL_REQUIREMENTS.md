@@ -108,7 +108,7 @@ brew install i2pd            # Privacy (optional)
 
 ### Minimum Versions
 - **CMake**: 4.2.0+
-- **Boost**: 1.89.0+
+- **Boost**: 1.83.0+
 - **OpenSSL**: 3.5.4+
 - **Qt**: 6.8+
 - **RocksDB**: 10.7+

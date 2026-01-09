@@ -9,6 +9,11 @@ else()
     cmake_policy(VERSION 3.28)
 endif()
 
+# CMP0167: FindBoost module removed - use Boost's own config files
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
+
 project(INTcoin
     VERSION 1.3.0
     DESCRIPTION "Quantum-Resistant Cryptocurrency"
@@ -119,7 +124,7 @@ if(RELAXED_DEPENDENCIES)
     )
     find_package(OpenSSL)
 else()
-    find_package(Boost 1.90.0 COMPONENTS
+    find_package(Boost 1.83.0 COMPONENTS
         system
         filesystem
         thread
@@ -162,28 +167,71 @@ find_path(ZMQ_INCLUDE_DIR zmq.h)
 find_library(EVENT_LIB event)
 find_path(EVENT_INCLUDE_DIR event2/event.h)
 
-# libsodium (1.0.20+) - For ChaCha20-Poly1305 AEAD in BOLT #8
+# libsodium (1.0.18+) - For ChaCha20-Poly1305 AEAD in BOLT #8
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
-    pkg_check_modules(SODIUM libsodium>=1.0.18)
+    pkg_check_modules(SODIUM QUIET libsodium>=1.0.18)
 endif()
 if(NOT SODIUM_FOUND)
     find_library(SODIUM_LIB sodium
         PATHS
             /opt/homebrew/lib
             /usr/local/lib
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib
             $ENV{HOME}/.local/lib
     )
     find_path(SODIUM_INCLUDE_DIR sodium.h
         PATHS
             /opt/homebrew/include
             /usr/local/include
+            /usr/include
             $ENV{HOME}/.local/include
     )
+    if(SODIUM_LIB AND SODIUM_INCLUDE_DIR)
+        set(SODIUM_FOUND TRUE)
+        set(SODIUM_LIBRARIES ${SODIUM_LIB})
+        set(SODIUM_INCLUDE_DIRS ${SODIUM_INCLUDE_DIR})
+    endif()
+endif()
+if(SODIUM_FOUND OR SODIUM_LIB)
+    message(STATUS "Found libsodium")
+else()
+    message(STATUS "libsodium not found - BOLT #8 transport will have limited functionality")
 endif()
 
 # CURL (for blockchain monitoring RPC clients)
-find_package(CURL REQUIRED)
+find_package(CURL QUIET)
+if(NOT CURL_FOUND)
+    # Try manual detection
+    find_library(CURL_LIBRARY curl
+        PATHS
+            /opt/homebrew/lib
+            /usr/local/lib
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib
+    )
+    find_path(CURL_INCLUDE_DIR curl/curl.h
+        PATHS
+            /opt/homebrew/include
+            /usr/local/include
+            /usr/include
+    )
+    if(CURL_LIBRARY AND CURL_INCLUDE_DIR)
+        set(CURL_FOUND TRUE)
+        set(CURL_LIBRARIES ${CURL_LIBRARY})
+        set(CURL_INCLUDE_DIRS ${CURL_INCLUDE_DIR})
+        # Create imported target for compatibility
+        add_library(CURL::libcurl UNKNOWN IMPORTED)
+        set_target_properties(CURL::libcurl PROPERTIES
+            IMPORTED_LOCATION "${CURL_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${CURL_INCLUDE_DIR}"
+        )
+        message(STATUS "Found CURL: ${CURL_LIBRARY}")
+    else()
+        message(FATAL_ERROR "Could NOT find CURL. Install with: apt install libcurl4-openssl-dev (Ubuntu) or brew install curl (macOS)")
+    endif()
+endif()
 
 # jsoncpp (for JSON-RPC communication)
 find_package(PkgConfig QUIET)

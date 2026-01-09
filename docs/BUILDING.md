@@ -72,7 +72,7 @@ Complete guide for building INTcoin on all supported platforms.
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| **Boost** | ≥ 1.89.0 | Utilities, filesystem, threading |
+| **Boost** | ≥ 1.83.0 | Utilities, filesystem, threading |
 | **RocksDB** | ≥ 10.7 | Blockchain database |
 | **Qt6** | ≥ 6.8 | Desktop wallet GUI |
 | **libzmq** | ≥ 4.3 | ZeroMQ messaging |

@@ -321,7 +321,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed workflow.
 |------------|---------|---------|
 | **C++23** | Primary language | ISO/IEC 14882:2023 |
 | **CMake** | Build system | 3.28+ |
-| **Boost** | Utilities, threading | 1.90.0+ |
+| **Boost** | Utilities, threading | 1.83.0+ |
 | **RocksDB** | Database | 6.11.4+ |
 | **liboqs** | Post-quantum crypto | 0.15.0+ |
 | **RandomX** | PoW algorithm | 1.2.1+ |

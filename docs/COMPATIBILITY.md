@@ -125,7 +125,7 @@ This document outlines compatibility requirements, version dependencies, and int
 
 | Library | Minimum Version | Purpose | Required For |
 |---------|----------------|---------|--------------|
-| **Boost** | 1.89.0 | Utilities, threading | Core features |
+| **Boost** | 1.83.0 | Utilities, threading | Core features |
 | **RocksDB** | 10.7 | Blockchain database | Full node |
 | **Qt6** | 6.8 | Desktop GUI | Qt wallet |
 | **ZeroMQ** | 4.3.0 | Messaging | ZMQ notifications |

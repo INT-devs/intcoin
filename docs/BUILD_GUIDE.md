@@ -100,7 +100,7 @@ cd build && ctest --output-on-failure
 
 | Library | Version | Purpose |
 |---------|---------|---------|
-| **Boost** | 1.90.0+ | System utilities, threading, filesystem |
+| **Boost** | 1.83.0+ | System utilities, threading, filesystem |
 | **OpenSSL** | 1.1.1+ | SSL/TLS for network connections |
 | **RocksDB** | 6.11.4+ | High-performance key-value database |
 | **liboqs** | 0.15.0+ | Post-quantum cryptography (Dilithium3, Kyber768) |
@@ -472,13 +472,13 @@ tar xzf cmake-3.28.0.tar.gz && cd cmake-3.28.0
 
 #### 2. "Boost version too old"
 
-**Error**: `Boost 1.90.0 or higher required`
+**Error**: `Boost 1.83.0 or higher required`
 
 **Solution**:
 ```bash
 # Build Boost from source
-wget https://boostorg.jfrog.io/artifactory/main/release/1.90.0/source/boost_1_90_0.tar.gz
-tar xzf boost_1_90_0.tar.gz && cd boost_1_90_0
+wget https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.gz
+tar xzf boost_1_83_0.tar.gz && cd boost_1_83_0
 ./bootstrap.sh --prefix=$HOME/boost
 ./b2 -j$(nproc) install
 ```
