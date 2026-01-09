@@ -112,184 +112,6 @@ jobs:
         if-no-files-found: error
 
   # ============================================================================
-  # Linux Build (Debian 13 Trixie)
-  # ============================================================================
-  build-debian:
-    name: Debian 13
-    runs-on: ubuntu-latest
-    container:
-      image: debian:trixie
-
-    steps:
-    - name: Install git for checkout
-      run: |
-        apt-get update
-        apt-get install -y git ca-certificates
-
-    - name: Configure git safe directory
-      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Install dependencies
-      run: |
-        apt-get install -y \
-          build-essential \
-          cmake \
-          ninja-build \
-          libssl-dev \
-          libboost-all-dev \
-          librocksdb-dev \
-          libcurl4-openssl-dev \
-          libsodium-dev \
-          libjsoncpp-dev \
-          libzmq3-dev \
-          libevent-dev \
-          libqrencode-dev \
-          libhidapi-dev \
-          qt6-base-dev \
-          qt6-tools-dev \
-          libqt6svg6-dev
-
-    - name: Build liboqs
-      run: |
-        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs-src
-        cd /tmp/liboqs-src
-        mkdir build && cd build
-        cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
-        ninja
-        ninja install
-        ldconfig
-
-    - name: Build RandomX
-      run: |
-        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git /tmp/randomx-src
-        cd /tmp/randomx-src
-        mkdir build && cd build
-        cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
-        make -j$(nproc)
-        make install
-        ldconfig
-
-    - name: Configure CMake
-      run: |
-        cmake -B build \
-          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-          -DBUILD_TESTS=ON \
-          -DBUILD_WALLET_QT=OFF \
-          -GNinja
-
-    - name: Build
-      run: cmake --build build --config $BUILD_TYPE -j$(nproc)
-
-    - name: Run tests
-      working-directory: build
-      run: ctest --output-on-failure -C $BUILD_TYPE
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: intcoin-debian-13
-        path: |
-          build/bin/intcoind
-          build/bin/intcoin-cli
-          build/bin/intcoin-wallet
-          build/bin/intcoin-miner
-          build/bin/intcoin-pool-server
-        if-no-files-found: error
-
-  # ============================================================================
-  # Linux Build (Fedora 40)
-  # ============================================================================
-  build-fedora:
-    name: Fedora 40
-    runs-on: ubuntu-latest
-    container:
-      image: fedora:40
-
-    steps:
-    - name: Install git for checkout
-      run: dnf install -y git
-
-    - name: Configure git safe directory
-      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Install dependencies
-      run: |
-        dnf install -y \
-          gcc-c++ \
-          cmake \
-          ninja-build \
-          openssl-devel \
-          boost-devel \
-          rocksdb-devel \
-          libcurl-devel \
-          libsodium-devel \
-          jsoncpp-devel \
-          zeromq-devel \
-          libevent-devel \
-          qrencode-devel \
-          hidapi-devel \
-          qt6-qtbase-devel \
-          qt6-qttools-devel \
-          qt6-qtsvg-devel
-
-    - name: Build liboqs
-      run: |
-        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git /tmp/liboqs-src
-        cd /tmp/liboqs-src
-        mkdir build && cd build
-        cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
-        ninja
-        ninja install
-        ldconfig
-
-    - name: Build RandomX
-      run: |
-        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git /tmp/randomx-src
-        cd /tmp/randomx-src
-        mkdir build && cd build
-        cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
-        make -j$(nproc)
-        make install
-        ldconfig
-
-    - name: Configure CMake
-      run: |
-        cmake -B build \
-          -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-          -DBUILD_TESTS=ON \
-          -DBUILD_WALLET_QT=OFF \
-          -GNinja
-
-    - name: Build
-      run: cmake --build build --config $BUILD_TYPE -j$(nproc)
-
-    - name: Run tests
-      working-directory: build
-      run: ctest --output-on-failure -C $BUILD_TYPE
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: intcoin-fedora-40
-        path: |
-          build/bin/intcoind
-          build/bin/intcoin-cli
-          build/bin/intcoin-wallet
-          build/bin/intcoin-miner
-          build/bin/intcoin-pool-server
-        if-no-files-found: error
-
-  # ============================================================================
   # macOS Build
   # ============================================================================
   build-macos:
@@ -372,108 +194,6 @@ jobs:
         if-no-files-found: error
 
   # ============================================================================
-  # Windows Build (Windows 10/11 compatible)
-  # ============================================================================
-  build-windows:
-    name: Windows 11
-    runs-on: windows-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        # Use recent vcpkg release (January 2026)
-        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
-        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
-
-    - name: Install vcpkg dependencies
-      run: |
-        vcpkg install openssl:x64-windows
-        vcpkg install boost:x64-windows
-        vcpkg install rocksdb:x64-windows
-        vcpkg install curl:x64-windows
-        vcpkg install libsodium:x64-windows
-        vcpkg install jsoncpp:x64-windows
-        vcpkg install zeromq:x64-windows
-        vcpkg install libevent:x64-windows
-        vcpkg install libqrencode:x64-windows
-        vcpkg install hidapi:x64-windows
-
-    - name: Cache liboqs
-      id: cache-liboqs-windows
-      uses: actions/cache@v4
-      with:
-        path: C:/liboqs
-        key: ${{ runner.os }}-liboqs-0.15.0
-
-    - name: Build liboqs
-      if: steps.cache-liboqs-windows.outputs.cache-hit != 'true'
-      shell: pwsh
-      run: |
-        git clone --branch 0.15.0 https://github.com/open-quantum-safe/liboqs.git C:/liboqs-src
-        cd C:/liboqs-src
-        mkdir build
-        cd build
-        cmake -G "Visual Studio 17 2022" -A x64 `
-          -DCMAKE_INSTALL_PREFIX=C:/liboqs `
-          -DCMAKE_BUILD_TYPE=Release ..
-        cmake --build . --config Release
-        cmake --install . --config Release
-
-    - name: Cache RandomX
-      id: cache-randomx-windows
-      uses: actions/cache@v4
-      with:
-        path: C:/randomx
-        key: ${{ runner.os }}-randomx-1.2.1
-
-    - name: Build RandomX
-      if: steps.cache-randomx-windows.outputs.cache-hit != 'true'
-      shell: pwsh
-      run: |
-        git clone --branch v1.2.1 https://github.com/tevador/RandomX.git C:/randomx-src
-        cd C:/randomx-src
-        mkdir build
-        cd build
-        cmake -G "Visual Studio 17 2022" -A x64 `
-          -DCMAKE_INSTALL_PREFIX=C:/randomx `
-          -DCMAKE_BUILD_TYPE=Release ..
-        cmake --build . --config Release
-        cmake --install . --config Release
-
-    - name: Configure CMake
-      shell: pwsh
-      run: |
-        cmake -B build `
-          -G "Visual Studio 17 2022" -A x64 `
-          -DCMAKE_BUILD_TYPE=Release `
-          -DCMAKE_PREFIX_PATH="C:/liboqs;C:/randomx" `
-          -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" `
-          -DBUILD_TESTS=ON `
-          -DBUILD_WALLET_QT=OFF
-
-    - name: Build
-      run: cmake --build build --config Release --parallel
-
-    - name: Run tests
-      working-directory: build
-      run: ctest --output-on-failure -C Release
-
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: intcoin-windows-11
-        path: |
-          build/bin/Release/*.exe
-          build/bin/Release/*.dll
-        if-no-files-found: error
-
-  # ============================================================================
   # Code Quality Checks
   # ============================================================================
   code-quality:
@@ -513,7 +233,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-ubuntu, build-debian, build-fedora, build-macos, build-windows]
+    needs: [build-ubuntu, build-macos]
     permissions:
       contents: write
 
@@ -528,14 +248,8 @@ jobs:
       run: |
         cd intcoin-ubuntu-24.04
         tar -czf ../intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz *
-        cd ../intcoin-debian-13
-        tar -czf ../intcoin-${{ github.ref_name }}-debian-13.tar.gz *
-        cd ../intcoin-fedora-40
-        tar -czf ../intcoin-${{ github.ref_name }}-fedora-40.tar.gz *
         cd ../intcoin-macos-latest
         tar -czf ../intcoin-${{ github.ref_name }}-macos-latest.tar.gz *
-        cd ../intcoin-windows-11
-        zip -r ../intcoin-${{ github.ref_name }}-windows-11.zip *
         cd ..
 
     - name: Create GitHub Release
@@ -543,10 +257,7 @@ jobs:
       with:
         files: |
           intcoin-${{ github.ref_name }}-ubuntu-24.04.tar.gz
-          intcoin-${{ github.ref_name }}-debian-13.tar.gz
-          intcoin-${{ github.ref_name }}-fedora-40.tar.gz
           intcoin-${{ github.ref_name }}-macos-latest.tar.gz
-          intcoin-${{ github.ref_name }}-windows-11.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
       env:
