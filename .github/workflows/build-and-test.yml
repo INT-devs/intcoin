@@ -47,7 +47,7 @@ jobs:
 
     - name: Cache liboqs
       id: cache-liboqs
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/liboqs
         key: ${{ runner.os }}-liboqs-0.15.0
@@ -64,7 +64,7 @@ jobs:
 
     - name: Cache RandomX
       id: cache-randomx
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/randomx
         key: ${{ runner.os }}-randomx-1.2.1
@@ -106,6 +106,7 @@ jobs:
           build/bin/intcoin-miner
           build/bin/intcoin-pool-server
           build/bin/intcoin-qt
+        if-no-files-found: error
 
   # ============================================================================
   # Linux Build (Debian 13 Trixie)
@@ -121,6 +122,9 @@ jobs:
       run: |
         apt-get update
         apt-get install -y git ca-certificates
+
+    - name: Configure git safe directory
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     - name: Checkout code
       uses: actions/checkout@v4
@@ -153,6 +157,7 @@ jobs:
         cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
         ninja
         ninja install
+        ldconfig
 
     - name: Build RandomX
       run: |
@@ -162,13 +167,14 @@ jobs:
         cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
         make -j$(nproc)
         make install
+        ldconfig
 
     - name: Configure CMake
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
           -DBUILD_TESTS=ON \
-          -DBUILD_WALLET_QT=ON \
+          -DBUILD_WALLET_QT=OFF \
           -GNinja
 
     - name: Build
@@ -188,7 +194,7 @@ jobs:
           build/bin/intcoin-wallet
           build/bin/intcoin-miner
           build/bin/intcoin-pool-server
-          build/bin/intcoin-qt
+        if-no-files-found: error
 
   # ============================================================================
   # Linux Build (Fedora 40)
@@ -202,6 +208,9 @@ jobs:
     steps:
     - name: Install git for checkout
       run: dnf install -y git
+
+    - name: Configure git safe directory
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     - name: Checkout code
       uses: actions/checkout@v4
@@ -234,6 +243,7 @@ jobs:
         cmake -GNinja -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
         ninja
         ninja install
+        ldconfig
 
     - name: Build RandomX
       run: |
@@ -243,13 +253,14 @@ jobs:
         cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=Release ..
         make -j$(nproc)
         make install
+        ldconfig
 
     - name: Configure CMake
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
           -DBUILD_TESTS=ON \
-          -DBUILD_WALLET_QT=ON \
+          -DBUILD_WALLET_QT=OFF \
           -GNinja
 
     - name: Build
@@ -269,7 +280,7 @@ jobs:
           build/bin/intcoin-wallet
           build/bin/intcoin-miner
           build/bin/intcoin-pool-server
-          build/bin/intcoin-qt
+        if-no-files-found: error
 
   # ============================================================================
   # macOS Build
@@ -291,7 +302,7 @@ jobs:
 
     - name: Cache liboqs
       id: cache-liboqs-macos
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/liboqs
         key: ${{ runner.os }}-liboqs-0.15.0
@@ -308,7 +319,7 @@ jobs:
 
     - name: Cache RandomX
       id: cache-randomx-macos
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/randomx
         key: ${{ runner.os }}-randomx-1.2.1
@@ -351,13 +362,14 @@ jobs:
           build/bin/intcoin-miner
           build/bin/intcoin-pool-server
           build/bin/intcoin-qt
+        if-no-files-found: error
 
   # ============================================================================
-  # Windows Build
+  # Windows Build (Windows 10/11 compatible)
   # ============================================================================
   build-windows:
-    name: Windows 2022
-    runs-on: windows-2022
+    name: Windows 11
+    runs-on: windows-latest
 
     steps:
     - name: Checkout code
@@ -382,11 +394,10 @@ jobs:
         vcpkg install jsoncpp:x64-windows
         vcpkg install zeromq:x64-windows
         vcpkg install libevent:x64-windows
-        vcpkg install qt6:x64-windows
 
     - name: Cache liboqs
       id: cache-liboqs-windows
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: C:/liboqs
         key: ${{ runner.os }}-liboqs-0.15.0
@@ -407,7 +418,7 @@ jobs:
 
     - name: Cache RandomX
       id: cache-randomx-windows
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: C:/randomx
         key: ${{ runner.os }}-randomx-1.2.1
@@ -435,7 +446,7 @@ jobs:
           -DCMAKE_PREFIX_PATH="C:/liboqs;C:/randomx" `
           -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" `
           -DBUILD_TESTS=ON `
-          -DBUILD_WALLET_QT=ON
+          -DBUILD_WALLET_QT=OFF
 
     - name: Build
       run: cmake --build build --config Release --parallel
@@ -447,10 +458,11 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: intcoin-windows-2022
+        name: intcoin-windows-11
         path: |
           build/bin/Release/*.exe
           build/bin/Release/*.dll
+        if-no-files-found: error
 
   # ============================================================================
   # Code Quality Checks
@@ -476,7 +488,7 @@ jobs:
       run: |
         missing=0
         for file in $(find src include -name '*.cpp' -o -name '*.h'); do
-          if ! grep -q "Copyright (c) 2025 INTcoin Team" "$file"; then
+          if ! grep -qE "Copyright \(c\) (2025|2026|2025-2026) INTcoin Team" "$file"; then
             echo "Missing license header: $file"
             missing=$((missing + 1))
           fi
@@ -493,8 +505,13 @@ jobs:
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-ubuntu, build-debian, build-fedora, build-macos, build-windows]
+    permissions:
+      contents: write
 
     steps:
+    - name: Install zip utility
+      run: sudo apt-get update && sudo apt-get install -y zip
+
     - name: Download all artifacts
       uses: actions/download-artifact@v4
 
@@ -508,8 +525,8 @@ jobs:
         tar -czf ../intcoin-${{ github.ref_name }}-fedora-40.tar.gz *
         cd ../intcoin-macos-latest
         tar -czf ../intcoin-${{ github.ref_name }}-macos-latest.tar.gz *
-        cd ../intcoin-windows-2022
-        zip -r ../intcoin-${{ github.ref_name }}-windows-2022.zip *
+        cd ../intcoin-windows-11
+        zip -r ../intcoin-${{ github.ref_name }}-windows-11.zip *
         cd ..
 
     - name: Create GitHub Release
@@ -520,7 +537,7 @@ jobs:
           intcoin-${{ github.ref_name }}-debian-13.tar.gz
           intcoin-${{ github.ref_name }}-fedora-40.tar.gz
           intcoin-${{ github.ref_name }}-macos-latest.tar.gz
-          intcoin-${{ github.ref_name }}-windows-2022.zip
+          intcoin-${{ github.ref_name }}-windows-11.zip
         draft: false
         prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
       env:
