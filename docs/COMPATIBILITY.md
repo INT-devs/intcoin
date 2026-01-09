@@ -63,8 +63,8 @@ This document outlines compatibility requirements, version dependencies, and int
 
 | OS | Architecture | v1.2.0 Support | Notes |
 |----|-------------|----------------|-------|
-| **Ubuntu 22.04 LTS** | x86_64, ARM64 | ✅ Fully Supported | Recommended |
 | **Ubuntu 24.04 LTS** | x86_64, ARM64 | ✅ Fully Supported | Recommended |
+| **Ubuntu 22.04 LTS** | x86_64, ARM64 | ❌ Deprecated | Outdated toolchain |
 | **Debian 11 (Bullseye)** | x86_64, ARM64 | ✅ Supported | |
 | **Debian 12 (Bookworm)** | x86_64, ARM64 | ✅ Fully Supported | Recommended |
 | **Fedora 38+** | x86_64, ARM64 | ✅ Supported | |
@@ -79,7 +79,7 @@ This document outlines compatibility requirements, version dependencies, and int
 | **Windows 11** | x86_64, ARM64 | ✅ Supported | Native or WSL2 |
 
 **End of Life** (not supported):
-- Ubuntu 20.04 and earlier
+- Ubuntu 22.04 and earlier
 - Debian 10 and earlier
 - macOS 11 (Big Sur) and earlier
 - FreeBSD 12 and earlier

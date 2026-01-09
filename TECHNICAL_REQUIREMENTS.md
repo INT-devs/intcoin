@@ -20,7 +20,7 @@
 
 #### Supported Platforms
 - **macOS**: 13 (Ventura) and later
-- **Linux**: Ubuntu 22.04+, Debian 12+, Fedora 38+, Arch (rolling)
+- **Linux**: Ubuntu 24.04+, Debian 12+, Fedora 40+, Arch (rolling)
 - **FreeBSD**: 13.0 and later
 - **Unix-like**: Any system with modern C++23 compiler
 
@@ -28,7 +28,7 @@
 - **Windows 10**: End of life (October 14, 2025)
 - **Windows 8.1 and earlier**: End of life
 - **macOS 12 and earlier**: End of support
-- **Ubuntu 20.04 and earlier**: Outdated toolchain
+- **Ubuntu 22.04 and earlier**: Outdated toolchain
 - Any operating system no longer receiving security updates from original creator
 
 #### Windows Support

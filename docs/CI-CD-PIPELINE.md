@@ -19,8 +19,7 @@ The pipeline consists of 4 main stages:
 
 ### Platforms
 
-- **Ubuntu 22.04** (primary, stable)
-- **Ubuntu 24.04** (future compatibility)
+- **Ubuntu 24.04** (primary, stable)
 - **Debian 12** (enterprise)
 
 ### Build Outputs
@@ -323,7 +322,7 @@ Security scan results appear automatically in Merge Requests:
 
 ### Critical Failures (Pipeline Fails)
 
-- Build failures on primary platform (Ubuntu 22.04)
+- Build failures on primary platform (Ubuntu 24.04)
 - Test failures in any test suite
 
 ### Non-Critical Failures (Pipeline Continues)
@@ -404,7 +403,7 @@ ctest --output-on-failure
 
 ### Build Failures
 
-**Symptom:** Build fails on Ubuntu 22.04
+**Symptom:** Build fails on Ubuntu 24.04
 **Solution:**
 1. Check CMake configuration
 2. Verify all dependencies installed

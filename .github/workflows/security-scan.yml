@@ -15,7 +15,7 @@ jobs:
   # ============================================================================
   codeql:
     name: CodeQL Analysis
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: read
@@ -103,7 +103,7 @@ jobs:
   # ============================================================================
   dependency-scan:
     name: Dependency Scan
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       actions: read
       contents: read
@@ -131,7 +131,7 @@ jobs:
   # ============================================================================
   license-check:
     name: License Compliance
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout code

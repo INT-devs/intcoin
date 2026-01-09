@@ -30,7 +30,7 @@
 
 ## Quick Start
 
-**For Experienced Developers** (Ubuntu 22.04+):
+**For Experienced Developers** (Ubuntu 24.04+):
 
 ```bash
 # Install system dependencies
@@ -74,7 +74,7 @@ cd build && ctest --output-on-failure
 | **CPU** | 64-bit processor (x86_64 or ARM64) |
 | **RAM** | 4 GB (8 GB recommended for building) |
 | **Disk** | 10 GB free space |
-| **OS** | Ubuntu 22.04+, Debian 11+, macOS 12+, FreeBSD 13+, Windows 10/11 |
+| **OS** | Ubuntu 24.04+, Debian 12+, macOS 13+, FreeBSD 13+, Windows 11 |
 
 ### Recommended Requirements
 
@@ -113,7 +113,7 @@ cd build && ctest --output-on-failure
 
 ### Ubuntu / Debian
 
-**Ubuntu 22.04, 24.04 | Debian 11, 12**
+**Ubuntu 24.04 | Debian 12**
 
 ```bash
 # Update package lists

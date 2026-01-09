@@ -65,7 +65,7 @@ INTcoin is a cryptocurrency implementing:
 
 ### Platform Support
 - **macOS**: 13 (Ventura)+
-- **Linux**: Ubuntu 22.04+, Debian 12+, Fedora 38+, Arch
+- **Linux**: Ubuntu 24.04+, Debian 12+, Fedora 40+, Arch
 - **FreeBSD**: 13.0+
 - **Windows**: 11+ (21H2 or later)
 

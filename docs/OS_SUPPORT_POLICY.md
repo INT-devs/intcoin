@@ -46,13 +46,12 @@ This policy ensures:
 
 | Version | Status | Support Until |
 |---------|--------|---------------|
-| **Ubuntu 24.04 LTS** | ✅ Supported | April 2029 |
-| **Ubuntu 22.04 LTS** | ✅ Supported | April 2027 |
-| **Ubuntu 20.04 LTS** | ✅ Minimum Required | April 2025 |
+| **Ubuntu 24.04 LTS** | ✅ Minimum Required | April 2029 |
+| Ubuntu 22.04 LTS | ❌ Not Supported | Outdated toolchain |
+| Ubuntu 20.04 LTS | ❌ Not Supported | EOL April 2025 |
 | Ubuntu 18.04 LTS | ❌ Not Supported | EOL April 2023 |
-| Ubuntu 16.04 LTS | ❌ Not Supported | EOL April 2021 |
 
-**Minimum Required**: Ubuntu 20.04 LTS
+**Minimum Required**: Ubuntu 24.04 LTS
 
 #### Debian
 

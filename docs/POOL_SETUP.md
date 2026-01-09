@@ -52,7 +52,7 @@ INTcoin includes a full-featured mining pool server with:
 
 | Component | Requirement |
 |-----------|-------------|
-| **OS** | Linux (Ubuntu 22.04+), FreeBSD 13+ |
+| **OS** | Linux (Ubuntu 24.04+), FreeBSD 13+ |
 | **CPU** | 4 cores |
 | **RAM** | 8 GB |
 | **Storage** | 100 GB SSD (for blockchain + pool database) |

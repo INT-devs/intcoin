@@ -817,13 +817,13 @@ Compress-Archive -Path 'dist-windows\*' -DestinationPath 'intcoin-windows-x64.zi
 **Script**: `scripts/install-linux.sh`
 
 **Supported Distributions**:
-- Ubuntu 20.04 LTS, 22.04 LTS, 24.04 LTS
-- Debian 11 (Bullseye), 12 (Bookworm)
-- Fedora 38+
-- CentOS/RHEL 8+, Rocky Linux 8+, AlmaLinux 8+
+- Ubuntu 24.04 LTS
+- Debian 12 (Bookworm)
+- Fedora 40+
+- CentOS/RHEL 9+, Rocky Linux 9+, AlmaLinux 9+
 - Arch Linux/Manjaro (rolling release)
 
-**Note**: CentOS 7, Ubuntu 18.04, and Debian 10 are end-of-life and not supported.
+**Note**: Ubuntu 22.04, Debian 11, and CentOS 8 are outdated and not supported.
 
 **Features**:
 - Installs latest CMake 3.28+ from Kitware repositories

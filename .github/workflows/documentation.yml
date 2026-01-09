@@ -12,7 +12,7 @@ jobs:
   # ============================================================================
   check-docs:
     name: Check Documentation
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout code
@@ -63,7 +63,7 @@ jobs:
   # ============================================================================
   api-docs:
     name: Generate API Documentation
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout code

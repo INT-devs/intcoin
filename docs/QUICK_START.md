@@ -186,7 +186,7 @@ intcoin-qt
 
 ## Option 3: Full Node
 
-### Ubuntu 22.04+ (Recommended)
+### Ubuntu 24.04+ (Recommended)
 
 **Step 1: Install Dependencies**
 ```bash
