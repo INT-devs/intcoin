@@ -33,7 +33,8 @@ using namespace intcoin::lightning::v2;
 bool test_client_init() {
     WatchtowerClient client;
 
-    TEST_ASSERT(!client.IsEnabled(), "Client may not be enabled by default");
+    // Client is enabled by default (ready to connect to towers)
+    TEST_ASSERT(client.IsEnabled(), "Client should be enabled by default");
 
     auto stats = client.GetStatistics();
     TEST_ASSERT(stats.active_towers >= 0, "Active towers should be non-negative");
