@@ -368,6 +368,10 @@ set(INTCOIN_CORE_SOURCES
     src/lightning/v2/submarine_swaps.cpp
     src/lightning/v2/watchtower.cpp
 
+    # Smart Contracts (IntSC VM)
+    src/contracts/vm.cpp
+    src/contracts/storage.cpp
+
     # SPV (Simplified Payment Verification)
     src/spv/spv.cpp
 
