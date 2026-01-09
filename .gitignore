@@ -132,6 +132,9 @@ test_*
 *_test
 *.test
 tests/test_*
+# But don't ignore test source files
+!tests/test_*.cpp
+!tests/*_test.cpp
 
 # IDE - Additional
 *.code-workspace
