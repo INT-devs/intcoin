@@ -31,7 +31,7 @@ void InitializeTestKeyPair() {
 }
 
 void CleanupTestDB() {
-    system("rm -rf /tmp/intcoin_test_validation_db");
+    (void)system("rm -rf /tmp/intcoin_test_validation_db");
 }
 
 Block CreateValidTestBlock(const uint256& prev_hash, uint64_t height) {
