@@ -41,6 +41,7 @@ jobs:
           libzmq3-dev \
           libevent-dev \
           libqrencode-dev \
+          libhidapi-dev \
           qt6-base-dev \
           qt6-tools-dev \
           qt6-tools-dev-tools \
@@ -147,6 +148,7 @@ jobs:
           libzmq3-dev \
           libevent-dev \
           libqrencode-dev \
+          libhidapi-dev \
           qt6-base-dev \
           qt6-tools-dev \
           libqt6svg6-dev
@@ -234,6 +236,7 @@ jobs:
           zeromq-devel \
           libevent-devel \
           qrencode-devel \
+          hidapi-devel \
           qt6-qtbase-devel \
           qt6-qttools-devel \
           qt6-qtsvg-devel
@@ -301,7 +304,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew update
-        brew install cmake ninja openssl boost rocksdb qt@6 curl libsodium jsoncpp zeromq libevent qrencode
+        brew install cmake ninja openssl boost rocksdb qt@6 curl libsodium jsoncpp zeromq libevent qrencode hidapi
 
     - name: Cache liboqs
       id: cache-liboqs-macos
@@ -398,6 +401,7 @@ jobs:
         vcpkg install zeromq:x64-windows
         vcpkg install libevent:x64-windows
         vcpkg install libqrencode:x64-windows
+        vcpkg install hidapi:x64-windows
 
     - name: Cache liboqs
       id: cache-liboqs-windows
