@@ -170,7 +170,7 @@ void MnemonicDialog::setupUI() {
         tr("I have written down my recovery phrase on paper and stored it securely")
     );
     confirmCheckBox_->setStyleSheet("QCheckBox { font-weight: bold; }");
-    connect(confirmCheckBox_, &QCheckBox::checkStateChanged,
+    connect(confirmCheckBox_, &QCheckBox::stateChanged,
             this, &MnemonicDialog::onConfirmationChanged);
     mainLayout->addWidget(confirmCheckBox_);
 
@@ -228,7 +228,7 @@ void MnemonicDialog::onPrintClicked() {
     printMnemonic();
 }
 
-void MnemonicDialog::onConfirmationChanged(Qt::CheckState state) {
+void MnemonicDialog::onConfirmationChanged(int state) {
     closeButton_->setEnabled(state == Qt::Checked);
 }
 

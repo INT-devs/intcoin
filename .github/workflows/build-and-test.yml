@@ -42,6 +42,7 @@ jobs:
           libevent-dev \
           libqrencode-dev \
           libhidapi-dev \
+          libxkbcommon-dev \
           qt6-base-dev \
           qt6-tools-dev \
           qt6-tools-dev-tools \

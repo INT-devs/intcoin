@@ -63,7 +63,7 @@ public:
 
 private slots:
     void onPrintClicked();
-    void onConfirmationChanged(Qt::CheckState state);
+    void onConfirmationChanged(int state);
 
 private:
     void setupUI();
