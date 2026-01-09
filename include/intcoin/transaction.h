@@ -144,6 +144,18 @@ struct OutPointHash {
 };
 
 // ============================================================================
+// Transaction Types
+// ============================================================================
+
+/// Transaction types
+enum class TxType : uint8_t {
+    STANDARD = 0,           // Regular UTXO transaction
+    COINBASE = 1,           // Coinbase (mining reward)
+    CONTRACT_DEPLOYMENT = 2, // Smart contract deployment
+    CONTRACT_CALL = 3       // Smart contract call
+};
+
+// ============================================================================
 // Transaction
 // ============================================================================
 
@@ -151,6 +163,9 @@ class Transaction {
 public:
     /// Transaction version
     uint32_t version;
+
+    /// Transaction type
+    TxType type;
 
     /// Transaction inputs
     std::vector<TxIn> inputs;
@@ -164,8 +179,11 @@ public:
     /// Quantum-resistant signature (Dilithium3)
     Signature signature;
 
+    /// Contract transaction data (for CONTRACT_DEPLOYMENT and CONTRACT_CALL)
+    std::vector<uint8_t> contract_data;
+
     /// Default constructor
-    Transaction() : version(1), locktime(0) {}
+    Transaction() : version(1), type(TxType::STANDARD), locktime(0) {}
 
     /// Get transaction hash (txid)
     uint256 GetHash() const;
@@ -190,6 +208,17 @@ public:
 
     /// Check if this is a coinbase transaction
     bool IsCoinbase() const;
+
+    /// Check if this is a contract deployment transaction
+    bool IsContractDeployment() const { return type == TxType::CONTRACT_DEPLOYMENT; }
+
+    /// Check if this is a contract call transaction
+    bool IsContractCall() const { return type == TxType::CONTRACT_CALL; }
+
+    /// Check if this is any type of contract transaction
+    bool IsContractTransaction() const {
+        return type == TxType::CONTRACT_DEPLOYMENT || type == TxType::CONTRACT_CALL;
+    }
 
     /// Get total input value (requires UTXO set)
     uint64_t GetTotalInputValue(const class UTXOSet& utxo_set) const;

@@ -6,6 +6,7 @@
 #include "intcoin/blockchain.h"
 #include "intcoin/consensus.h"
 #include "intcoin/util.h"
+#include "intcoin/contracts/validator.h"
 #include <algorithm>
 #include <set>
 
@@ -227,6 +228,12 @@ TxValidator::TxValidator(const Blockchain& chain)
     : chain_(chain) {}
 
 Result<void> TxValidator::Validate(const Transaction& tx) const {
+    // Handle contract transactions separately
+    if (tx.IsContractTransaction()) {
+        contracts::ContractTxValidator contract_validator(chain_);
+        return contract_validator.Validate(tx);
+    }
+
     // 1. Validate structure
     auto structure_result = ValidateStructure(tx);
     if (structure_result.IsError()) {

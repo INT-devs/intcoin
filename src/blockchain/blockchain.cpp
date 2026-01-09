@@ -6,6 +6,9 @@
 #include "intcoin/blockchain.h"
 #include "intcoin/consensus.h"
 #include "intcoin/util.h"
+#include "intcoin/contracts/validator.h"
+#include "intcoin/contracts/database.h"
+#include "intcoin/contracts/transaction.h"
 #include <algorithm>
 #include <mutex>
 #include <set>
@@ -27,6 +30,12 @@ public:
     // UTXO set (with database persistence and address indexing)
     std::unique_ptr<UTXOSet> utxo_set_;
 
+    // Contract database
+    std::unique_ptr<contracts::ContractDatabase> contract_db_;
+
+    // Contract executor
+    std::unique_ptr<contracts::ContractExecutor> contract_executor_;
+
     // Chain state cache
     ChainState chain_state_;
     bool chain_state_loaded_ = false;
@@ -43,7 +52,8 @@ public:
 
     Impl(std::shared_ptr<BlockchainDB> db)
         : db_(std::move(db)),
-          utxo_set_(std::make_unique<UTXOSet>(db_)) {}
+          utxo_set_(std::make_unique<UTXOSet>(db_)),
+          contract_db_(std::make_unique<contracts::ContractDatabase>()) {}
 
     // Load chain state from database
     Result<void> LoadChainState() {
@@ -266,6 +276,22 @@ Result<void> Blockchain::Initialize() {
         return utxo_result;
     }
 
+    // Initialize contract database
+    if (!impl_->contract_db_) {
+        impl_->contract_db_ = std::make_unique<contracts::ContractDatabase>();
+    }
+
+    // Open contract database
+    // Use a default path for contract database
+    std::string db_path = "./data/contracts";
+    auto contract_db_result = impl_->contract_db_->Open(db_path);
+    if (contract_db_result.IsError()) {
+        return Result<void>::Error("Failed to open contract database: " + contract_db_result.error);
+    }
+
+    // Initialize contract executor
+    impl_->contract_executor_ = std::make_unique<contracts::ContractExecutor>(*impl_->contract_db_);
+
     // Initialize mempool
     impl_->mempool_ = std::make_unique<Mempool>();
 
@@ -365,6 +391,61 @@ Result<void> Blockchain::AddBlock(const Block& block) {
     if (utxo_result.IsError()) {
         impl_->db_->AbortBatch();
         return utxo_result;
+    }
+
+    // Execute contract transactions
+    if (impl_->contract_executor_) {
+        impl_->contract_db_->BeginBatch();
+
+        uint32_t tx_index = 0;
+        for (const auto& tx : block.transactions) {
+            if (tx.IsContractDeployment()) {
+                // Deserialize deployment transaction
+                auto deploy_result = contracts::ContractDeploymentTx::Deserialize(tx.contract_data);
+                if (deploy_result.has_value()) {
+                    auto exec_result = impl_->contract_executor_->ExecuteDeployment(
+                        deploy_result.value(),
+                        tx.GetHash(),
+                        height,
+                        block.header.timestamp,
+                        tx_index
+                    );
+
+                    if (exec_result.IsError()) {
+                        impl_->contract_db_->DiscardBatch();
+                        impl_->db_->AbortBatch();
+                        return Result<void>::Error("Contract deployment failed: " + exec_result.error);
+                    }
+                }
+            } else if (tx.IsContractCall()) {
+                // Deserialize call transaction
+                auto call_result = contracts::ContractCallTx::Deserialize(tx.contract_data);
+                if (call_result.has_value()) {
+                    auto exec_result = impl_->contract_executor_->ExecuteCall(
+                        call_result.value(),
+                        tx.GetHash(),
+                        height,
+                        block.header.timestamp,
+                        tx_index
+                    );
+
+                    if (exec_result.IsError()) {
+                        impl_->contract_db_->DiscardBatch();
+                        impl_->db_->AbortBatch();
+                        return Result<void>::Error("Contract call failed: " + exec_result.error);
+                    }
+                }
+            }
+
+            tx_index++;
+        }
+
+        // Commit all contract state changes atomically
+        auto commit_result = impl_->contract_db_->CommitBatch();
+        if (commit_result.IsError()) {
+            impl_->db_->AbortBatch();
+            return Result<void>::Error("Failed to commit contract state: " + commit_result.error);
+        }
     }
 
     // Update chain state

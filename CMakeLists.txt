@@ -374,6 +374,7 @@ set(INTCOIN_CORE_SOURCES
     src/contracts/storage.cpp
     src/contracts/transaction.cpp
     src/contracts/database.cpp
+    src/contracts/validator.cpp
 
     # SPV (Simplified Payment Verification)
     src/spv/spv.cpp
