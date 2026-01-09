@@ -1,7 +1,7 @@
 # INTcoin Technical Requirements
 
-**Last Updated**: December 9, 2025
-**Current Status**: 97% Complete (Phases 1-10)
+**Last Updated**: January 9, 2026
+**Current Status**: v1.4.0-beta Released (Smart Contracts Integrated)
 
 ## Development Standards
 
@@ -35,11 +35,9 @@
 - **Minimum**: Windows 11 (21H2 or later)
 - **Compiler**: MSVC 2022 with C++23 support or MinGW-w64 with GCC 13+
 
-## Completed Features (v1.0)
+## Completed Features
 
-The following features have been completed for v1.0:
-
-### ✅ Core Infrastructure (100%)
+### ✅ Core Infrastructure (v1.0-v1.3) - 100%
 - **Blockchain Core**: Full validation, UTXO model, consensus rules
 - **P2P Networking**: Peer discovery, block/transaction propagation
 - **Storage**: RocksDB persistence with LRU cache and Bloom filters
@@ -52,16 +50,37 @@ The following features have been completed for v1.0:
 - **Mining Pool**: Stratum protocol foundation
 - **Testnet Faucet**: Automated testnet coin distribution
 
+### ✅ Smart Contracts (v1.4.0) - 100% ⭐ NEW
+- **IntSC Virtual Machine**: EVM-compatible execution engine with 60+ opcodes
+- **Post-Quantum Opcodes**: 4 PQC operations (DILITHIUM_VERIFY, KYBER_ENCAP, KYBER_DECAP, PQC_PUBKEY)
+- **Gas Metering**: EVM-compatible gas costs with PQC adjustments
+- **Contract Transactions**: Type 2 (Deployment) and Type 3 (Call)
+- **Contract Database**: RocksDB-backed persistent storage (accounts, storage, receipts, logs)
+- **Event Logs**: Indexed by block number with topic filtering
+- **Transaction Receipts**: Complete execution results with gas tracking
+- **Nonce Management**: Sequential nonce tracking for replay prevention
+- **Replace-By-Fee (RBF)**: Transaction replacement with 10% minimum gas price increase
+- **Gas Limits**: Block (30M), Mempool (60M), Transaction (30M max)
+- **Contract RPC**: 12 new methods (deploy, call, query, estimate gas, etc.)
+- **Quantum-Resistant Signatures**: All contracts signed with Dilithium3
+- **State Rollback**: Contracts correctly roll back during chain reorganizations
+
+### ✅ IBD Optimization (v1.4.0) - 100% ⭐ NEW
+- **Parallel Validation**: Multi-threaded block validation (utilizes all CPU cores)
+- **Assume-UTXO**: Fast sync from Dilithium3-signed snapshots
+- **Background Verification**: Full validation continues after fast sync
+- **10x Speed Improvement**: ~1000 blocks/second (vs ~100 blocks/second before)
+
 ## Deferred Features
 
-The following features are deferred to post-1.0 releases:
+The following features are deferred to future releases:
 
 ### Deferred to v2.0+
 - **Mobile Wallet** (Android/iOS native apps - separate projects)
 - **Web Wallet** (Browser-based wallet - separate project)
-- **Lightning Network Full BOLT Compliance** (v1.0 has foundation)
-- **Smart Contracts Layer** (Turing-complete VM)
+- **Lightning Network Full BOLT Compliance** (v1.4.0 has foundation + enhancements)
 - **Privacy Features** (Ring signatures, stealth addresses)
+- **Advanced Smart Contract Features** (e.g., CREATE2 opcode, delegatecall, upgradeable contracts)
 
 ## Core Technology Stack
 
@@ -148,9 +167,12 @@ brew install i2pd            # Privacy (optional)
 
 ### Test Coverage
 - **Unit tests**: ≥80% code coverage
-- **Integration tests**: All major features
+- **Integration tests**: All major features (64 test suites in v1.4.0)
 - **Regression tests**: All fixed bugs
 - **Performance tests**: Benchmarks for critical paths
+- **Smart Contract tests**: 13 integration tests + 5 performance benchmarks (v1.4.0)
+- **State Rollback tests**: 6 reorg validation tests (v1.4.0)
+- **Test Success Rate**: 100% (all tests passing)
 
 ### Continuous Integration
 - Build on all supported platforms
@@ -202,6 +224,18 @@ brew install i2pd            # Privacy (optional)
 ### Memory Usage
 - **Node**: < 4 GB RAM typical, < 8 GB maximum
 - **Wallet**: < 1 GB RAM typical, < 2 GB maximum
+
+### Smart Contract Performance (v1.4.0)
+- **Contract Deployment**: > 2,000 deployments/second (measured: 2,188/sec)
+- **Contract Calls**: > 2,000 calls/second (measured: 2,184/sec)
+- **Database Reads**: > 2M reads/second (measured: 2.5M/sec)
+- **Database Writes**: > 200K writes/second (measured: 242K/sec)
+- **Signature Validation**: > 10K validations/second (measured: 11,206/sec Dilithium3)
+- **Block Validation with Contracts**: < 100ms per block
+- **Gas Execution**: EVM-compatible gas costs
+- **Maximum Contract Size**: 24 KB (24,576 bytes)
+- **Block Gas Limit**: 30,000,000 gas
+- **Mempool Gas Limit**: 60,000,000 gas (2 blocks worth)
 
 ## Backward Compatibility
 

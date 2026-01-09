@@ -4,6 +4,9 @@
 #include <intcoin/mempool.h>
 #include <intcoin/blockchain.h>
 #include <intcoin/util.h>
+#include <intcoin/contracts/transaction.h>
+#include <intcoin/contracts/validator.h>
+#include <intcoin/crypto.h>
 
 #include <unordered_map>
 #include <set>
@@ -53,7 +56,12 @@ struct INTcoinMempool::Impl {
     // Orphan transactions (waiting for parent)
     std::unordered_map<std::string, MempoolEntry> orphan_txs;
 
-    Impl() : is_initialized(false) {}
+    // Contract transaction tracking
+    std::unordered_map<std::string, uint64_t> address_nonces;  // address -> next expected nonce
+    std::unordered_map<std::string, std::string> nonce_to_tx;  // "address:nonce" -> tx_hash
+    uint64_t total_gas_in_mempool;  // Total gas for all contract txs in mempool
+
+    Impl() : is_initialized(false), total_gas_in_mempool(0) {}
 
     // Helper: Convert uint256 to hex string
     std::string Uint256ToHex(const uint256& hash) const {
@@ -164,6 +172,12 @@ Result<void> INTcoinMempool::AddTransaction(const Transaction& tx, TxPriority pr
         return Result<void>::Error("Transaction validation failed");
     }
 
+    // Handle contract transactions differently
+    if (tx.IsContractTransaction()) {
+        return AddContractTransaction(tx, priority);
+    }
+
+    // Standard UTXO transaction handling
     // Calculate tx size and fee
     uint64_t tx_size = CalculateTxSize(tx);
     // Placeholder fee calculation: use minimum relay fee * size
@@ -223,6 +237,175 @@ Result<void> INTcoinMempool::AddTransaction(const Transaction& tx, TxPriority pr
     return Result<void>::Ok();
 }
 
+Result<void> INTcoinMempool::AddContractTransaction(const Transaction& tx, TxPriority priority) {
+    // Note: Caller must hold mutex lock
+
+    uint256 tx_hash = tx.GetHash();
+    std::string tx_key = impl_->Uint256ToHex(tx_hash);
+
+    // Parse contract transaction
+    std::string from_address;
+    uint64_t nonce = 0;
+    uint64_t gas_limit = 0;
+    uint64_t gas_price = 0;
+
+    if (tx.IsContractDeployment()) {
+        auto deploy_result = contracts::ContractDeploymentTx::Deserialize(tx.contract_data);
+        if (!deploy_result.has_value()) {
+            return Result<void>::Error("Failed to deserialize contract deployment");
+        }
+
+        const auto& deploy_tx = deploy_result.value();
+        from_address = PublicKeyToAddress(deploy_tx.from);
+        nonce = deploy_tx.nonce;
+        gas_limit = deploy_tx.gas_limit;
+        gas_price = deploy_tx.gas_price;
+
+    } else if (tx.IsContractCall()) {
+        auto call_result = contracts::ContractCallTx::Deserialize(tx.contract_data);
+        if (!call_result.has_value()) {
+            return Result<void>::Error("Failed to deserialize contract call");
+        }
+
+        const auto& call_tx = call_result.value();
+        from_address = PublicKeyToAddress(call_tx.from);
+        nonce = call_tx.nonce;
+        gas_limit = call_tx.gas_limit;
+        gas_price = call_tx.gas_price;
+    }
+
+    // Check nonce
+    std::string nonce_key = from_address + ":" + std::to_string(nonce);
+
+    // Check if we already have a transaction with this nonce
+    auto nonce_it = impl_->nonce_to_tx.find(nonce_key);
+    if (nonce_it != impl_->nonce_to_tx.end()) {
+        // Transaction with same nonce exists - check for RBF (Replace-By-Fee)
+        std::string existing_tx_key = nonce_it->second;
+        auto existing_entry_it = impl_->entries.find(existing_tx_key);
+
+        if (existing_entry_it != impl_->entries.end()) {
+            const MempoolEntry& existing_entry = existing_entry_it->second;
+
+            // Parse existing transaction to get its gas price
+            uint64_t existing_gas_price = 0;
+            if (existing_entry.tx.IsContractDeployment()) {
+                auto existing_deploy = contracts::ContractDeploymentTx::Deserialize(existing_entry.tx.contract_data);
+                if (existing_deploy.has_value()) {
+                    existing_gas_price = existing_deploy.value().gas_price;
+                }
+            } else if (existing_entry.tx.IsContractCall()) {
+                auto existing_call = contracts::ContractCallTx::Deserialize(existing_entry.tx.contract_data);
+                if (existing_call.has_value()) {
+                    existing_gas_price = existing_call.value().gas_price;
+                }
+            }
+
+            // RBF: New transaction must have gas price at least 10% higher
+            uint64_t min_replacement_gas_price = existing_gas_price + (existing_gas_price / 10);
+            if (gas_price < min_replacement_gas_price) {
+                return Result<void>::Error("Gas price too low for transaction replacement (need 10% increase)");
+            }
+
+            // Remove the old transaction
+            LogF(LogLevel::INFO, "Mempool: Replacing tx %s with higher gas price (%lu -> %lu)",
+                 existing_tx_key.substr(0, 16).c_str(), existing_gas_price, gas_price);
+
+            // Update gas tracking
+            if (existing_entry.tx.IsContractDeployment()) {
+                auto old_deploy = contracts::ContractDeploymentTx::Deserialize(existing_entry.tx.contract_data);
+                if (old_deploy.has_value()) {
+                    impl_->total_gas_in_mempool -= old_deploy.value().gas_limit;
+                }
+            } else if (existing_entry.tx.IsContractCall()) {
+                auto old_call = contracts::ContractCallTx::Deserialize(existing_entry.tx.contract_data);
+                if (old_call.has_value()) {
+                    impl_->total_gas_in_mempool -= old_call.value().gas_limit;
+                }
+            }
+
+            // Remove from priority queue
+            auto& pq = impl_->priority_queues[existing_entry.priority];
+            auto range = pq.equal_range(existing_entry.fee_per_byte);
+            for (auto pq_it = range.first; pq_it != range.second; ) {
+                if (pq_it->second == existing_tx_key) {
+                    pq_it = pq.erase(pq_it);
+                    break;
+                } else {
+                    ++pq_it;
+                }
+            }
+
+            // Remove from storage
+            impl_->entries.erase(existing_entry_it);
+        }
+    }
+
+    // Check if nonce is valid (should be next expected nonce for this address)
+    auto address_nonce_it = impl_->address_nonces.find(from_address);
+    if (address_nonce_it != impl_->address_nonces.end()) {
+        uint64_t expected_nonce = address_nonce_it->second;
+        if (nonce < expected_nonce) {
+            return Result<void>::Error("Nonce too low (already used)");
+        }
+        // Allow future nonces (they'll be held until prerequisites are met)
+    }
+
+    // Calculate tx size and fee (gas-based for contracts)
+    uint64_t tx_size = tx.GetSerializedSize();
+    uint64_t fee = gas_limit * gas_price;  // Total fee = gas_limit * gas_price
+    uint64_t fee_per_byte = fee / std::max<uint64_t>(tx_size, 1);
+
+    // Contract transactions have higher priority based on gas price
+    if (gas_price >= 100) priority = TxPriority::HIGH;
+    else if (gas_price >= 10) priority = TxPriority::NORMAL;
+
+    // Check block gas limit (30M gas target per block)
+    constexpr uint64_t BLOCK_GAS_LIMIT = 30'000'000;
+    if (impl_->total_gas_in_mempool + gas_limit > BLOCK_GAS_LIMIT * 2) {
+        // Mempool can hold 2 blocks worth of gas
+        return Result<void>::Error("Mempool gas limit exceeded");
+    }
+
+    // Check priority limit
+    if (impl_->GetCountForPriority(priority) >= impl_->config.priority_limits[priority]) {
+        EvictLowPriority();
+
+        if (impl_->GetCountForPriority(priority) >= impl_->config.priority_limits[priority]) {
+            return Result<void>::Error("Mempool full for this priority level");
+        }
+    }
+
+    // Create mempool entry
+    MempoolEntry entry;
+    entry.tx = tx;
+    entry.tx_hash = tx_hash;
+    entry.priority = priority;
+    entry.fee = fee;
+    entry.fee_per_byte = fee_per_byte;
+    entry.size_bytes = tx_size;
+    entry.added_time = std::time(nullptr);
+    entry.height_added = 0;
+    entry.broadcast_count = 0;
+    entry.last_broadcast = 0;
+
+    // Add to storage
+    impl_->entries[tx_key] = entry;
+
+    // Add to priority queue (sorted by gas price for contracts)
+    impl_->priority_queues[priority].emplace(gas_price, tx_key);
+
+    // Update contract tracking
+    impl_->nonce_to_tx[nonce_key] = tx_key;
+    impl_->address_nonces[from_address] = nonce + 1;  // Update expected nonce
+    impl_->total_gas_in_mempool += gas_limit;
+
+    LogF(LogLevel::INFO, "Mempool: Added contract tx %s (nonce: %lu, gas: %lu, gas_price: %lu)",
+         tx_key.substr(0, 16).c_str(), nonce, gas_limit, gas_price);
+
+    return Result<void>::Ok();
+}
+
 Result<void> INTcoinMempool::RemoveTransactionInternal(const uint256& tx_hash) {
     // Note: Caller must hold mutex lock
     if (!impl_->is_initialized) {
@@ -237,6 +420,35 @@ Result<void> INTcoinMempool::RemoveTransactionInternal(const uint256& tx_hash) {
     }
 
     const MempoolEntry& entry = it->second;
+
+    // If contract transaction, clean up tracking data
+    if (entry.tx.IsContractTransaction()) {
+        std::string from_address;
+        uint64_t nonce = 0;
+        uint64_t gas_limit = 0;
+
+        if (entry.tx.IsContractDeployment()) {
+            auto deploy_result = contracts::ContractDeploymentTx::Deserialize(entry.tx.contract_data);
+            if (deploy_result.has_value()) {
+                from_address = PublicKeyToAddress(deploy_result.value().from);
+                nonce = deploy_result.value().nonce;
+                gas_limit = deploy_result.value().gas_limit;
+            }
+        } else if (entry.tx.IsContractCall()) {
+            auto call_result = contracts::ContractCallTx::Deserialize(entry.tx.contract_data);
+            if (call_result.has_value()) {
+                from_address = PublicKeyToAddress(call_result.value().from);
+                nonce = call_result.value().nonce;
+                gas_limit = call_result.value().gas_limit;
+            }
+        }
+
+        if (!from_address.empty()) {
+            std::string nonce_key = from_address + ":" + std::to_string(nonce);
+            impl_->nonce_to_tx.erase(nonce_key);
+            impl_->total_gas_in_mempool -= gas_limit;
+        }
+    }
 
     // Remove from priority queue
     auto& pq = impl_->priority_queues[entry.priority];
@@ -338,6 +550,8 @@ std::vector<Transaction> INTcoinMempool::GetBlockTemplate(
 
     std::vector<Transaction> result;
     uint64_t total_size = 0;
+    uint64_t total_gas = 0;
+    constexpr uint64_t BLOCK_GAS_LIMIT = 30'000'000;  // 30M gas per block
 
     // Get transactions ordered by priority and fee
     auto all_entries = GetAllTransactionsInternal();
@@ -345,6 +559,30 @@ std::vector<Transaction> INTcoinMempool::GetBlockTemplate(
     for (const auto& entry : all_entries) {
         if (max_count > 0 && result.size() >= max_count) break;
         if (total_size + entry.size_bytes > max_size_bytes) break;
+
+        // Check gas limit for contract transactions
+        if (entry.tx.IsContractTransaction()) {
+            uint64_t tx_gas_limit = 0;
+
+            if (entry.tx.IsContractDeployment()) {
+                auto deploy_result = contracts::ContractDeploymentTx::Deserialize(entry.tx.contract_data);
+                if (deploy_result.has_value()) {
+                    tx_gas_limit = deploy_result.value().gas_limit;
+                }
+            } else if (entry.tx.IsContractCall()) {
+                auto call_result = contracts::ContractCallTx::Deserialize(entry.tx.contract_data);
+                if (call_result.has_value()) {
+                    tx_gas_limit = call_result.value().gas_limit;
+                }
+            }
+
+            // Skip if adding this tx would exceed block gas limit
+            if (total_gas + tx_gas_limit > BLOCK_GAS_LIMIT) {
+                continue;
+            }
+
+            total_gas += tx_gas_limit;
+        }
 
         result.push_back(entry.tx);
         total_size += entry.size_bytes;

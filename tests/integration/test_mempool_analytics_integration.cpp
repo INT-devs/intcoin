@@ -125,7 +125,7 @@ INTEGRATION_TEST(test_fee_estimation) {
     }
 
     // Train model (this would use actual ML in production)
-    bool trained = estimator.TrainModel(training_data);
+    [[maybe_unused]] bool trained = estimator.TrainModel(training_data);
 
     // Test estimation for various targets
     std::vector<uint32_t> targets = {1, 3, 6, 12, 24};

@@ -126,6 +126,18 @@ target_link_libraries(test_mempool_analytics_integration intcoin_core ${ROCKSDB_
 add_executable(test_ibd_integration integration/test_ibd_integration.cpp)
 target_link_libraries(test_ibd_integration intcoin_core ${ROCKSDB_LIB})
 
+# Test: Contracts Integration (Phase 3: smart contracts integration testing)
+add_executable(test_contracts_integration test_contracts_integration.cpp)
+target_link_libraries(test_contracts_integration intcoin_core ${ROCKSDB_LIB})
+
+# Benchmark: Contracts Performance (Phase 3: performance benchmarking)
+add_executable(benchmark_contracts benchmark_contracts.cpp)
+target_link_libraries(benchmark_contracts intcoin_core ${ROCKSDB_LIB})
+
+# Test: Contracts Reorg (Phase 3: state rollback validation)
+add_executable(test_contracts_reorg test_contracts_reorg.cpp)
+target_link_libraries(test_contracts_reorg intcoin_core ${ROCKSDB_LIB})
+
 # Register tests with CTest
 add_test(NAME CryptoTest COMMAND test_crypto)
 add_test(NAME RandomXTest COMMAND test_randomx)
@@ -157,6 +169,8 @@ add_test(NAME RoutingTest COMMAND test_routing)
 add_test(NAME NetworkExplorerTest COMMAND test_network_explorer)
 add_test(NAME MempoolAnalyticsIntegrationTest COMMAND test_mempool_analytics_integration)
 add_test(NAME IBDIntegrationTest COMMAND test_ibd_integration)
+add_test(NAME ContractsIntegrationTest COMMAND test_contracts_integration)
+add_test(NAME ContractsReorgTest COMMAND test_contracts_reorg)
 
 # Install test executables (optional)
 install(TARGETS
@@ -190,5 +204,8 @@ install(TARGETS
     test_network_explorer
     test_mempool_analytics_integration
     test_ibd_integration
+    test_contracts_integration
+    test_contracts_reorg
+    benchmark_contracts
     DESTINATION bin/tests
 )

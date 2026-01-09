@@ -6,9 +6,11 @@ Currently supported versions of INTcoin:
 
 | Version | Supported          |
 | ------- | ------------------ |
+| 1.4.x   | :white_check_mark: |
+| 1.3.x   | :white_check_mark: |
 | 1.2.x   | :white_check_mark: |
-| 1.1.x   | :white_check_mark: |
-| 1.0.x   | :white_check_mark: |
+| 1.1.x   | :x:                |
+| 1.0.x   | :x:                |
 | < 1.0   | :x:                |
 
 ---
@@ -139,6 +141,7 @@ INTcoin implements multiple security layers:
 | Network Protocol | Pending | - |
 | Wallet | Pending | - |
 | RPC Interface | Pending | - |
+| Smart Contracts | Pending | - |
 
 Professional security audits are planned for Q1 2026.
 
@@ -282,6 +285,142 @@ Download from:
 
 ---
 
+## v1.4.0-beta Security Considerations
+
+### Smart Contracts Security (IntSC VM)
+
+**Quantum-Resistant Signatures**:
+- All contract transactions (deployment and calls) require Dilithium3 signatures
+- Signature size: 3,309 bytes (provides post-quantum security)
+- **Protection**: Future-proof against quantum computer attacks
+- **Validation**: 11,206 signature validations per second (measured on Apple Silicon)
+- **Critical**: Never reuse contract deployment addresses; nonces ensure deterministic uniqueness
+
+**Gas Limit Enforcement**:
+- **Block Gas Limit**: 30,000,000 gas per block
+- **Mempool Gas Limit**: 60,000,000 gas (2 blocks worth)
+- **Transaction Gas Limit**: Maximum 30M gas per transaction
+- **Minimum Gas**: 32,000 + 200 per byte (deployments), 21,000 (calls)
+- **Risk**: Infinite loops or resource-intensive contracts could DoS validators
+- **Mitigation**: Strict gas metering prevents infinite execution; gas limits enforced at mempool, block validation, and execution levels
+
+**Nonce Validation and Replay Prevention**:
+- Sequential nonce requirement per contract address
+- Nonce tracking in mempool prevents replay attacks
+- **Risk**: Nonce reuse could enable transaction replay
+- **Mitigation**: Mempool rejects old nonces; future nonces held until sequential; atomic nonce increment on execution
+- **Critical**: Users must manage nonces carefully when sending multiple transactions
+
+**Contract Bytecode Size Limits**:
+- Maximum contract size: 24 KB (24,576 bytes) - EVM standard
+- **Risk**: Oversized contracts could consume excessive storage
+- **Mitigation**: Validation rejects contracts exceeding size limit; encourages modular contract design
+
+**Replace-By-Fee (RBF) Security**:
+- RBF requires 10% minimum gas price increase for replacement
+- **Risk**: Transaction spam through repeated low-cost replacements
+- **Mitigation**: 10% threshold prevents spam; mempool tracks gas price per nonce
+- **User Impact**: Allows transaction acceleration during network congestion
+
+**Contract Execution Isolation**:
+- Each contract executes in isolated VM context
+- Gas tracking prevents runaway execution
+- **Risk**: Malicious contracts could attempt to exploit VM
+- **Mitigation**: EVM-compatible opcode validation; bounded execution; no access to host system
+- **Critical**: IntSC VM implements 60+ standard opcodes + 4 PQC opcodes
+
+**Event Log Storage**:
+- Event logs indexed by block number and transaction hash
+- Topic-based filtering (up to 4 indexed topics)
+- **Risk**: Excessive event emission could consume storage
+- **Mitigation**: Gas cost per log emission; database compaction; efficient indexing
+
+**Contract Address Determinism**:
+- Contract addresses generated via SHA3-256(deployer || nonce)
+- Bech32 "int1" prefix with error detection
+- **Risk**: Address collision (theoretical with SHA3-256)
+- **Mitigation**: Cryptographically negligible collision probability; nonce ensures uniqueness per deployer
+- **Benefit**: Deterministic addresses enable off-chain address prediction
+
+**State Rollback During Reorgs**:
+- Contract state (balance, nonce, storage) correctly rolls back during chain reorganizations
+- Event logs managed during block disconnect/reconnect
+- **Risk**: Deep reorgs could temporarily invalidate contract states
+- **Mitigation**: Atomic batch operations ensure consistency; wait for confirmations on critical operations
+- **Validation**: 6 reorg tests confirm correct rollback behavior
+
+**Smart Contract Audit Recommendations**:
+
+For developers deploying contracts on INTcoin:
+
+1. **Audit Before Deployment**:
+   - Review contract logic for common vulnerabilities (reentrancy, overflow, etc.)
+   - Test extensively on testnet before mainnet deployment
+   - Use established Solidity patterns and libraries
+
+2. **Gas Optimization**:
+   - Optimize gas usage to reduce transaction costs
+   - Avoid unbounded loops
+   - Use efficient data structures
+
+3. **Event Logging**:
+   - Emit events for all state changes
+   - Index important parameters for efficient querying
+   - Keep event data concise
+
+4. **Access Control**:
+   - Implement proper access control for administrative functions
+   - Use multi-sig for critical operations
+   - Consider time locks for upgrades
+
+5. **Emergency Procedures**:
+   - Implement pause mechanisms for critical bugs
+   - Plan for contract upgrades or migrations
+   - Maintain insurance or reserve funds
+
+**RPC Security for Contracts**:
+- 12 new contract RPC methods require authentication
+- Parameter validation on all inputs
+- Gas estimation prevents underestimation attacks
+- **Risk**: Unauthorized contract deployment/execution
+- **Mitigation**: Enable `rpcauth` for all production nodes; rate limit contract RPC calls
+- **Recommendation**: Use dedicated RPC nodes for contract interaction; firewall port 8332
+
+**Contract Database Security**:
+- RocksDB backend with atomic batch operations
+- Contract storage isolated per address
+- **Performance**: 2.5M reads/sec, 242K writes/sec
+- **Risk**: Database corruption could lose contract state
+- **Mitigation**: Regular backups; database checksums; atomic commits prevent partial writes
+- **Critical**: Ensure sufficient disk space for contract storage growth
+
+**Known Attack Vectors**:
+
+1. **Gas Griefing**: Attacker deploys contracts that consume maximum gas without useful work
+   - **Mitigation**: High gas costs disincentivize; min gas price enforcement
+
+2. **Storage Bloat**: Attacker creates many contracts to consume storage
+   - **Mitigation**: Deployment requires transaction fees; 24 KB size limit per contract
+
+3. **Nonce Manipulation**: Attacker attempts to replay old transactions
+   - **Mitigation**: Sequential nonce validation; mempool rejects duplicate nonces
+
+4. **Signature Malleability**: Attacker modifies signature to create new transaction hash
+   - **Mitigation**: Dilithium3 signatures are non-malleable by design
+
+**Recommended Security Practices for Contract Developers**:
+
+1. Use latest Solidity compiler with optimizer enabled
+2. Implement checks-effects-interactions pattern
+3. Avoid delegatecall to untrusted contracts
+4. Use SafeMath equivalents for arithmetic
+5. Test with maximum gas limits to verify execution bounds
+6. Monitor deployed contracts for unusual activity
+7. Plan for emergency pause and upgrade mechanisms
+8. Consider quantum-resistant key management for contract ownership
+
+---
+
 ## Contact
 
 For security-related questions that are not vulnerability reports:
@@ -290,4 +429,4 @@ For security-related questions that are not vulnerability reports:
 
 ---
 
-*Last Updated: January 2, 2026 - v1.2.0-beta*
+*Last Updated: January 9, 2026 - v1.4.0-beta*

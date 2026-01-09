@@ -17,22 +17,13 @@
 #include <chrono>
 #include <vector>
 
+// Include block headers first
+#include <intcoin/block.h>
+
 // Define mocks BEFORE including IBD headers
 namespace intcoin {
 
-// uint256 is now defined in include/intcoin/uint256.h
-// CBlock and CBlockIndex mocks for testing
-class CBlock {
-public:
-    uint32_t nHeight{0};
-    std::vector<uint8_t> data;
-
-    CBlock(uint32_t height) : nHeight(height) {
-        // Simulate block data
-        data.resize(1000000); // 1MB block
-    }
-};
-
+// CBlockIndex mock for testing
 class CBlockIndex {
 public:
     uint32_t nHeight{0};
@@ -41,7 +32,7 @@ public:
 
 } // namespace intcoin
 
-using intcoin::CBlock;
+using intcoin::Block;
 using intcoin::CBlockIndex;
 
 // Now include IBD headers (after mocks are defined)
@@ -85,7 +76,13 @@ INTEGRATION_TEST(test_parallel_validation_performance) {
     // Submit blocks for validation
     std::vector<ValidationFuture> futures;
     for (int i = 0; i < NUM_BLOCKS; i++) {
-        CBlock block(i);
+        // Create a minimal test block
+        Block block;
+        block.header.version = 1;
+        block.header.timestamp = static_cast<uint64_t>(std::time(nullptr)) + i;
+        block.header.bits = 0x1d00ffff;
+        block.header.nonce = i;
+
         CBlockIndex index(i);
         futures.push_back(processor.SubmitBlock(block, &index));
     }
@@ -116,14 +113,14 @@ INTEGRATION_TEST(test_assumeutxo_fast_sync) {
     std::cout << "  → Creating UTXO snapshot at height 100,000..." << std::endl;
 
     // Create a snapshot (in real implementation, this would serialize UTXO set)
-    bool created = manager.CreateSnapshot("/tmp/test_snapshot_100k.dat");
+    [[maybe_unused]] bool created = manager.CreateSnapshot("/tmp/test_snapshot_100k.dat");
     assert(created);
 
     std::cout << "  → Loading snapshot..." << std::endl;
     auto load_start = std::chrono::steady_clock::now();
 
     // Load the snapshot
-    bool loaded = manager.LoadSnapshot("/tmp/test_snapshot_100k.dat");
+    [[maybe_unused]] bool loaded = manager.LoadSnapshot("/tmp/test_snapshot_100k.dat");
     assert(loaded);
 
     auto load_end = std::chrono::steady_clock::now();
@@ -153,7 +150,13 @@ INTEGRATION_TEST(test_parallel_validation_correctness) {
 
     std::vector<intcoin::uint256> serial_hashes;
     for (int i = 0; i < NUM_BLOCKS; i++) {
-        CBlock block(i);
+        // Create a minimal test block
+        Block block;
+        block.header.version = 1;
+        block.header.timestamp = static_cast<uint64_t>(std::time(nullptr)) + i;
+        block.header.bits = 0x1d00ffff;
+        block.header.nonce = i;
+
         CBlockIndex index(i);
         auto future = serial_processor.SubmitBlock(block, &index);
         auto result = future.get();
@@ -169,7 +172,13 @@ INTEGRATION_TEST(test_parallel_validation_correctness) {
     std::vector<ValidationFuture> futures;
 
     for (int i = 0; i < NUM_BLOCKS; i++) {
-        CBlock block(i);
+        // Create a minimal test block
+        Block block;
+        block.header.version = 1;
+        block.header.timestamp = static_cast<uint64_t>(std::time(nullptr)) + i;
+        block.header.bits = 0x1d00ffff;
+        block.header.nonce = i;
+
         CBlockIndex index(i);
         futures.push_back(parallel_processor.SubmitBlock(block, &index));
     }

@@ -187,6 +187,7 @@ private:
     uint64_t CalculateTxSize(const Transaction& tx) const;
     std::vector<MempoolEntry> GetAllTransactionsInternal() const;  // Internal helper, caller must hold mutex
     Result<void> RemoveTransactionInternal(const uint256& tx_hash);  // Internal helper, caller must hold mutex
+    Result<void> AddContractTransaction(const Transaction& tx, TxPriority priority);  // Internal helper for contract txs
 };
 
 /// Helper functions

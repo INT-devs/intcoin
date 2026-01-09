@@ -41,7 +41,7 @@ Quantum computers pose an existential threat to traditional cryptocurrencies:
 
 ### 🌐 True Decentralization
 
-- **SHA-256 Proof of Work** (battle-tested Bitcoin algorithm)
+- **RandomX Proof of Work** (ASIC-resistant CPU mining)
 - No pre-mine, no ICO, no founder allocation
 - No staking or governance (pure Proof of Work)
 - Fair launch for all participants
@@ -66,18 +66,20 @@ Quantum computers pose an existential threat to traditional cryptocurrencies:
 
 | Feature | Specification |
 |---------|---------------|
-| **Consensus** | Proof of Work (SHA-256 double hash) |
+| **Consensus** | Proof of Work (RandomX + Digishield V3) |
 | **Block Time** | 2 minutes (120 seconds) |
-| **Block Size** | 4 MB |
-| **Supply** | 221 trillion INT (halving every 2,016 blocks) |
-| **Initial Reward** | 50 INT per block |
-| **Difficulty Adjustment** | Every 2,016 blocks (~4.67 days) |
-| **Signatures** | CRYSTALS-Dilithium5 (ML-DSA-87, 4595 bytes) |
-| **Encryption** | CRYSTALS-Kyber1024 (ML-KEM-1024, 3168 bytes) |
+| **Block Size** | 8 MB |
+| **Max Supply** | 221 trillion INT |
+| **Initial Reward** | 105,113,636 INT per block |
+| **Halving Interval** | 1,051,200 blocks (~4 years) |
+| **Difficulty Adjustment** | Every block (Digishield V3) |
+| **Signatures** | Dilithium3 (NIST PQC Level 3, 3,309 bytes) |
+| **Key Encapsulation** | Kyber768 (NIST PQC Level 3) |
 | **Hash Function** | SHA3-256 (FIPS 202) |
-| **P2P Port** | 9333 (mainnet), 19333 (testnet) |
-| **RPC Port** | 9334 (mainnet), 19334 (testnet) |
+| **P2P Port** | 8333 (mainnet), 18333 (testnet) |
+| **RPC Port** | 8332 (mainnet), 18332 (testnet) |
 | **Lightning** | Quantum-resistant payment channels |
+| **Smart Contracts** | IntSC VM (EVM-compatible, v1.4.0) |
 
 ---
 
