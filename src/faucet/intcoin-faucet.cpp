@@ -281,6 +281,12 @@ int main(int argc, char* argv[]) {
         while (faucet.IsRunning()) {
             std::this_thread::sleep_for(std::chrono::seconds(60));
 
+            // Sync wallet with blockchain to pick up mined coins
+            auto sync_result = wallet.UpdateUTXOs(blockchain);
+            if (!sync_result.IsOk()) {
+                std::cerr << "Warning: Failed to sync wallet: " << sync_result.error << std::endl;
+            }
+
             auto stats = faucet.GetStats();
             std::cout << "[" << std::time(nullptr) << "] Faucet Stats:" << std::endl;
             std::cout << "  Total Distributions: " << stats.total_distributions << std::endl;
