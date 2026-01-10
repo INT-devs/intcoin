@@ -394,6 +394,21 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
+.app-footer .links {
+  margin-top: 0.5rem;
+}
+
+.app-footer .links a {
+  color: var(--primary-color);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.app-footer .links a:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
+}
+
 .app-footer .warning {
   margin-top: 0.5rem;
   color: var(--warning-color);

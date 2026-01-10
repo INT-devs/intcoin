@@ -84,10 +84,17 @@ function BridgeApp() {
 
         <footer className="app-footer">
           <p>
-            INTcoin Bridge v1.2.0-beta | Pure Proof-of-Work | Post-Quantum Secure
+            INTcoin Bridge v1.4.0-beta | Pure Proof-of-Work | Post-Quantum Secure (Dilithium3)
+          </p>
+          <p className="links">
+            <a href="https://github.com/INT-devs/intcoin" target="_blank" rel="noopener">GitHub</a>
+            {' | '}
+            <a href="https://international-coin.org" target="_blank" rel="noopener">Website</a>
+            {' | '}
+            <a href="https://discord.gg/jCy3eNgx" target="_blank" rel="noopener">Discord</a>
           </p>
           <p className="warning">
-            ⚠️ This is beta software. Use at your own risk. Always verify transactions.
+            This is beta software. Use at your own risk. Always verify transactions.
           </p>
         </footer>
       </div>

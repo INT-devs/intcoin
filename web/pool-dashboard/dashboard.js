@@ -1,4 +1,5 @@
 // INTcoin Mining Pool Dashboard JavaScript
+// Version: 1.4.0
 
 // Configuration
 const CONFIG = {
@@ -14,10 +15,16 @@ const CONFIG = {
 // State
 let currentWorkerAddress = null;
 let updateTimer = null;
+let isDarkTheme = false;
 
 // Initialize dashboard on page load
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('INTcoin Mining Pool Dashboard initialized');
+    console.log('INTcoin Mining Pool Dashboard v1.4.0 initialized');
+
+    // Load theme preference
+    loadThemePreference();
+
+    // Load initial data
     loadPoolStats();
     loadRecentBlocks();
     loadRecentPayments();
@@ -32,7 +39,61 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('worker-address').value = savedAddress;
         loadWorkerStats();
     }
+
+    // Add enter key support for worker search
+    document.getElementById('worker-address').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            loadWorkerStats();
+        }
+    });
 });
+
+// Theme toggle functionality
+function toggleTheme() {
+    isDarkTheme = !isDarkTheme;
+    applyTheme();
+    localStorage.setItem('darkTheme', isDarkTheme);
+}
+
+function loadThemePreference() {
+    const saved = localStorage.getItem('darkTheme');
+    if (saved !== null) {
+        isDarkTheme = saved === 'true';
+    } else {
+        // Auto-detect system preference
+        isDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    applyTheme();
+}
+
+function applyTheme() {
+    if (isDarkTheme) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.getElementById('theme-icon').innerHTML = '&#9788;'; // Sun icon
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        document.getElementById('theme-icon').innerHTML = '&#9790;'; // Moon icon
+    }
+}
+
+// Copy to clipboard functionality
+function copyToClipboard(element) {
+    const text = element.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        // Visual feedback
+        element.classList.add('copied');
+        const hint = element.nextElementSibling;
+        const originalText = hint.textContent;
+        hint.textContent = 'Copied!';
+
+        setTimeout(() => {
+            element.classList.remove('copied');
+            hint.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+    });
+}
 
 // Auto-refresh functionality
 function startAutoRefresh() {
@@ -46,6 +107,8 @@ function startAutoRefresh() {
         }
         updateLastRefreshTime();
     }, CONFIG.updateInterval);
+
+    document.getElementById('refresh-status').textContent = 'Enabled (30s)';
 }
 
 function updateLastRefreshTime() {
@@ -96,74 +159,103 @@ function getMockData(method) {
             miners: 42,
             blocks_found: 156,
             total_shares: 1234567,
-            valid_shares_24h: 89234
+            valid_shares_24h: 89234,
+            block_height: 123456
         },
         'pool_getblocks': [
             {
                 height: 123456,
-                hash: 'a1b2c3d4...e5f6g7h8',
+                hash: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6',
                 timestamp: Date.now() - 3600000,
-                finder: 'intc1qxy2kgdygjrs...',
+                finder: 'int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
                 reward: 105113636,
                 status: 'confirmed'
             },
             {
                 height: 123455,
-                hash: 'b2c3d4e5...f6g7h8i9',
+                hash: 'b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7',
                 timestamp: Date.now() - 7200000,
-                finder: 'intc1q9876543210...',
+                finder: 'int1q9876543210abcdefghijklmnopqrs',
                 reward: 105113636,
                 status: 'confirmed'
             },
             {
                 height: 123454,
-                hash: 'c3d4e5f6...g7h8i9j0',
+                hash: 'c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8',
                 timestamp: Date.now() - 10800000,
-                finder: 'intc1qabcdef12345...',
+                finder: 'int1qabcdef1234567890fedcba098765',
                 reward: 105113636,
                 status: 'pending'
+            },
+            {
+                height: 123453,
+                hash: 'd4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9',
+                timestamp: Date.now() - 14400000,
+                finder: 'int1qzxcvbnm0987654321asdfghjklqw',
+                reward: 105113636,
+                status: 'confirmed'
             }
         ],
         'pool_getpayments': [
             {
                 timestamp: Date.now() - 1800000,
-                address: 'intc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+                address: 'int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
                 amount: 5.25,
-                txid: 'tx123456789abcdef'
+                txid: 'tx123456789abcdef0123456789abcdef'
             },
             {
                 timestamp: Date.now() - 5400000,
-                address: 'intc1q9876543210abcdefghijklmnopqrstuvwxyz',
+                address: 'int1q9876543210abcdefghijklmnopqrs',
                 amount: 10.50,
-                txid: 'tx987654321fedcba'
+                txid: 'tx987654321fedcba9876543210fedcba'
+            },
+            {
+                timestamp: Date.now() - 9000000,
+                address: 'int1qabcdef1234567890fedcba098765',
+                amount: 3.75,
+                txid: 'txabcdef0123456789abcdef01234567'
             }
         ],
         'pool_gettopminers': [
             {
                 rank: 1,
-                address: 'intc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+                address: 'int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
                 hashrate: 45000000,
                 shares: 12345
             },
             {
                 rank: 2,
-                address: 'intc1q9876543210abcdefghijklmnopqrstuvwxyz',
+                address: 'int1q9876543210abcdefghijklmnopqrs',
                 hashrate: 38000000,
                 shares: 10234
             },
             {
                 rank: 3,
-                address: 'intc1qabcdef1234567890fedcba0987654321xyz',
+                address: 'int1qabcdef1234567890fedcba098765',
                 hashrate: 25000000,
                 shares: 7890
+            },
+            {
+                rank: 4,
+                address: 'int1qzxcvbnm0987654321asdfghjklqw',
+                hashrate: 17000000,
+                shares: 5432
+            },
+            {
+                rank: 5,
+                address: 'int1qpoiuytrewq1234567890lkjhgfds',
+                hashrate: 12000000,
+                shares: 3456
             }
         ],
         'pool_getworker': {
-            address: 'intc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+            address: 'int1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
             hashrate: 12500000,
             shares: 5678,
             balance: 2.5,
-            total_paid: 15.75
+            total_paid: 15.75,
+            last_share: Date.now() - 60000,
+            workers_online: 2
         }
     };
 
@@ -172,7 +264,7 @@ function getMockData(method) {
 
 // Format hashrate
 function formatHashrate(hashrate) {
-    const units = ['H/s', 'KH/s', 'MH/s', 'GH/s', 'TH/s'];
+    const units = ['H/s', 'KH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s'];
     let index = 0;
     let value = hashrate;
 
@@ -195,6 +287,16 @@ function formatTimestamp(timestamp) {
     return date.toLocaleString();
 }
 
+// Format relative time
+function formatRelativeTime(timestamp) {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+}
+
 // Truncate address for display
 function truncateAddress(address, start = 12, end = 8) {
     if (!address || address.length <= start + end) return address;
@@ -212,6 +314,12 @@ async function loadPoolStats() {
         document.getElementById('blocks-found').textContent = formatNumber(stats.blocks_found);
         document.getElementById('total-shares').textContent = formatNumber(stats.total_shares);
         document.getElementById('valid-shares-24h').textContent = formatNumber(stats.valid_shares_24h);
+
+        // Block height (new field)
+        const blockHeightEl = document.getElementById('block-height');
+        if (blockHeightEl && stats.block_height) {
+            blockHeightEl.textContent = formatNumber(stats.block_height);
+        }
     }
 
     updateLastRefreshTime();
@@ -229,11 +337,11 @@ async function loadRecentBlocks() {
 
     tbody.innerHTML = blocks.map(block => `
         <tr>
-            <td>${formatNumber(block.height)}</td>
+            <td><strong>${formatNumber(block.height)}</strong></td>
             <td><code>${truncateAddress(block.hash, 16, 8)}</code></td>
             <td>${formatTimestamp(block.timestamp)}</td>
             <td><code>${truncateAddress(block.finder)}</code></td>
-            <td>${(block.reward / 1000000000).toFixed(2)} INT</td>
+            <td>${(block.reward / 1000000000).toFixed(4)} INT</td>
             <td class="status-${block.status}">${block.status.toUpperCase()}</td>
         </tr>
     `).join('');
@@ -253,7 +361,7 @@ async function loadRecentPayments() {
         <tr>
             <td>${formatTimestamp(payment.timestamp)}</td>
             <td><code>${truncateAddress(payment.address)}</code></td>
-            <td>${payment.amount.toFixed(4)} INT</td>
+            <td><strong>${payment.amount.toFixed(4)} INT</strong></td>
             <td><code>${truncateAddress(payment.txid, 16, 8)}</code></td>
         </tr>
     `).join('');
@@ -271,7 +379,7 @@ async function loadTopMiners() {
 
     tbody.innerHTML = miners.map((miner, index) => `
         <tr>
-            <td>${index + 1}</td>
+            <td><strong>${index + 1}</strong></td>
             <td><code>${truncateAddress(miner.address)}</code></td>
             <td>${formatHashrate(miner.hashrate)}</td>
             <td>${formatNumber(miner.shares)}</td>
@@ -285,6 +393,12 @@ async function loadWorkerStats() {
 
     if (!address) {
         alert('Please enter your INT address');
+        return;
+    }
+
+    // Validate address format (basic check)
+    if (!address.startsWith('int1')) {
+        alert('Invalid address format. INTcoin addresses start with "int1"');
         return;
     }
 
@@ -306,6 +420,17 @@ async function loadWorkerStats() {
     document.getElementById('worker-shares').textContent = formatNumber(stats.shares);
     document.getElementById('worker-balance').textContent = stats.balance.toFixed(4) + ' INT';
     document.getElementById('worker-paid').textContent = stats.total_paid.toFixed(4) + ' INT';
+
+    // Update worker details
+    const lastShareEl = document.getElementById('worker-last-share');
+    const workerCountEl = document.getElementById('worker-count');
+
+    if (lastShareEl && stats.last_share) {
+        lastShareEl.textContent = formatRelativeTime(stats.last_share);
+    }
+    if (workerCountEl && stats.workers_online !== undefined) {
+        workerCountEl.textContent = stats.workers_online;
+    }
 }
 
 // Export functions for debugging
@@ -315,5 +440,7 @@ window.poolDashboard = {
     loadRecentPayments,
     loadTopMiners,
     loadWorkerStats,
-    rpcCall
+    rpcCall,
+    toggleTheme,
+    copyToClipboard
 };
