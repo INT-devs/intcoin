@@ -441,6 +441,7 @@ void MiningManager::UpdateJob() {
     job.target = DifficultyCalculator::CompactToTarget(header.bits);
     job.height = height;
     job.job_id = std::to_string(height);
+    job.coinbase = coinbase.Serialize();  // Store serialized coinbase for BuildBlock
 
     // Update all threads
     {
@@ -492,17 +493,24 @@ Block MiningManager::BuildBlock(const MiningResult& result) {
     Block block;
     block.header = result.header;
 
-    // Add coinbase transaction
-    // In a real implementation, would add transactions from mempool
-    uint64_t block_reward = GetBlockReward(current_job_.height);
-    Transaction coinbase = BuildCoinbaseTransaction(
-        config_.mining_address,
-        block_reward,
-        current_job_.height,
-        "Mined with INTcoin CPU Miner"
-    );
-
-    block.transactions.push_back(coinbase);
+    // Use the same coinbase transaction that was used to calculate the merkle root
+    // This is critical - creating a new coinbase would have a different hash!
+    auto coinbase_result = Transaction::Deserialize(current_job_.coinbase);
+    if (!coinbase_result.IsOk()) {
+        // Fallback (should never happen if UpdateJob worked correctly)
+        std::cerr << "[Mining] ERROR: Failed to deserialize coinbase: "
+                  << coinbase_result.error << std::endl;
+        uint64_t block_reward = GetBlockReward(current_job_.height);
+        Transaction coinbase = BuildCoinbaseTransaction(
+            config_.mining_address,
+            block_reward,
+            current_job_.height,
+            "Mined with INTcoin CPU Miner"
+        );
+        block.transactions.push_back(coinbase);
+    } else {
+        block.transactions.push_back(coinbase_result.GetValue());
+    }
 
     return block;
 }
