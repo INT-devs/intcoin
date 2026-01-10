@@ -144,6 +144,14 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "Blockchain initialized. Height: " << blockchain.GetBestHeight() << std::endl;
 
+        // Debug: verify genesis block exists
+        auto genesis_check = blockchain.GetBlockByHeight(0);
+        if (genesis_check.IsOk()) {
+            std::cout << "Genesis block verified: " << Uint256ToHex(genesis_check.GetValue().GetHash()) << std::endl;
+        } else {
+            std::cerr << "WARNING: Genesis block NOT found after init: " << genesis_check.error << std::endl;
+        }
+
         // Initialize wallet
         std::cout << "Initializing faucet wallet..." << std::endl;
 

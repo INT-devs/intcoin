@@ -258,16 +258,24 @@ Result<void> Blockchain::Initialize() {
     }
 
     // Check if we have genesis block
-    if (impl_->chain_state_.best_height == 0 &&
+    bool needs_genesis = impl_->chain_state_.best_height == 0 &&
         std::all_of(impl_->chain_state_.best_block_hash.begin(),
                    impl_->chain_state_.best_block_hash.end(),
-                   [](uint8_t b) { return b == 0; })) {
+                   [](uint8_t b) { return b == 0; });
+
+    LogF(LogLevel::INFO, "Initialize: height=%llu, needs_genesis=%s",
+         impl_->chain_state_.best_height, needs_genesis ? "true" : "false");
+
+    if (needs_genesis) {
         // Create and store genesis block (use internal method since we already hold mutex)
         Block genesis = CreateGenesisBlock();
+        LogF(LogLevel::INFO, "Creating genesis block hash: %s", Uint256ToHex(genesis.GetHash()).c_str());
         auto add_result = AddBlockInternal(genesis);
         if (add_result.IsError()) {
+            LogF(LogLevel::ERROR, "Failed to add genesis: %s", add_result.error.c_str());
             return Result<void>::Error("Failed to create genesis block: " + add_result.error);
         }
+        LogF(LogLevel::INFO, "Genesis block added, new height: %llu", impl_->chain_state_.best_height);
     }
 
     // Load UTXO set (TODO: optimize this for large chains)
