@@ -447,18 +447,13 @@ Found a security issue? Please email security@international-coin.org or see [SEC
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) for our 10-year development plan.
+See [ROADMAP.md](ROADMAP.md) for development direction and focus areas (2026-2031).
 
-**Completed Milestones:**
-- ✅ Q1 2026: Smart Contracts (IntSC VM) - **COMPLETED**
-- ✅ Q1 2026: IBD Optimization (Parallel Validation, Assume-UTXO)
-
-**Upcoming Milestones:**
-- Q2 2026: Mainnet Launch
-- Q3 2026: Exchange Listings
-- Q4 2026: Lightning Network Activation
-- 2027: DeFi Primitives & Privacy Enhancements
-- 2028+: Mass Adoption
+**Recent Development:**
+- Smart Contracts (IntSC VM) - EVM-compatible with PQC opcodes
+- IBD Optimization - Parallel validation and Assume-UTXO
+- Lightning Network Integration - Post-quantum secure channels
+- Cross-chain Atomic Swaps - BTC and LTC support
 
 ---
 
