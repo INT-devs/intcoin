@@ -219,6 +219,9 @@ public:
     void RegisterTransactionCallback(TransactionCallback callback);
 
 private:
+    /// Internal block add - caller must hold mutex
+    Result<void> AddBlockInternal(const Block& block);
+
     class Impl;
     std::unique_ptr<Impl> impl_;
 };

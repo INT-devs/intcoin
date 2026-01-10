@@ -262,9 +262,9 @@ Result<void> Blockchain::Initialize() {
         std::all_of(impl_->chain_state_.best_block_hash.begin(),
                    impl_->chain_state_.best_block_hash.end(),
                    [](uint8_t b) { return b == 0; })) {
-        // Create and store genesis block
+        // Create and store genesis block (use internal method since we already hold mutex)
         Block genesis = CreateGenesisBlock();
-        auto add_result = AddBlock(genesis);
+        auto add_result = AddBlockInternal(genesis);
         if (add_result.IsError()) {
             return Result<void>::Error("Failed to create genesis block: " + add_result.error);
         }
@@ -302,9 +302,8 @@ Result<void> Blockchain::Initialize() {
 // Block Operations
 // ------------------------------------------------------------------------
 
-Result<void> Blockchain::AddBlock(const Block& block) {
-    std::lock_guard<std::mutex> lock(impl_->mutex_);
-
+// Internal method - caller must hold mutex
+Result<void> Blockchain::AddBlockInternal(const Block& block) {
     uint256 block_hash = block.GetHash();
 
     // Check if block already exists
@@ -499,6 +498,11 @@ Result<void> Blockchain::AddBlock(const Block& block) {
     }
 
     return Result<void>::Ok();
+}
+
+Result<void> Blockchain::AddBlock(const Block& block) {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    return AddBlockInternal(block);
 }
 
 Result<Block> Blockchain::GetBlock(const uint256& hash) const {
