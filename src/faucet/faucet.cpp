@@ -562,7 +562,7 @@ std::string FaucetServer::GenerateHtmlPage() {
     html << "                <ul>\n";
     html << "                    <li>One request per IP every " << (config_.ip_cooldown / 3600) << " hour(s)</li>\n";
     html << "                    <li>One request per address every " << (config_.address_cooldown / 86400) << " day(s)</li>\n";
-    html << "                    <li>Only valid testnet addresses (starting with 'tint1')</li>\n";
+    html << "                    <li>Only valid testnet addresses (starting with 'intc1')</li>\n";
     html << "                    <li>Testnet coins have no real value</li>\n";
     html << "                </ul>\n";
     html << "            </div>\n";
@@ -570,7 +570,7 @@ std::string FaucetServer::GenerateHtmlPage() {
     html << "            <form id=\"faucetForm\">\n";
     html << "                <div class=\"form-group\">\n";
     html << "                    <label for=\"address\">Your Testnet Address</label>\n";
-    html << "                    <input type=\"text\" id=\"address\" placeholder=\"tint1...\" required pattern=\"tint1[a-z0-9]{39,90}\" title=\"Please enter a valid testnet address starting with tint1\">\n";
+    html << "                    <input type=\"text\" id=\"address\" placeholder=\"intc1...\" required pattern=\"intc1[a-z0-9]{39,90}\" title=\"Please enter a valid testnet address starting with intc1\">\n";
     html << "                </div>\n";
     html << "                <button type=\"submit\" class=\"btn\" id=\"submitBtn\">\n";
     html << "                    <span id=\"btnText\">🚀 Request Testnet Coins</span>\n";
@@ -631,9 +631,9 @@ std::string FaucetServer::GenerateHtmlPage() {
     html << "            var btnText = document.getElementById('btnText');\n";
     html << "            \n";
     html << "            // Validate address format\n";
-    html << "            if (!address.startsWith('tint1') || address.length < 42) {\n";
+    html << "            if (!address.startsWith('intc1') || address.length < 42) {\n";
     html << "                messageDiv.className = 'message error';\n";
-    html << "                messageDiv.textContent = '❌ Invalid testnet address. Must start with \\'tint1\\' and be at least 42 characters long.';\n";
+    html << "                messageDiv.textContent = '❌ Invalid testnet address. Must start with \\'intc1\\' and be at least 42 characters long.';\n";
     html << "                return;\n";
     html << "            }\n";
     html << "            \n";
@@ -694,8 +694,8 @@ std::string FaucetServer::GenerateJsonResponse(const std::string& status, const 
 }
 
 bool FaucetServer::ValidateAddress(const std::string& address) {
-    // Basic validation - address should start with "tint1" for testnet and be proper length
-    if (address.length() < 42 || address.substr(0, 5) != "tint1") {
+    // Basic validation - address should start with "intc1" for testnet and be proper length
+    if (address.length() < 42 || address.substr(0, 5) != "intc1") {
         return false;
     }
     return true;
