@@ -356,8 +356,8 @@ Script Script::CreateMultisigScriptSig(const std::vector<Signature>& signatures)
 
 bool Script::IsP2PKH() const {
     // P2PKH pattern: OP_DUP OP_HASH <32> <32-byte hash> OP_EQUALVERIFY OP_CHECKSIG
-    // Total: 38 bytes
-    if (bytes.size() != 38) return false;
+    // Total: 1 + 1 + 1 + 32 + 1 + 1 = 37 bytes
+    if (bytes.size() != 37) return false;
 
     return bytes[0] == static_cast<uint8_t>(OpCode::OP_DUP) &&
            bytes[1] == static_cast<uint8_t>(OpCode::OP_HASH) &&
