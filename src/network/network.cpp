@@ -14,6 +14,11 @@
 #include <mutex>
 #include <unordered_map>
 #include <fstream>
+#include <random>
+#include <set>
+#include <optional>
+#include <ctime>
+#include <cmath>
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -2410,6 +2415,547 @@ Result<std::vector<NetworkAddress>> PeerDiscovery::LoadPeerAddresses() {
     file.close();
 
     return Result<std::vector<NetworkAddress>>::Ok(addresses);
+}
+
+// ============================================================================
+// PeerAddressInfo Implementation
+// ============================================================================
+
+double PeerAddressInfo::GetScore() const {
+    if (state == AddressState::BANNED) return -1.0;
+    if (state == AddressState::FAILED && failure_count > 5) return 0.01;
+
+    auto now = static_cast<uint64_t>(std::time(nullptr));
+
+    // Base score: success rate
+    double score = 1.0;
+    if (attempt_count > 0) {
+        score = static_cast<double>(success_count) / attempt_count;
+    }
+
+    // Boost for tried (verified) addresses
+    if (state == AddressState::TRIED) {
+        score *= 10.0;
+    }
+
+    // Recency bonus: more recent success = higher score
+    if (last_success > 0) {
+        uint64_t age = now - last_success;
+        double recency = std::exp(-static_cast<double>(age) / (7 * 24 * 60 * 60)); // decay per week
+        score *= (1.0 + recency);
+    }
+
+    // Penalty for consecutive failures
+    if (failure_count > 0) {
+        score /= (1.0 + failure_count);
+    }
+
+    // Bonus for hardcoded seeds (most reliable)
+    if (source == Source::HARDCODED) {
+        score *= 5.0;
+    }
+
+    return std::max(0.01, score);
+}
+
+bool PeerAddressInfo::IsStale() const {
+    if (state == AddressState::TRIED) {
+        // Tried addresses can be older
+        auto now = static_cast<uint64_t>(std::time(nullptr));
+        return (now - last_success) > (60 * 24 * 60 * 60); // 60 days
+    }
+    // New addresses expire after 30 days
+    auto now = static_cast<uint64_t>(std::time(nullptr));
+    return (now - last_seen) > (30 * 24 * 60 * 60);
+}
+
+uint32_t PeerAddressInfo::GetNetgroup() const {
+    if (address.IsIPv4()) {
+        // Return /16 for IPv4 (first 2 octets)
+        return (static_cast<uint32_t>(address.ip[12]) << 8) |
+               static_cast<uint32_t>(address.ip[13]);
+    } else {
+        // Return /32 for IPv6 (first 4 bytes)
+        return (static_cast<uint32_t>(address.ip[0]) << 24) |
+               (static_cast<uint32_t>(address.ip[1]) << 16) |
+               (static_cast<uint32_t>(address.ip[2]) << 8) |
+               static_cast<uint32_t>(address.ip[3]);
+    }
+}
+
+std::vector<uint8_t> PeerAddressInfo::Serialize() const {
+    std::vector<uint8_t> data;
+
+    // Serialize NetworkAddress (34 bytes)
+    auto addr_data = address.Serialize();
+    data.insert(data.end(), addr_data.begin(), addr_data.end());
+
+    // State (1 byte)
+    data.push_back(static_cast<uint8_t>(state));
+
+    // Source (1 byte)
+    data.push_back(static_cast<uint8_t>(source));
+
+    // Timestamps (8 bytes each)
+    auto write_u64 = [&data](uint64_t val) {
+        for (int i = 0; i < 8; i++) {
+            data.push_back(static_cast<uint8_t>(val >> (i * 8)));
+        }
+    };
+    write_u64(first_seen);
+    write_u64(last_attempt);
+    write_u64(last_success);
+    write_u64(last_seen);
+
+    // Counts (4 bytes each)
+    auto write_u32 = [&data](uint32_t val) {
+        for (int i = 0; i < 4; i++) {
+            data.push_back(static_cast<uint8_t>(val >> (i * 8)));
+        }
+    };
+    write_u32(attempt_count);
+    write_u32(success_count);
+    write_u32(failure_count);
+
+    return data; // Total: 34 + 2 + 32 + 12 = 80 bytes
+}
+
+Result<PeerAddressInfo> PeerAddressInfo::Deserialize(const std::vector<uint8_t>& data) {
+    if (data.size() < 80) {
+        return Result<PeerAddressInfo>::Error("Insufficient data for PeerAddressInfo");
+    }
+
+    PeerAddressInfo info;
+    size_t pos = 0;
+
+    // Deserialize NetworkAddress (34 bytes)
+    std::vector<uint8_t> addr_data(data.begin(), data.begin() + 34);
+    auto addr_result = NetworkAddress::Deserialize(addr_data);
+    if (addr_result.IsError()) {
+        return Result<PeerAddressInfo>::Error("Failed to deserialize address");
+    }
+    info.address = addr_result.GetValue();
+    pos += 34;
+
+    // State and Source
+    info.state = static_cast<AddressState>(data[pos++]);
+    info.source = static_cast<Source>(data[pos++]);
+
+    // Read timestamps
+    auto read_u64 = [&data, &pos]() -> uint64_t {
+        uint64_t val = 0;
+        for (int i = 0; i < 8; i++) {
+            val |= static_cast<uint64_t>(data[pos++]) << (i * 8);
+        }
+        return val;
+    };
+    info.first_seen = read_u64();
+    info.last_attempt = read_u64();
+    info.last_success = read_u64();
+    info.last_seen = read_u64();
+
+    // Read counts
+    auto read_u32 = [&data, &pos]() -> uint32_t {
+        uint32_t val = 0;
+        for (int i = 0; i < 4; i++) {
+            val |= static_cast<uint32_t>(data[pos++]) << (i * 8);
+        }
+        return val;
+    };
+    info.attempt_count = read_u32();
+    info.success_count = read_u32();
+    info.failure_count = read_u32();
+
+    return Result<PeerAddressInfo>::Ok(info);
+}
+
+// ============================================================================
+// AddressManager Implementation
+// ============================================================================
+
+struct AddressManager::Impl {
+    std::map<std::string, PeerAddressInfo> addresses;  // Key: IP:port
+    std::map<uint32_t, size_t> netgroup_counts;        // Netgroup -> count
+    mutable std::mutex mutex;
+
+    std::string GetKey(const NetworkAddress& addr) const {
+        return addr.ToString();
+    }
+};
+
+AddressManager::AddressManager() : impl_(std::make_unique<Impl>()) {}
+AddressManager::~AddressManager() = default;
+
+bool AddressManager::AddAddress(const NetworkAddress& addr, PeerAddressInfo::Source source) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    // Check if routable
+    if (!addr.IsRoutable()) {
+        return false;
+    }
+
+    std::string key = impl_->GetKey(addr);
+
+    // Check for duplicate
+    if (impl_->addresses.count(key) > 0) {
+        // Update last_seen timestamp
+        impl_->addresses[key].last_seen = static_cast<uint64_t>(std::time(nullptr));
+        return false;
+    }
+
+    // Check netgroup limits (Sybil attack prevention)
+    PeerAddressInfo info;
+    info.address = addr;
+    info.source = source;
+    uint32_t netgroup = info.GetNetgroup();
+
+    if (impl_->netgroup_counts[netgroup] >= MAX_PER_NETGROUP) {
+        return false; // Too many from same subnet
+    }
+
+    // Check total limits
+    if (impl_->addresses.size() >= MAX_ADDRESSES) {
+        // Remove oldest stale address
+        std::string oldest_key;
+        uint64_t oldest_time = UINT64_MAX;
+        for (const auto& [k, v] : impl_->addresses) {
+            if (v.IsStale() && v.last_seen < oldest_time) {
+                oldest_time = v.last_seen;
+                oldest_key = k;
+            }
+        }
+        if (!oldest_key.empty()) {
+            uint32_t old_netgroup = impl_->addresses[oldest_key].GetNetgroup();
+            impl_->netgroup_counts[old_netgroup]--;
+            impl_->addresses.erase(oldest_key);
+        } else {
+            return false; // No room
+        }
+    }
+
+    // Add the address
+    auto now = static_cast<uint64_t>(std::time(nullptr));
+    info.first_seen = now;
+    info.last_seen = now;
+    info.state = AddressState::NEW;
+
+    impl_->addresses[key] = info;
+    impl_->netgroup_counts[netgroup]++;
+
+    return true;
+}
+
+void AddressManager::MarkGood(const NetworkAddress& addr) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::string key = impl_->GetKey(addr);
+    auto it = impl_->addresses.find(key);
+    if (it == impl_->addresses.end()) {
+        return;
+    }
+
+    auto now = static_cast<uint64_t>(std::time(nullptr));
+    it->second.state = AddressState::TRIED;
+    it->second.last_success = now;
+    it->second.success_count++;
+    it->second.failure_count = 0; // Reset consecutive failures
+}
+
+void AddressManager::MarkFailed(const NetworkAddress& addr) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::string key = impl_->GetKey(addr);
+    auto it = impl_->addresses.find(key);
+    if (it == impl_->addresses.end()) {
+        return;
+    }
+
+    it->second.failure_count++;
+
+    // Mark as FAILED if too many consecutive failures
+    if (it->second.failure_count >= 5) {
+        it->second.state = AddressState::FAILED;
+    }
+}
+
+void AddressManager::MarkAttempted(const NetworkAddress& addr) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::string key = impl_->GetKey(addr);
+    auto it = impl_->addresses.find(key);
+    if (it == impl_->addresses.end()) {
+        return;
+    }
+
+    auto now = static_cast<uint64_t>(std::time(nullptr));
+    it->second.last_attempt = now;
+    it->second.attempt_count++;
+}
+
+std::optional<NetworkAddress> AddressManager::SelectAddress(bool only_tried) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    if (impl_->addresses.empty()) {
+        return std::nullopt;
+    }
+
+    // Build list of candidates with scores
+    std::vector<std::pair<std::string, double>> candidates;
+    double total_score = 0.0;
+
+    for (const auto& [key, info] : impl_->addresses) {
+        if (only_tried && info.state != AddressState::TRIED) {
+            continue;
+        }
+        if (info.state == AddressState::BANNED) {
+            continue;
+        }
+        if (info.IsStale()) {
+            continue;
+        }
+
+        double score = info.GetScore();
+        if (score > 0) {
+            candidates.emplace_back(key, score);
+            total_score += score;
+        }
+    }
+
+    if (candidates.empty() || total_score <= 0) {
+        return std::nullopt;
+    }
+
+    // Weighted random selection
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, total_score);
+    double random_val = dis(gen);
+
+    double cumulative = 0.0;
+    for (const auto& [key, score] : candidates) {
+        cumulative += score;
+        if (random_val <= cumulative) {
+            return impl_->addresses[key].address;
+        }
+    }
+
+    // Fallback to last candidate
+    return impl_->addresses[candidates.back().first].address;
+}
+
+std::vector<NetworkAddress> AddressManager::SelectAddresses(size_t count, bool only_tried) {
+    std::vector<NetworkAddress> result;
+    std::set<std::string> selected;
+
+    for (size_t i = 0; i < count * 2 && result.size() < count; i++) {
+        auto addr = SelectAddress(only_tried);
+        if (addr) {
+            std::string key = addr->ToString();
+            if (selected.count(key) == 0) {
+                result.push_back(*addr);
+                selected.insert(key);
+            }
+        }
+    }
+
+    return result;
+}
+
+std::vector<PeerAddressInfo> AddressManager::GetAddresses(AddressState state) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::vector<PeerAddressInfo> result;
+    for (const auto& [key, info] : impl_->addresses) {
+        if (info.state == state) {
+            result.push_back(info);
+        }
+    }
+    return result;
+}
+
+size_t AddressManager::GetAddressCount() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    return impl_->addresses.size();
+}
+
+size_t AddressManager::GetTriedCount() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    size_t count = 0;
+    for (const auto& [key, info] : impl_->addresses) {
+        if (info.state == AddressState::TRIED) {
+            count++;
+        }
+    }
+    return count;
+}
+
+size_t AddressManager::GetNewCount() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    size_t count = 0;
+    for (const auto& [key, info] : impl_->addresses) {
+        if (info.state == AddressState::NEW) {
+            count++;
+        }
+    }
+    return count;
+}
+
+bool AddressManager::HasEnoughInNetgroup(uint32_t netgroup) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    auto it = impl_->netgroup_counts.find(netgroup);
+    return it != impl_->netgroup_counts.end() && it->second >= MAX_PER_NETGROUP;
+}
+
+Result<void> AddressManager::Save(const std::string& path) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::string file_path = path;
+    if (file_path.empty()) {
+        const char* home = std::getenv("HOME");
+        if (!home) {
+            return Result<void>::Error("Cannot determine home directory");
+        }
+        file_path = std::string(home) + "/.intcoin/peers.dat";
+    }
+
+    // Create directory if needed
+    std::string dir = file_path.substr(0, file_path.rfind('/'));
+    #ifdef _WIN32
+        _mkdir(dir.c_str());
+    #else
+        mkdir(dir.c_str(), 0755);
+    #endif
+
+    std::ofstream file(file_path, std::ios::binary);
+    if (!file) {
+        return Result<void>::Error("Failed to open peers.dat for writing");
+    }
+
+    // Version 2 header
+    uint32_t version = 2;
+    file.write(reinterpret_cast<const char*>(&version), sizeof(version));
+
+    // Count
+    uint32_t count = static_cast<uint32_t>(impl_->addresses.size());
+    file.write(reinterpret_cast<const char*>(&count), sizeof(count));
+
+    // Write each address
+    for (const auto& [key, info] : impl_->addresses) {
+        auto serialized = info.Serialize();
+        file.write(reinterpret_cast<const char*>(serialized.data()), serialized.size());
+    }
+
+    file.close();
+    return Result<void>::Ok();
+}
+
+Result<void> AddressManager::Load(const std::string& path) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::string file_path = path;
+    if (file_path.empty()) {
+        const char* home = std::getenv("HOME");
+        if (!home) {
+            return Result<void>::Error("Cannot determine home directory");
+        }
+        file_path = std::string(home) + "/.intcoin/peers.dat";
+    }
+
+    std::ifstream file(file_path, std::ios::binary);
+    if (!file) {
+        // File doesn't exist yet - not an error
+        return Result<void>::Ok();
+    }
+
+    // Read version
+    uint32_t version;
+    file.read(reinterpret_cast<char*>(&version), sizeof(version));
+    if (!file) {
+        return Result<void>::Error("Failed to read version");
+    }
+
+    // Read count
+    uint32_t count;
+    file.read(reinterpret_cast<char*>(&count), sizeof(count));
+    if (!file || count > 100000) {
+        return Result<void>::Error("Invalid peer count");
+    }
+
+    impl_->addresses.clear();
+    impl_->netgroup_counts.clear();
+
+    if (version == 1) {
+        // Legacy v1 format: just NetworkAddress (34 bytes each)
+        for (uint32_t i = 0; i < count; i++) {
+            std::vector<uint8_t> addr_data(34);
+            file.read(reinterpret_cast<char*>(addr_data.data()), 34);
+            if (!file) break;
+
+            auto result = NetworkAddress::Deserialize(addr_data);
+            if (result.IsOk()) {
+                PeerAddressInfo info;
+                info.address = result.GetValue();
+                info.state = AddressState::NEW;
+                info.source = PeerAddressInfo::Source::SAVED;
+                info.first_seen = static_cast<uint64_t>(std::time(nullptr));
+                info.last_seen = info.first_seen;
+
+                std::string key = impl_->GetKey(info.address);
+                impl_->addresses[key] = info;
+                impl_->netgroup_counts[info.GetNetgroup()]++;
+            }
+        }
+    } else if (version == 2) {
+        // v2 format: PeerAddressInfo (80 bytes each)
+        for (uint32_t i = 0; i < count; i++) {
+            std::vector<uint8_t> data(80);
+            file.read(reinterpret_cast<char*>(data.data()), 80);
+            if (!file) break;
+
+            auto result = PeerAddressInfo::Deserialize(data);
+            if (result.IsOk()) {
+                auto info = result.GetValue();
+                std::string key = impl_->GetKey(info.address);
+                impl_->addresses[key] = info;
+                impl_->netgroup_counts[info.GetNetgroup()]++;
+            }
+        }
+    } else {
+        return Result<void>::Error("Unknown peers.dat version");
+    }
+
+    file.close();
+    return Result<void>::Ok();
+}
+
+void AddressManager::Clear() {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    impl_->addresses.clear();
+    impl_->netgroup_counts.clear();
+}
+
+std::vector<NetworkAddress> AddressManager::GetAddressesForRelay(size_t count) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+
+    std::vector<NetworkAddress> result;
+
+    // Prefer tried addresses for relay
+    for (const auto& [key, info] : impl_->addresses) {
+        if (result.size() >= count) break;
+        if (info.state == AddressState::TRIED && !info.IsStale()) {
+            result.push_back(info.address);
+        }
+    }
+
+    // Fill with new if needed
+    for (const auto& [key, info] : impl_->addresses) {
+        if (result.size() >= count) break;
+        if (info.state == AddressState::NEW && !info.IsStale()) {
+            result.push_back(info.address);
+        }
+    }
+
+    return result;
 }
 
 } // namespace intcoin

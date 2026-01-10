@@ -17,6 +17,7 @@
 #include <memory>
 #include <map>
 #include <mutex>
+#include <optional>
 
 namespace intcoin {
 
@@ -670,6 +671,128 @@ private:
 };
 
 // ============================================================================
+// Address Manager (Bitcoin-style peer address management)
+// ============================================================================
+
+/// State of a peer address in the address manager
+enum class AddressState {
+    NEW,        // Discovered but not yet verified
+    TRIED,      // Successfully connected before
+    FAILED,     // Recent connection failures
+    BANNED      // Known bad peer
+};
+
+/// Extended peer address information with connection tracking
+struct PeerAddressInfo {
+    NetworkAddress address;
+    AddressState state = AddressState::NEW;
+
+    uint64_t first_seen = 0;           // When first discovered
+    uint64_t last_attempt = 0;         // Last connection attempt
+    uint64_t last_success = 0;         // Last successful connection
+    uint64_t last_seen = 0;            // Last time we received ADDR for this
+
+    uint32_t attempt_count = 0;        // Total connection attempts
+    uint32_t success_count = 0;        // Successful connections
+    uint32_t failure_count = 0;        // Failed connections (consecutive)
+
+    /// Source of this address
+    enum class Source {
+        HARDCODED,  // Hardcoded seed node
+        DNS,        // DNS seed resolution
+        ADDR,       // Received via ADDR message
+        SAVED       // Loaded from peers.dat
+    };
+    Source source = Source::ADDR;
+
+    /// Get selection score (higher = more likely to be selected)
+    double GetScore() const;
+
+    /// Check if address is stale (older than 30 days without success)
+    bool IsStale() const;
+
+    /// Get netgroup (/16 for IPv4, /32 for IPv6)
+    uint32_t GetNetgroup() const;
+
+    /// Serialize for peers.dat (v2 format)
+    std::vector<uint8_t> Serialize() const;
+
+    /// Deserialize from peers.dat
+    static Result<PeerAddressInfo> Deserialize(const std::vector<uint8_t>& data);
+};
+
+/// Bitcoin-style address manager with buckets and weighted selection
+class AddressManager {
+public:
+    AddressManager();
+    ~AddressManager();
+
+    /// Add a new address (returns false if duplicate or invalid)
+    bool AddAddress(const NetworkAddress& addr, PeerAddressInfo::Source source);
+
+    /// Mark address as successfully connected
+    void MarkGood(const NetworkAddress& addr);
+
+    /// Mark address as failed (connection failure)
+    void MarkFailed(const NetworkAddress& addr);
+
+    /// Mark address as attempted
+    void MarkAttempted(const NetworkAddress& addr);
+
+    /// Select a peer address for connection (weighted random)
+    std::optional<NetworkAddress> SelectAddress(bool only_tried = false);
+
+    /// Select multiple addresses for connection
+    std::vector<NetworkAddress> SelectAddresses(size_t count, bool only_tried = false);
+
+    /// Get all addresses in a specific state
+    std::vector<PeerAddressInfo> GetAddresses(AddressState state) const;
+
+    /// Get total address count
+    size_t GetAddressCount() const;
+
+    /// Get tried address count
+    size_t GetTriedCount() const;
+
+    /// Get new address count
+    size_t GetNewCount() const;
+
+    /// Check if we have enough peers for the given netgroup
+    bool HasEnoughInNetgroup(uint32_t netgroup) const;
+
+    /// Save to peers.dat (v2 format with tracking info)
+    Result<void> Save(const std::string& path = "") const;
+
+    /// Load from peers.dat
+    Result<void> Load(const std::string& path = "");
+
+    /// Clear all addresses
+    void Clear();
+
+    /// Get addresses for ADDR message relay
+    std::vector<NetworkAddress> GetAddressesForRelay(size_t count = 23) const;
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+
+    /// Maximum addresses per netgroup (Sybil attack prevention)
+    static constexpr size_t MAX_PER_NETGROUP = 8;
+
+    /// Maximum total addresses
+    static constexpr size_t MAX_ADDRESSES = 10000;
+
+    /// Maximum addresses in NEW bucket
+    static constexpr size_t MAX_NEW = 8000;
+
+    /// Maximum addresses in TRIED bucket
+    static constexpr size_t MAX_TRIED = 2000;
+
+    /// Address expires after 30 days without seeing it
+    static constexpr uint64_t ADDRESS_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
+};
+
+// ============================================================================
 // Peer Discovery
 // ============================================================================
 
@@ -682,11 +805,11 @@ public:
     /// Get hardcoded seed nodes
     static std::vector<NetworkAddress> GetSeedNodes(bool testnet = false);
 
-    /// Save peer addresses to disk
+    /// Save peer addresses to disk (legacy v1 format)
     static Result<void> SavePeerAddresses(
         const std::vector<NetworkAddress>& addresses);
 
-    /// Load peer addresses from disk
+    /// Load peer addresses from disk (legacy v1 format)
     static Result<std::vector<NetworkAddress>> LoadPeerAddresses();
 };
 
