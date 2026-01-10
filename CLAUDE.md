@@ -2,9 +2,15 @@
 
 **Project**: INTcoin - Quantum-Resistant Cryptocurrency with Smart Contracts
 **Version**: v1.4.0-beta
-**Last Updated**: January 9, 2026
+**Last Updated**: January 10, 2026
 
 This document provides guidance for AI assistants (Claude, etc.) working on the INTcoin codebase.
+
+---
+
+## Important Rules
+
+- **Do NOT add Claude co-authored-by footer to git commits** - Omit the "Co-Authored-By: Claude" line from all commit messages.
 
 ---
 
