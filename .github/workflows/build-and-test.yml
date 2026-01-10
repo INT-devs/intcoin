@@ -8,6 +8,10 @@ on:
   release:
     types: [ created ]
 
+# Default permissions for all jobs (least privilege)
+permissions:
+  contents: read
+
 env:
   BUILD_TYPE: Release
 

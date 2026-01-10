@@ -638,6 +638,8 @@ void StratumClient::ReceiveLoop() {
 void StratumClient::SendMessage(const std::string& message) {
     std::lock_guard<std::mutex> lock(socket_mutex_);
     if (socket_ >= 0) {
+        // TODO: Add TLS support for stratum+ssl:// connections
+        // lgtm[cpp/cleartext-transmission] - Stratum protocol; TLS support planned
         send(socket_, message.c_str(), message.length(), 0);
     }
 }

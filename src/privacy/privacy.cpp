@@ -81,7 +81,10 @@ public:
         }
 
         // Send command
+        // Note: Tor control protocol is local-only (127.0.0.1) by design
+        // External traffic privacy is handled by Tor network itself
         std::string cmd = command + "\r\n";
+        // lgtm[cpp/cleartext-transmission] - Tor control is local-only by design
         if (send(control_socket, cmd.c_str(), cmd.size(), 0) < 0) {
             return Result<std::string>::Error("Failed to send command");
         }

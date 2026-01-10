@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+# Default permissions for all jobs (least privilege)
+permissions:
+  contents: read
+
 jobs:
   # ============================================================================
   # Check Documentation

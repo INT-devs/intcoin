@@ -56,7 +56,7 @@ Traditional cryptocurrencies like Bitcoin use ECDSA cryptography, which will be 
 - Block Gas Limit: 30,000,000 gas per block
 - Deployment Gas: 32,000 base + 200 gas/byte
 - Call Gas: 21,000-30,000,000 gas range
-- Min Gas Price: 1 satINT/gas
+- Min Gas Price: 1 INT/gas
 
 **Transaction Types**:
 1. Standard (UTXO transfers)
