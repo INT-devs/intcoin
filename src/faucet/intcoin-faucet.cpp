@@ -5,6 +5,7 @@
  */
 
 #include "intcoin/intcoin.h"
+#include "intcoin/mining.h"
 #include <iostream>
 #include <string>
 #include <csignal>
@@ -12,13 +13,17 @@
 
 using namespace intcoin;
 
-// Global faucet server instance
+// Global instances
 static faucet::FaucetServer* g_faucet = nullptr;
+static mining::MiningManager* g_miner = nullptr;
 
 // Signal handler for graceful shutdown
 void SignalHandler(int signal) {
     if (signal == SIGINT || signal == SIGTERM) {
         std::cout << "\nShutting down faucet server..." << std::endl;
+        if (g_miner) {
+            g_miner->Stop();
+        }
         if (g_faucet) {
             g_faucet->Stop();
         }
@@ -42,6 +47,8 @@ void PrintUsage(const char* program_name) {
     std::cout << "  --addr-cooldown=<s> Address cooldown in seconds (default: 86400)" << std::endl;
     std::cout << "  --bind=<addr>       Bind address (default: 0.0.0.0)" << std::endl;
     std::cout << "  --fee=<amount>      Transaction fee in INTS (default: 1000)" << std::endl;
+    std::cout << "  --mine              Enable background mining to fund faucet" << std::endl;
+    std::cout << "  --threads=<n>       Number of mining threads (default: 1)" << std::endl;
     std::cout << std::endl;
 }
 
@@ -55,6 +62,8 @@ int main(int argc, char* argv[]) {
     // Parse command-line arguments
     std::string datadir = "./data";
     faucet::FaucetConfig config;
+    bool enable_mining = false;
+    uint32_t mining_threads = 1;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -88,6 +97,12 @@ int main(int argc, char* argv[]) {
         }
         else if (arg.substr(0, 6) == "--fee=") {
             config.transaction_fee = std::stoull(arg.substr(6));
+        }
+        else if (arg == "--mine") {
+            enable_mining = true;
+        }
+        else if (arg.substr(0, 10) == "--threads=") {
+            mining_threads = std::stoi(arg.substr(10));
         }
         else {
             std::cerr << "Unknown option: " << arg << std::endl;
@@ -194,12 +209,64 @@ int main(int argc, char* argv[]) {
         std::cout << "Press Ctrl+C to stop" << std::endl;
         std::cout << std::endl;
 
+        // Start mining if enabled
+        std::unique_ptr<mining::MiningManager> miner;
+        if (enable_mining) {
+            std::cout << "Starting background mining..." << std::endl;
+
+            // Get faucet wallet address for mining rewards
+            std::string mining_address;
+            auto addr_result = wallet.GetNewAddress("mining");
+            if (addr_result.IsOk()) {
+                mining_address = addr_result.GetValue();
+            } else {
+                std::cerr << "Failed to get mining address: " << addr_result.error << std::endl;
+                return 1;
+            }
+
+            std::cout << "  Mining Address: " << mining_address << std::endl;
+            std::cout << "  Mining Threads: " << mining_threads << std::endl;
+
+            // Configure mining
+            mining::MiningConfig mining_config;
+            mining_config.mining_address = mining_address;
+            mining_config.thread_count = mining_threads;
+            mining_config.update_interval = 10;
+
+            miner = std::make_unique<mining::MiningManager>(mining_config);
+            g_miner = miner.get();
+
+            // Set callback for when blocks are found
+            miner->SetBlockFoundCallback([&blockchain](const Block& block) {
+                std::cout << "[Mining] Block found! Height: " << (blockchain.GetBestHeight() + 1) << std::endl;
+                auto add_result = blockchain.AddBlock(block);
+                if (add_result.IsOk()) {
+                    std::cout << "[Mining] Block added to chain successfully!" << std::endl;
+                    std::cout << "[Mining] New height: " << blockchain.GetBestHeight() << std::endl;
+                } else {
+                    std::cerr << "[Mining] Failed to add block: " << add_result.error << std::endl;
+                }
+            });
+
+            // Start mining
+            auto mining_result = miner->Start(blockchain);
+            if (!mining_result.IsOk()) {
+                std::cerr << "Failed to start mining: " << mining_result.error << std::endl;
+                std::cerr << "Continuing without mining..." << std::endl;
+                miner.reset();
+                g_miner = nullptr;
+            } else {
+                std::cout << "Background mining started!" << std::endl;
+                std::cout << std::endl;
+            }
+        }
+
         // Main loop - print statistics periodically
         while (faucet.IsRunning()) {
             std::this_thread::sleep_for(std::chrono::seconds(60));
 
             auto stats = faucet.GetStats();
-            std::cout << "[" << std::time(nullptr) << "] Stats:" << std::endl;
+            std::cout << "[" << std::time(nullptr) << "] Faucet Stats:" << std::endl;
             std::cout << "  Total Distributions: " << stats.total_distributions << std::endl;
             std::cout << "  Total Amount: " << (stats.total_amount / 100000000.0) << " INT" << std::endl;
             std::cout << "  Pending Requests: " << stats.pending_requests << std::endl;
@@ -207,6 +274,15 @@ int main(int argc, char* argv[]) {
             std::cout << "  Rate Limited: " << stats.rate_limited_requests << std::endl;
             std::cout << "  Faucet Balance: " << (stats.faucet_balance / 100000000.0) << " INT" << std::endl;
             std::cout << "  Uptime: " << stats.uptime << " seconds" << std::endl;
+
+            // Show mining stats if mining is enabled
+            if (miner && miner->IsMining()) {
+                auto mining_stats = miner->GetStats();
+                std::cout << "  [Mining] Hashrate: " << mining::FormatHashrate(mining_stats.hashrate);
+                std::cout << " | Blocks: " << mining_stats.blocks_found;
+                std::cout << " | Chain Height: " << blockchain.GetBestHeight() << std::endl;
+            }
+
             std::cout << std::endl;
         }
 
