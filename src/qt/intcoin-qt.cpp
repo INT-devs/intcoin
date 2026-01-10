@@ -10,6 +10,7 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QDir>
+#include <QTimer>
 #include <memory>
 
 int main(int argc, char *argv[]) {
@@ -25,6 +26,7 @@ int main(int argc, char *argv[]) {
         // Initialize wallet configuration
         intcoin::wallet::WalletConfig walletConfig;
         walletConfig.data_dir = QDir::homePath().toStdString() + "/.intcoin/wallet";
+        walletConfig.backup_dir = QDir::homePath().toStdString() + "/.intcoin/backups";
 
         // Create wallet instance
         auto wallet = std::make_unique<intcoin::wallet::Wallet>(walletConfig);
@@ -66,7 +68,15 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        // Initialize blockchain
+        // Create main window first (wallet-only mode initially)
+        intcoin::qt::MainWindow mainWindow(wallet.get(), nullptr, nullptr);
+        mainWindow.show();
+        mainWindow.setWindowTitle("INTcoin Wallet - Initializing...");
+
+        // Process events to show the window immediately
+        app.processEvents();
+
+        // Initialize blockchain in background-friendly way
         auto blockchainDB = std::make_shared<intcoin::BlockchainDB>(
             QDir::homePath().toStdString() + "/.intcoin/blockchain"
         );
@@ -74,38 +84,31 @@ int main(int argc, char *argv[]) {
 
         auto initResult = blockchain->Initialize();
         if (!initResult.IsOk()) {
-            QMessageBox::critical(nullptr, QObject::tr("Error"),
-                QObject::tr("Failed to initialize blockchain."));
-            return 1;
+            qWarning() << "Warning: Failed to initialize blockchain - running in offline mode";
         }
 
-        // Initialize P2P network
+        // Initialize P2P network (non-blocking)
         auto p2p = std::make_unique<intcoin::P2PNode>(
             intcoin::network::MAINNET_MAGIC,
             intcoin::network::MAINNET_P2P_PORT
         );
 
-        // Start P2P node (optional - can be delayed until wallet is ready)
-        auto startResult = p2p->Start();
-        if (!startResult.IsOk()) {
-            // Non-fatal - can run without network
-            qWarning() << "Warning: Failed to start P2P network";
-        } else {
-            // Register blockchain callbacks for P2P relay
-            // Block relay: broadcast new blocks to peers
-            blockchain->RegisterBlockCallback([p2p_ptr = p2p.get()](const intcoin::Block& block) {
-                p2p_ptr->BroadcastBlock(block.GetHash());
-            });
+        // Start P2P node in background
+        QTimer::singleShot(100, [&p2p, &blockchain]() {
+            auto startResult = p2p->Start();
+            if (startResult.IsOk() && blockchain) {
+                // Register blockchain callbacks for P2P relay
+                blockchain->RegisterBlockCallback([p2p_ptr = p2p.get()](const intcoin::Block& block) {
+                    p2p_ptr->BroadcastBlock(block.GetHash());
+                });
+                blockchain->RegisterTransactionCallback([p2p_ptr = p2p.get()](const intcoin::Transaction& tx) {
+                    p2p_ptr->BroadcastTransaction(tx.GetHash());
+                });
+            }
+        });
 
-            // Transaction relay: broadcast new transactions to peers
-            blockchain->RegisterTransactionCallback([p2p_ptr = p2p.get()](const intcoin::Transaction& tx) {
-                p2p_ptr->BroadcastTransaction(tx.GetHash());
-            });
-        }
-
-        // Create and show main window with actual instances
-        intcoin::qt::MainWindow mainWindow(wallet.get(), blockchain.get(), p2p.get());
-        mainWindow.show();
+        // Update window title when ready
+        mainWindow.setWindowTitle("INTcoin Wallet");
 
         // Run application event loop
         int result = app.exec();
