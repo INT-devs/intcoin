@@ -282,8 +282,8 @@ Result<void> Blockchain::Initialize() {
     }
 
     // Open contract database
-    // Use a default path for contract database
-    std::string db_path = "./data/contracts";
+    // Use datadir from blockchain database for contract database
+    std::string db_path = impl_->db_->GetDataDir() + "/contracts";
     auto contract_db_result = impl_->contract_db_->Open(db_path);
     if (contract_db_result.IsError()) {
         return Result<void>::Error("Failed to open contract database: " + contract_db_result.error);

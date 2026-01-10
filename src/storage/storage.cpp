@@ -379,6 +379,11 @@ bool BlockchainDB::IsOpen() const {
     return impl_->is_open_;
 }
 
+// Get data directory
+std::string BlockchainDB::GetDataDir() const {
+    return impl_->data_dir_;
+}
+
 // ============================================================================
 // Block Operations
 // ============================================================================

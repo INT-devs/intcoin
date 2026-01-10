@@ -214,6 +214,9 @@ public:
     /// Check if database is open
     bool IsOpen() const;
 
+    /// Get data directory path
+    std::string GetDataDir() const;
+
     // ------------------------------------------------------------------------
     // Block Operations
     // ------------------------------------------------------------------------
