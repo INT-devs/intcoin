@@ -54,7 +54,9 @@ double CalculateHashrate(uint64_t hashes, double time_seconds) {
 
 bool CheckHash(const uint256& hash, const uint256& target) {
     // Compare hash with target (lower hash value = more difficult)
-    for (size_t i = 0; i < 32; ++i) {
+    // Compare in big-endian order (from most significant byte to least)
+    // to match CheckProofOfWork in consensus.cpp
+    for (int i = 31; i >= 0; --i) {
         if (hash[i] < target[i]) {
             return true; // Hash meets target
         }
