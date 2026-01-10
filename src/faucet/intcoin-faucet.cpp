@@ -136,6 +136,14 @@ int main(int argc, char* argv[]) {
 
         Blockchain blockchain(std::move(blockchain_db));
 
+        // Initialize blockchain (creates genesis block if needed)
+        auto init_result = blockchain.Initialize();
+        if (!init_result.IsOk()) {
+            std::cerr << "Failed to initialize blockchain: " << init_result.error << std::endl;
+            return 1;
+        }
+        std::cout << "Blockchain initialized. Height: " << blockchain.GetBestHeight() << std::endl;
+
         // Initialize wallet
         std::cout << "Initializing faucet wallet..." << std::endl;
 
