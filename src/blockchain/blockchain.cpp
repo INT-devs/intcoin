@@ -257,16 +257,18 @@ Result<void> Blockchain::Initialize() {
         return state_result;
     }
 
-    // Check if we have genesis block
-    bool needs_genesis = impl_->chain_state_.best_height == 0 &&
-        std::all_of(impl_->chain_state_.best_block_hash.begin(),
-                   impl_->chain_state_.best_block_hash.end(),
-                   [](uint8_t b) { return b == 0; });
+    // Check if genesis block actually exists in database (not just chain state)
+    auto genesis_check = impl_->db_->GetBlockByHeight(0);
+    bool genesis_exists = genesis_check.IsOk();
 
-    LogF(LogLevel::INFO, "Initialize: height=%llu, needs_genesis=%s",
-         impl_->chain_state_.best_height, needs_genesis ? "true" : "false");
+    LogF(LogLevel::INFO, "Initialize: height=%llu, genesis_exists=%s",
+         impl_->chain_state_.best_height, genesis_exists ? "true" : "false");
 
-    if (needs_genesis) {
+    if (!genesis_exists) {
+        // Reset chain state since genesis doesn't exist
+        impl_->chain_state_.best_block_hash = uint256{};
+        impl_->chain_state_.best_height = 0;
+
         // Create and store genesis block (use internal method since we already hold mutex)
         Block genesis = CreateGenesisBlock();
         LogF(LogLevel::INFO, "Creating genesis block hash: %s", Uint256ToHex(genesis.GetHash()).c_str());
