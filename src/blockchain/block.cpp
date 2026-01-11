@@ -364,20 +364,6 @@ size_t Block::GetSerializedSize() const {
 // ============================================================================
 
 Block CreateGenesisBlock() {
-    BlockHeader header;
-    header.version = 1;
-    header.prev_block_hash = uint256(); // Zero hash
-    header.timestamp = 1732627080; // 26 November 2025 13:18:00 UTC
-    header.bits = consensus::MIN_DIFFICULTY_BITS;
-    header.nonce = 1827011ULL; // Mined nonce
-
-    // Hardcoded mined values
-    auto randomx_key_result = HexToUint256("5c497a03c63d4997bee117045fbfe407806b74350f96f30918a3dcd5c870ae2d");
-    header.randomx_key = randomx_key_result.IsOk() ? *randomx_key_result.value : uint256();
-
-    auto merkle_root_result = HexToUint256("9ee7e90a6fbcb10de930064946ca16a1b2434a5d2cc9ce8a49aa2bda0ce89d69");
-    header.merkle_root = merkle_root_result.IsOk() ? *merkle_root_result.value : uint256();
-
     // Create coinbase transaction with genesis message
     // Timestamp: 13:18, 26 November 2025
     // Source: This Is Money
@@ -389,7 +375,7 @@ Block CreateGenesisBlock() {
 
     // Coinbase input with genesis message in script_sig
     TxIn coinbase_input;
-    coinbase_input.prev_tx_hash = uint256(); // Zero hash
+    coinbase_input.prev_tx_hash = uint256{}; // Zero hash
     coinbase_input.prev_tx_index = 0xFFFFFFFF;
     coinbase_input.sequence = 0xFFFFFFFF;
 
@@ -398,8 +384,8 @@ Block CreateGenesisBlock() {
     coinbase_input.script_sig = Script(script_data);
     coinbase.inputs.push_back(coinbase_input);
 
-    // Coinbase output to placeholder address
-    PublicKey genesis_pubkey; // Placeholder
+    // Coinbase output to placeholder address (zero-initialized)
+    PublicKey genesis_pubkey{};
     uint256 pubkey_hash = PublicKeyToHash(genesis_pubkey);
     Script script_pubkey = Script::CreateP2PKH(pubkey_hash);
     TxOut coinbase_output(consensus::INITIAL_BLOCK_REWARD, script_pubkey);
@@ -409,6 +395,18 @@ Block CreateGenesisBlock() {
 
     std::vector<Transaction> transactions;
     transactions.push_back(coinbase);
+
+    // Build header
+    BlockHeader header;
+    header.version = 1;
+    header.prev_block_hash = uint256{}; // Zero hash
+    header.timestamp = 1732627080; // 26 November 2025 13:18:00 UTC
+    header.bits = consensus::MIN_DIFFICULTY_BITS;
+    header.nonce = 0; // Genesis doesn't need valid PoW
+    header.randomx_key = uint256{}; // Zero for genesis
+
+    // Calculate merkle root from coinbase transaction
+    header.merkle_root = coinbase.GetTxID();
 
     Block genesis(header, transactions);
     return genesis;
