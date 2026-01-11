@@ -63,8 +63,8 @@ constexpr uint64_t DIFFICULTY_AVERAGING_WINDOW = 60;
 constexpr double DIFFICULTY_DAMPING_FACTOR = 4.0;
 
 /// Minimum difficulty (initial)
-/// Minimum difficulty - easier for testnet, ~30 sec blocks at 4 H/s
-constexpr uint32_t MIN_DIFFICULTY_BITS = 0x1e03ffff;
+/// Minimum difficulty - very easy for testnet (~50% of hashes pass)
+constexpr uint32_t MIN_DIFFICULTY_BITS = 0x207fffff;
 
 /// Maximum difficulty (hardest possible)
 constexpr uint32_t MAX_DIFFICULTY_BITS = 0x03010000;
