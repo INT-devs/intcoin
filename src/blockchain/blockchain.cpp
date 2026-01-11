@@ -662,10 +662,15 @@ Result<void> Blockchain::ValidateBlock(const Block& block) const {
         return Result<void>::Error("Invalid merkle root");
     }
 
-    // Validate proof of work
-    uint256 block_hash = block.GetHash();
-    if (!DifficultyCalculator::CheckProofOfWork(block_hash, block.header.bits)) {
-        return Result<void>::Error("Invalid proof of work");
+    // Validate proof of work (skip for genesis block which has pre-mined hash)
+    bool is_genesis = std::all_of(block.header.prev_block_hash.begin(),
+                                   block.header.prev_block_hash.end(),
+                                   [](uint8_t b) { return b == 0; });
+    if (!is_genesis) {
+        uint256 block_hash = block.GetHash();
+        if (!DifficultyCalculator::CheckProofOfWork(block_hash, block.header.bits)) {
+            return Result<void>::Error("Invalid proof of work");
+        }
     }
 
     // Validate timestamp
