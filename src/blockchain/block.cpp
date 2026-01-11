@@ -406,7 +406,7 @@ Block CreateGenesisBlock() {
     header.randomx_key = uint256{}; // Zero for genesis
 
     // Calculate merkle root from coinbase transaction
-    header.merkle_root = coinbase.GetTxID();
+    header.merkle_root = coinbase.GetHash();
 
     Block genesis(header, transactions);
     return genesis;
