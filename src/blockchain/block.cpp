@@ -403,6 +403,7 @@ Block CreateGenesisBlock() {
     header.timestamp = 1732627080; // 26 November 2025 13:18:00 UTC
     header.bits = consensus::MIN_DIFFICULTY_BITS;
     header.nonce = 0; // Genesis doesn't need valid PoW
+    header.randomx_hash = uint256{}; // Zero for genesis
     header.randomx_key = uint256{}; // Zero for genesis
 
     // Calculate merkle root from coinbase transaction
