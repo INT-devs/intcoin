@@ -663,13 +663,9 @@ Result<void> Blockchain::ValidateBlock(const Block& block) const {
     }
 
     // Validate proof of work
-    // Skip PoW validation for minimum difficulty (test blocks)
-    constexpr uint32_t MIN_DIFFICULTY_BITS = 0x1e0ffff0;
-    if (block.header.bits != MIN_DIFFICULTY_BITS) {
-        uint256 block_hash = block.GetHash();
-        if (!DifficultyCalculator::CheckProofOfWork(block_hash, block.header.bits)) {
-            return Result<void>::Error("Invalid proof of work");
-        }
+    uint256 block_hash = block.GetHash();
+    if (!DifficultyCalculator::CheckProofOfWork(block_hash, block.header.bits)) {
+        return Result<void>::Error("Invalid proof of work");
     }
 
     // Validate timestamp
