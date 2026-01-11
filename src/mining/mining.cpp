@@ -233,11 +233,6 @@ void MinerThread::MiningLoop() {
 bool MinerThread::TrySolveBlock(const MiningJob& job, uint32_t nonce_start, uint32_t nonce_end) {
     BlockHeader header = job.header;
 
-    // At minimum difficulty (testnet), blockchain skips PoW validation
-    // So we can accept immediately without grinding for a valid hash
-    constexpr uint32_t MIN_DIFFICULTY_BITS = 0x1e0ffff0;
-    bool skip_pow_check = (header.bits == MIN_DIFFICULTY_BITS);
-
     for (uint32_t nonce = nonce_start; nonce < nonce_end; ++nonce) {
         if (!running_.load()) {
             return false;
@@ -260,8 +255,8 @@ bool MinerThread::TrySolveBlock(const MiningJob& job, uint32_t nonce_start, uint
         uint256 hash;
         randomx_calculate_hash(vm_, header_data.data(), header_data.size(), hash.data());
 
-        // Check if hash meets target (or skip for minimum difficulty)
-        if (skip_pow_check || CheckHash(hash, job.target)) {
+        // Check if hash meets target
+        if (CheckHash(hash, job.target)) {
             MiningResult result;
             result.found = true;
             result.header = header;
